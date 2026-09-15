@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مركز شبكات المرافق - محافظة المنيا</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f3f6fb;
+    --card:#ffffff;
+    --border:#e3e8f0;
+    --ink:#1b2635;
+    --sub:#6b7688;
+    --brand:#0d6e6e;
+    --brand-dark:#095656;
+    --brand-light:#e6f4f4;
+    --accent:#2f6fed;
+    --good:#1e9e6b;
+    --good-bg:#e8f8f1;
+    --warn:#c9852b;
+    --warn-bg:#fdf2e2;
+    --bad:#d6483f;
+    --bad-bg:#fceceb;
+    --radius:14px;
+    --shadow:0 2px 10px rgba(20,30,60,.06), 0 1px 2px rgba(20,30,60,.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Cairo',sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  button, input, select, textarea{font-family:inherit;}
+  button{cursor:pointer;}
+  #app-root{min-height:100vh;display:flex;flex-direction:column;}
+
+  /* ---------- Loading / Login ---------- */
+  .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px;}
+  .brand-block{text-align:center;margin-bottom:28px;}
+  .brand-block .logo-circle{
+    width:74px;height:74px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));
+    display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#fff;font-size:32px;font-weight:800;
+    box-shadow:var(--shadow);
+  }
+  .brand-block h1{font-size:22px;margin:0 0 4px;font-weight:800;}
+  .brand-block p{color:var(--sub);margin:0;font-size:14px;}
+  .auth-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px;width:100%;max-width:380px;text-align:center;border:1px solid var(--border);}
+  .google-btn{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    width:100%;padding:13px 16px;border-radius:10px;border:1px solid var(--border);
+    background:#fff;font-weight:700;font-size:15px;color:var(--ink);transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  .google-btn:hover{background:#f8f9fb;border-color:#c9d2e0;}
+  .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--brand);animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .load-text{margin-top:14px;color:var(--sub);font-size:14px;}
+
+  /* ---------- Registration ---------- */
+  .form-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:30px;width:100%;max-width:440px;border:1px solid var(--border);}
+  .form-card h2{margin:0 0 4px;font-size:19px;}
+  .form-card .hint{color:var(--sub);font-size:13px;margin-bottom:20px;}
+  .field{margin-bottom:16px;text-align:right;}
+  .field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--ink);}
+  .field input[type=text], .field input[type=tel], .field select, .field input[type=email], .field input[type=number], .field textarea{
+    width:100%;padding:11px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;background:#fbfcfe;color:var(--ink);
+    transition:.15s;
+  }
+  .field textarea{resize:vertical;min-height:70px;}
+  .field input:focus, .field select:focus, .field textarea:focus{outline:none;border-color:var(--brand);background:#fff;}
+  .field input:disabled{background:#eef1f6;color:var(--sub);}
+  .field .file-row{display:flex;align-items:center;gap:10px;}
+  .avatar-preview{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);background:#eef1f6;}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:11px 18px;border-radius:9px;border:none;font-weight:700;font-size:14px;transition:.15s;
+  }
+  .btn-primary{background:var(--brand);color:#fff;width:100%;}
+  .btn-primary:hover{background:var(--brand-dark);}
+  .btn-primary:disabled{background:#a9c3c3;cursor:not-allowed;}
+  .btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--ink);}
+  .btn-outline:hover{border-color:var(--brand);color:var(--brand);}
+  .btn-danger{background:var(--bad);color:#fff;}
+  .btn-danger:hover{background:#b83a32;}
+  .btn-sm{padding:6px 12px;font-size:12.5px;border-radius:7px;}
+  .btn-block{width:100%;}
+  .error-text{color:var(--bad);font-size:13px;margin-top:8px;}
+
+  /* ---------- App shell ---------- */
+  .topbar{
+    background:var(--card);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;padding:10px 22px;position:sticky;top:0;z-index:20;
+  }
+  .topbar .left{display:flex;align-items:center;gap:12px;}
+  .topbar .logo-circle{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex:none;}
+  .topbar .title{font-weight:800;font-size:15.5px;line-height:1.2;}
+  .topbar .subtitle{font-size:11.5px;color:var(--sub);}
+  .topbar .right{display:flex;align-items:center;gap:12px;}
+  .user-chip{display:flex;align-items:center;gap:8px;}
+  .user-chip img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);}
+  .user-chip .u-name{font-size:13.5px;font-weight:700;}
+  .user-chip .u-dept{font-size:11px;color:var(--sub);}
+
+  .tabs{
+    display:flex;gap:4px;background:var(--card);border-bottom:1px solid var(--border);
+    padding:0 18px;overflow-x:auto;position:sticky;top:57px;z-index:19;
+  }
+  .tab-btn{
+    padding:13px 16px;border:none;background:none;font-weight:700;font-size:13.5px;color:var(--sub);
+    border-bottom:3px solid transparent;white-space:nowrap;
+  }
+  .tab-btn.active{color:var(--brand);border-bottom-color:var(--brand);}
+
+  .container{max-width:1100px;margin:0 auto;width:100%;padding:22px 18px 60px;flex:1;}
+  .grid{display:grid;gap:18px;}
+  .grid-2{grid-template-columns:1fr 1fr;}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr;}}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;}
+  .card h3{margin:0 0 14px;font-size:15.5px;display:flex;align-items:center;gap:8px;}
+  .card .card-sub{color:var(--sub);font-size:12.5px;margin-top:-10px;margin-bottom:14px;}
+
+  .status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12.5px;font-weight:700;}
+  .pill-good{background:var(--good-bg);color:var(--good);}
+  .pill-warn{background:var(--warn-bg);color:var(--warn);}
+  .pill-bad{background:var(--bad-bg);color:var(--bad);}
+  .pill-neutral{background:#eef1f6;color:var(--sub);}
+
+  .time-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);}
+  .time-row:last-child{border-bottom:none;}
+  .time-row .lbl{color:var(--sub);font-size:13px;}
+  .time-row .val{font-weight:800;font-size:16px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{color:var(--sub);font-weight:700;font-size:12px;background:#fafbfd;position:sticky;top:0;}
+  tbody tr:hover{background:#fafbfd;}
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
+  .table-wrap table{border:none;}
+  .table-wrap .table-wrap{border:none;}
+
+  .stat-box{background:var(--brand-light);border-radius:12px;padding:16px;text-align:center;}
+  .stat-box .num{font-size:26px;font-weight:800;color:var(--brand-dark);}
+  .stat-box .lbl{font-size:12px;color:var(--sub);margin-top:2px;}
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+
+  .task-input-row{display:flex;gap:8px;margin-bottom:8px;}
+  .task-input-row input{flex:1;}
+  .remove-x{background:var(--bad-bg);color:var(--bad);border:none;border-radius:7px;width:34px;flex:none;font-weight:800;font-size:15px;}
+  .task-chip{display:inline-flex;align-items:center;gap:6px;background:var(--brand-light);color:var(--brand-dark);padding:4px 10px;border-radius:16px;font-size:12px;margin:2px 4px 2px 0;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(15,25,40,.55);display:flex;align-items:center;justify-content:center;
+    z-index:100;padding:16px;
+  }
+  .modal-box{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:88vh;overflow-y:auto;}
+  .modal-box h3{margin:0 0 6px;font-size:17px;}
+  .modal-box .modal-sub{color:var(--sub);font-size:13px;margin-bottom:18px;}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .modal-actions .btn{flex:1;}
+
+  .badge-dept{padding:3px 9px;border-radius:7px;font-size:11.5px;font-weight:700;background:#eef1f6;color:var(--ink);}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:12px 20px;border-radius:10px;font-size:13.5px;box-shadow:var(--shadow);z-index:200;max-width:90vw;text-align:center;
+  }
+  .toast.err{background:var(--bad);}
+  .toast.ok{background:var(--good);}
+
+  .subtab-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+  .subtab-btn{padding:8px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:var(--sub);}
+  .subtab-btn.active{background:var(--brand);border-color:var(--brand);color:#fff;}
+
+  .empty-state{text-align:center;padding:40px 20px;color:var(--sub);}
+  .empty-state .emoji{font-size:34px;margin-bottom:8px;}
+
+  .progress-bar{height:8px;background:#eef1f6;border-radius:6px;overflow:hidden;}
+  .progress-bar > div{height:100%;background:linear-gradient(90deg,var(--brand),var(--accent));border-radius:6px;transition:.3s;}
+
+  .leader-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .leader-row:last-child{border-bottom:none;}
+  .leader-rank{width:26px;height:26px;border-radius:50%;background:#eef1f6;color:var(--sub);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex:none;}
+  .leader-rank.top1{background:#ffd76a;color:#7a5600;}
+  .leader-rank.top2{background:#d9e2ee;color:#3c4a5f;}
+  .leader-rank.top3{background:#e8c39e;color:#6b3f16;}
+  .leader-name{font-weight:700;font-size:13.5px;flex:1;}
+  .leader-dept{font-size:11px;color:var(--sub);}
+  .leader-nums{font-size:12.5px;color:var(--sub);font-weight:700;white-space:nowrap;}
+
+  .link-btn{background:none;border:none;color:var(--brand);font-weight:700;font-size:12.5px;padding:0;}
+  .checkbox-lg{width:19px;height:19px;cursor:pointer;}
+  .muted{color:var(--sub);}
+  .flex-between{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  hr.sep{border:none;border-top:1px solid var(--border);margin:16px 0;}
+  .small-note{font-size:12px;color:var(--sub);background:#fafbfd;border:1px dashed var(--border);border-radius:8px;padding:10px 12px;}
+</style>
+</head>
+<body>
+
+<div id="app-root">
+  <div class="center-screen"><div class="spinner"></div><div class="load-text">جارِ التحميل...</div></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where,
+  onSnapshot, serverTimestamp, writeBatch, orderBy
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import {
+  getStorage, ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+
+/* ============ Firebase config ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDb0dlyt1NxIUKWY1ZJr7Q57oJHF3L2wMU",
+  authDomain: "maktap-5e392.firebaseapp.com",
+  projectId: "maktap-5e392",
+  storageBucket: "maktap-5e392.firebasestorage.app",
+  messagingSenderId: "924906001862",
+  appId: "1:924906001862:web:677e567c0918136bba4ec7",
+  measurementId: "G-Q0YKHQTK0Y"
+};
+
+/* ضع هنا إيميلات مديري الإدارة (تُمنح صلاحية المدير تلقائيًا) */
+const ADMIN_EMAILS = [
+  // "manager@gmail.com"
+];
+
+const DEPARTMENTS = ["GIS", "قسم الرفع المساحي", "قسم مهندسين المساحة"];
+
+const DEFAULT_CENTERS = [
+  "مركز المنيا","مركز ملوي","مركز ديرمواس","مركز مطاي","مركز سمالوط",
+  "مركز أبوقرقاص","مركز مغاغة","مركز بني مزار","مركز العدوة"
+];
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+const provider = new GoogleAuthProvider();
+
+const root = document.getElementById('app-root');
+
+/* ============ Helpers ============ */
+function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+function esc(s){ return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function todayCairoStr(){
+  return new Intl.DateTimeFormat('en-CA', {timeZone:'Africa/Cairo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+}
+function cairoNow(){
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone:'Africa/Cairo', hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit',
+    year:'numeric', month:'2-digit', day:'2-digit'
+  }).formatToParts(new Date());
+  const o={}; parts.forEach(p=>o[p.type]=p.value);
+  return { hour:+o.hour, minute:+o.minute, second:+o.second, dateStr:`${o.year}-${o.month}-${o.day}` };
+}
+function fmtTime(ts){
+  if(!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return new Intl.DateTimeFormat('ar-EG', {timeZone:'Africa/Cairo', hour:'2-digit', minute:'2-digit', hour12:true}).format(d);
+}
+function fmtDate(str){
+  if(!str) return '—';
+  const [y,m,d]=str.split('-');
+  return `${d}/${m}/${y}`;
+}
+function toast(msg, type=''){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t = el(`<div class="toast ${type}">${esc(msg)}</div>`);
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+function deptShort(d){ return d; }
+
+/* ============ State ============ */
+let currentUser = null;
+let currentEmployee = null; // firestore doc data
+let isAdmin = false;
+let unsubList = [];
+function clearSubs(){ unsubList.forEach(u=>u()); unsubList=[]; }
+
+/* ============ Auth flow ============ */
+onAuthStateChanged(auth, async (user)=>{
+  clearSubs();
+  currentUser = user;
+  if(!user){ renderLogin(); return; }
+  renderLoading('جارِ التحقق من بيانات الحساب...');
+  try{
+    const snap = await getDoc(doc(db,'employees',user.uid));
+    if(!snap.exists()){
+      renderRegistration(user);
+    }else{
+      currentEmployee = snap.data();
+      isAdmin = ADMIN_EMAILS.includes((user.email||'').toLowerCase()) || currentEmployee.role==='admin';
+      renderApp();
+    }
+  }catch(err){
+    console.error(err);
+    renderLoading('حدث خطأ في الاتصال بقاعدة البيانات');
+  }
+});
+
+function renderLoading(msg){
+  root.innerHTML='';
+  root.appendChild(el(`<div class="center-screen"><div class="spinner"></div><div class="load-text">${esc(msg||'جارِ التحميل...')}</div></div>`));
+}
+
+function renderLogin(){
+  root.innerHTML='';
+  const wrap = el(`
+    <div class="center-screen">
+      <div class="brand-block">
+        <div class="logo-circle">ش م</div>
+        <h1>مركز شبكات المرافق</h1>
+        <p>محافظة المنيا - منظومة الحضور والانجاز</p>
+      </div>
+      <div class="auth-card">
+        <button class="google-btn" id="google-login-btn">
+          <svg width="19" height="19" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.3 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 5.3 29.6 3 24 3c-7.5 0-14 4.2-17.7 10.7z"/><path fill="#4CAF50" d="M24 45c5.5 0 10.4-1.8 14.1-5.2l-6.5-5.5C29.6 36.2 26.9 37 24 37c-5.3 0-9.7-3.1-11.3-7.6l-6.6 5.1C9.9 40.8 16.4 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.5 5.5C41.3 36 44 30.6 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
+          تسجيل الدخول بواسطة Google
+        </button>
+        <div class="error-text" id="login-err" style="display:none;"></div>
+      </div>
+    </div>
+  `);
+  root.appendChild(wrap);
+  wrap.querySelector('#google-login-btn').addEventListener('click', async ()=>{
+    try{ await signInWithPopup(auth, provider); }
+    catch(err){
+      console.error(err);
+      const e = wrap.querySelector('#login-err');
+      e.style.display='block';
+      e.textContent = 'تعذر تسجيل الدخول، برجاء المحاولة مرة أخرى';
+    }
+  });
+}
+
+/* ============ Registration ============ */
+function renderRegistration(user){
+  root.innerHTML='';
+  const wrap = el(`
+    <div class="center-screen">
+      <div class="brand-block">
+        <div class="logo-circle">ش م</div>
+        <h1>استكمال بيانات الموظف</h1>
+        <p>مركز شبكات المرافق - محافظة المنيا</p>
+      </div>
+      <div class="form-card">
+        <h2>مرحباً بك 👋</h2>
+        <div class="hint">من فضلك أكمل بياناتك لأول مرة قبل الدخول للمنظومة</div>
+        <div class="field">
+          <label>البريد الإلكتروني</label>
+          <input type="email" value="${esc(user.email||'')}" disabled>
+        </div>
+        <div class="field">
+          <label>الاسم بالكامل *</label>
+          <input type="text" id="reg-name" placeholder="اكتب اسمك بالكامل" value="${esc(user.displayName||'')}">
+        </div>
+        <div class="field">
+          <label>رقم الهاتف *</label>
+          <input type="tel" id="reg-phone" placeholder="01xxxxxxxxx">
+        </div>
+        <div class="field">
+          <label>القسم التابع له *</label>
+          <select id="reg-dept">
+            <option value="">-- اختر القسم --</option>
+            ${DEPARTMENTS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>صورة شخصية (اختياري)</label>
+          <div class="file-row">
+            <img class="avatar-preview" id="reg-avatar-preview" src="${esc(user.photoURL||'')}" onerror="this.style.opacity=0">
+            <input type="file" id="reg-photo" accept="image/*" style="flex:1;">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="reg-submit-btn">حفظ ودخول المنظومة</button>
+        <div class="error-text" id="reg-err" style="display:none;"></div>
+      </div>
+    </div>
+  `);
+  root.appendChild(wrap);
+
+  wrap.querySelector('#reg-photo').addEventListener('change', (e)=>{
+    const f = e.target.files[0];
+    if(f){ wrap.querySelector('#reg-avatar-preview').src = URL.createObjectURL(f); wrap.querySelector('#reg-avatar-preview').style.opacity=1; }
+  });
+
+  wrap.querySelector('#reg-submit-btn').addEventListener('click', async ()=>{
+    const name = wrap.querySelector('#reg-name').value.trim();
+    const phone = wrap.querySelector('#reg-phone').value.trim();
+    const deptEl = wrap.querySelector('#reg-dept');
+    const dept = deptEl.value;
+    const errBox = wrap.querySelector('#reg-err');
+    errBox.style.display='none';
+    if(!name || !phone || !dept){
+      errBox.textContent = 'من فضلك أكمل جميع الحقول المطلوبة (*)';
+      errBox.style.display='block';
+      return;
+    }
+    const btn = wrap.querySelector('#reg-submit-btn');
+    btn.disabled = true; btn.textContent = 'جارِ الحفظ...';
+    try{
+      let photoURL = user.photoURL || '';
+      const file = wrap.querySelector('#reg-photo').files[0];
+      if(file){
+        const sref = ref(storage, `employee_photos/${user.uid}_${Date.now()}`);
+        await uploadBytes(sref, file);
+        photoURL = await getDownloadURL(sref);
+      }
+      const data = {
+        uid: user.uid, email: user.email, name, phone, department: dept,
+        photoURL, role: ADMIN_EMAILS.includes((user.email||'').toLowerCase())?'admin':'employee',
+        createdAt: serverTimestamp()
+      };
+      await setDoc(doc(db,'employees',user.uid), data);
+      currentEmployee = data;
+      isAdmin = data.role==='admin';
+      renderApp();
+    }catch(err){
+      console.error(err);
+      errBox.textContent = 'حدث خطأ أثناء الحفظ، حاول مرة أخرى';
+      errBox.style.display='block';
+      btn.disabled=false; btn.textContent='حفظ ودخول المنظومة';
+    }
+  });
+}
+
+/* ============ App Shell ============ */
+let activeTab = 'home';
+function renderApp(){
+  activeTab = 'home';
+  root.innerHTML='';
+  const shell = el(`
+    <div style="display:flex;flex-direction:column;min-height:100vh;">
+      <div class="topbar">
+        <div class="left">
+          <div class="logo-circle">ش م</div>
+          <div>
+            <div class="title">مركز شبكات المرافق</div>
+            <div class="subtitle">محافظة المنيا</div>
+          </div>
+        </div>
+        <div class="right">
+          <div class="user-chip">
+            ${currentEmployee.photoURL ? `<img src="${esc(currentEmployee.photoURL)}">` : `<div class="logo-circle" style="width:34px;height:34px;font-size:13px;">${esc((currentEmployee.name||'?')[0])}</div>`}
+            <div>
+              <div class="u-name">${esc(currentEmployee.name)}</div>
+              <div class="u-dept">${esc(currentEmployee.department)}${isAdmin?' • مدير':''}</div>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" id="logout-btn">تسجيل الخروج</button>
+        </div>
+      </div>
+      <div class="tabs" id="tabs-row">
+        <button class="tab-btn active" data-tab="home">الرئيسية</button>
+        <button class="tab-btn" data-tab="tokeen">أعمال التقنين</button>
+        ${isAdmin ? `<button class="tab-btn" data-tab="admin">لوحة المدير</button>` : ``}
+      </div>
+      <div class="container" id="tab-content"></div>
+    </div>
+  `);
+  root.appendChild(shell);
+  shell.querySelector('#logout-btn').addEventListener('click', ()=> signOut(auth));
+  shell.querySelectorAll('.tab-btn').forEach(b=>{
+    b.addEventListener('click', ()=> switchTab(b.dataset.tab));
+  });
+  switchTab('home');
+}
+
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+  const content = document.getElementById('tab-content');
+  content.innerHTML = '';
+  clearSubs();
+  if(tab==='home') renderHomeTab(content);
+  else if(tab==='tokeen') renderTokeenTab(content);
+  else if(tab==='admin') renderAdminTab(content);
+}
+
+/* ============ HOME TAB (attendance) ============ */
+function renderHomeTab(content){
+  const uid = currentUser.uid;
+  const today = todayCairoStr();
+  const docId = `${uid}_${today}`;
+
+  content.appendChild(el(`
+    <div class="grid grid-2">
+      <div class="card" id="today-card">
+        <h3>📋 حالة اليوم — ${fmtDate(today)}</h3>
+        <div id="today-body"><div class="muted">جارِ التحميل...</div></div>
+      </div>
+      <div class="card">
+        <h3>🕒 سجل الحضور الأخير</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th></tr></thead>
+          <tbody id="history-body"><tr><td colspan="4" class="muted">جارِ التحميل...</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+  `));
+
+  const unsub = onSnapshot(doc(db,'attendance',docId), (snap)=>{
+    renderTodayCard(document.getElementById('today-body'), snap.exists()?snap.data():null, docId, today);
+  }, err=>console.error(err));
+  unsubList.push(unsub);
+
+  const q = query(collection(db,'attendance'), where('uid','==',uid), orderBy('date','desc'));
+  const unsub2 = onSnapshot(q, (qs)=>{
+    const rows = [];
+    qs.forEach(d=> rows.push(d.data()));
+    const tbody = document.getElementById('history-body');
+    if(!tbody) return;
+    if(rows.length===0){ tbody.innerHTML = `<tr><td colspan="4" class="muted">لا يوجد سجل بعد</td></tr>`; return; }
+    tbody.innerHTML = rows.slice(0,10).map(r=>{
+      let statusHtml;
+      if(r.checkOut) statusHtml = r.earlyLeaveReason ? `<span class="status-pill pill-warn">انصراف مبكر</span>` : `<span class="status-pill pill-good">مكتمل</span>`;
+      else if(r.checkIn) statusHtml = `<span class="status-pill pill-neutral">لم ينصرف بعد</span>`;
+      else statusHtml = `<span class="status-pill pill-bad">غياب</span>`;
+      return `<tr><td>${fmtDate(r.date)}</td><td>${fmtTime(r.checkIn)}</td><td>${fmtTime(r.checkOut)}</td><td>${statusHtml}</td></tr>`;
+    }).join('');
+  }, err=>console.error(err));
+  unsubList.push(unsub2);
+}
+
+function renderTodayCard(container, data, docId, today){
+  if(!container) return;
+  if(!data || !data.checkIn){
+    container.innerHTML = `
+      <div class="time-row"><div class="lbl">وقت الحضور</div><div class="val muted">لم يسجل بعد</div></div>
+      <button class="btn btn-primary btn-block" id="checkin-btn" style="margin-top:12px;">تسجيل حضور الآن</button>
+    `;
+    container.querySelector('#checkin-btn').addEventListener('click', async (e)=>{
+      e.target.disabled=true; e.target.textContent='جارِ التسجيل...';
+      try{
+        await setDoc(doc(db,'attendance',docId), {
+          uid: currentUser.uid, date: today, checkIn: serverTimestamp(),
+          checkOut: null, earlyLeaveReason: null, tasks: []
+        });
+        toast('تم تسجيل الحضور بنجاح', 'ok');
+      }catch(err){ console.error(err); toast('حدث خطأ، حاول مرة أخرى', 'err'); e.target.disabled=false; e.target.textContent='تسجيل حضور الآن'; }
+    });
+    return;
+  }
+  if(data.checkOut){
+    container.innerHTML = `
+      <div class="time-row"><div class="lbl">وقت الحضور</div><div class="val">${fmtTime(data.checkIn)}</div></div>
+      <div class="time-row"><div class="lbl">وقت الانصراف</div><div class="val">${fmtTime(data.checkOut)}</div></div>
+      ${data.earlyLeaveReason ? `<div class="small-note" style="margin-top:10px;"><b>سبب الانصراف المبكر:</b> ${esc(data.earlyLeaveReason)}</div>` : ''}
+      ${data.tasks && data.tasks.length ? `<div style="margin-top:12px;"><div class="lbl" style="font-size:13px;color:var(--sub);margin-bottom:6px;">المهام المنجزة اليوم:</div>${data.tasks.map(t=>`<span class="task-chip">✓ ${esc(t.text)}</span>`).join('')}</div>` : ''}
+      <div style="margin-top:14px;"><span class="status-pill pill-good">تم تسجيل يوم العمل بالكامل</span></div>
+    `;
+    return;
+  }
+  container.innerHTML = `
+    <div class="time-row"><div class="lbl">وقت الحضور</div><div class="val">${fmtTime(data.checkIn)}</div></div>
+    <div class="time-row"><div class="lbl">وقت الانصراف</div><div class="val muted">لم يسجل بعد</div></div>
+    <button class="btn btn-danger btn-block" id="checkout-btn" style="margin-top:12px;">تسجيل الانصراف</button>
+  `;
+  container.querySelector('#checkout-btn').addEventListener('click', ()=> openCheckoutModal(docId));
+}
+
+/* ---- Checkout modal (reason + tasks) ---- */
+function openCheckoutModal(docId){
+  const now = cairoNow();
+  const isEarly = (now.hour < 16); // قبل الساعة 4 عصرًا بتوقيت مصر
+  const overlay = el(`
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>تسجيل الانصراف</h3>
+        <div class="modal-sub">الوقت الآن (بتوقيت القاهرة): ${String(now.hour).padStart(2,'0')}:${String(now.minute).padStart(2,'0')}</div>
+        ${isEarly ? `
+          <div class="field">
+            <label>⚠️ أنت تنصرف قبل الساعة 4 عصرًا — من فضلك اكتب سبب الانصراف المبكر *</label>
+            <textarea id="early-reason" placeholder="اكتب السبب هنا..."></textarea>
+          </div>
+        ` : ``}
+        <div class="field">
+          <label>المهام والإنجازات التي تمت اليوم * (يمكن إضافة أكثر من مهمة)</label>
+          <div id="tasks-list"></div>
+          <button class="btn btn-outline btn-sm" id="add-task-btn" type="button">+ إضافة مهمة أخرى</button>
+        </div>
+        <div class="error-text" id="checkout-err" style="display:none;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="cancel-checkout-btn">إلغاء</button>
+          <button class="btn btn-primary" id="confirm-checkout-btn">تأكيد الانصراف</button>
+        </div>
+      </div>
+    </div>
+  `);
+  document.body.appendChild(overlay);
+
+  const tasksList = overlay.querySelector('#tasks-list');
+  function addTaskRow(value=''){
+    const row = el(`<div class="task-input-row">
+      <input type="text" class="task-input" placeholder="اكتب المهمة..." value="${esc(value)}">
+      <button type="button" class="remove-x">×</button>
+    </div>`);
+    row.querySelector('.remove-x').addEventListener('click', ()=>{
+      if(tasksList.children.length>1) row.remove();
+    });
+    tasksList.appendChild(row);
+  }
+  addTaskRow();
+
+  overlay.querySelector('#add-task-btn').addEventListener('click', ()=> addTaskRow());
+  overlay.querySelector('#cancel-checkout-btn').addEventListener('click', ()=> overlay.remove());
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.remove(); });
+
+  overlay.querySelector('#confirm-checkout-btn').addEventListener('click', async ()=>{
+    const errBox = overlay.querySelector('#checkout-err');
+    errBox.style.display='none';
+    const reasonEl = overlay.querySelector('#early-reason');
+    const reason = reasonEl ? reasonEl.value.trim() : '';
+    if(isEarly && !reason){
+      errBox.textContent = 'من فضلك اكتب سبب الانصراف المبكر';
+      errBox.style.display='block';
+      return;
+    }
+    const taskInputs = [...overlay.querySelectorAll('.task-input')].map(i=>i.value.trim()).filter(Boolean);
+    if(taskInputs.length===0){
+      errBox.textContent = 'من فضلك اكتب مهمة واحدة على الأقل';
+      errBox.style.display='block';
+      return;
+    }
+    const btn = overlay.querySelector('#confirm-checkout-btn');
+    btn.disabled=true; btn.textContent='جارِ الحفظ...';
+    try{
+      await updateDoc(doc(db,'attendance',docId), {
+        checkOut: serverTimestamp(),
+        earlyLeaveReason: isEarly ? reason : null,
+        tasks: taskInputs.map(t=>({text:t}))
+      });
+      toast('تم تسجيل الانصراف بنجاح', 'ok');
+      overlay.remove();
+    }catch(err){
+      console.error(err);
+      errBox.textContent = 'حدث خطأ أثناء الحفظ، حاول مرة أخرى';
+      errBox.style.display='block';
+      btn.disabled=false; btn.textContent='تأكيد الانصراف';
+    }
+  });
+}
+
+/* ============ TOKEEN TAB ============ */
+function renderTokeenTab(content){
+  content.appendChild(el(`
+    <div class="grid" style="grid-template-columns:1fr;">
+      <div class="card">
+        <h3>🏆 لوحة إنجاز أعمال التقنين — كل الموظفين</h3>
+        <div class="card-sub">تحديث لحظي — يظهر للجميع</div>
+        <div id="leaderboard-body"><div class="muted">جارِ التحميل...</div></div>
+      </div>
+
+      <div class="card">
+        <h3>📊 إحصائياتي</h3>
+        <div class="stat-row">
+          <div class="stat-box"><div class="num" id="stat-target">0</div><div class="lbl">المستهدف</div></div>
+          <div class="stat-box"><div class="num" id="stat-done">0</div><div class="lbl">تم إدخاله</div></div>
+          <div class="stat-box"><div class="num" id="stat-remain">0</div><div class="lbl">المتبقي</div></div>
+        </div>
+        <div class="progress-bar"><div id="progress-fill" style="width:0%;"></div></div>
+      </div>
+
+      <div class="card">
+        <h3>📋 لصق أرقام الطلبات التي تم إدخالها</h3>
+        <div class="card-sub">الصق أرقام الطلبات (كل رقم في سطر أو مفصول بفاصلة) وسيتم تعليمها "تم" تلقائيًا عند المطابقة</div>
+        <textarea id="paste-numbers" placeholder="مثال:&#10;12345&#10;12346&#10;12347" style="width:100%;min-height:90px;padding:11px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;"></textarea>
+        <button class="btn btn-primary" id="match-paste-btn" style="margin-top:10px;">مطابقة وتعليم كـ "تم"</button>
+      </div>
+
+      <div class="card">
+        <h3>📁 طلباتي المسندة</h3>
+        <div class="card-sub">اضغط ✓ لتعليم الطلب "تم" — يمكن إلغاء التعليم بالضغط مرة أخرى</div>
+        <div class="table-wrap" id="my-requests-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+      </div>
+    </div>
+  `));
+
+  // My requests
+  const uid = currentUser.uid;
+  const q = query(collection(db,'tokeenRequests'), where('uid','==',uid));
+  let myRows = [];
+  const unsub = onSnapshot(q, (qs)=>{
+    myRows = [];
+    qs.forEach(d=> myRows.push({id:d.id, ...d.data()}));
+    renderMyRequestsTable(myRows);
+    renderMyStats(myRows);
+  }, err=>console.error(err));
+  unsubList.push(unsub);
+
+  // Leaderboard (all requests + employees)
+  const unsub2 = onSnapshot(collection(db,'tokeenRequests'), (qs)=>{
+    const counts = {}; // uid -> {target, done}
+    qs.forEach(d=>{
+      const r = d.data();
+      if(!counts[r.uid]) counts[r.uid] = {target:0, done:0};
+      counts[r.uid].target++;
+      if(r.done) counts[r.uid].done++;
+    });
+    renderLeaderboard(counts);
+  }, err=>console.error(err));
+  unsubList.push(unsub2);
+
+  content.querySelector('#match-paste-btn').addEventListener('click', async ()=>{
+    const raw = content.querySelector('#paste-numbers').value.trim();
+    if(!raw){ toast('الصق أرقام الطلبات أولاً', 'err'); return; }
+    const numbers = raw.split(/[\s,،\n]+/).map(s=>s.trim()).filter(Boolean);
+    if(numbers.length===0){ toast('لم يتم العثور على أرقام صالحة', 'err'); return; }
+    const btn = content.querySelector('#match-paste-btn');
+    btn.disabled=true; btn.textContent='جارِ المطابقة...';
+    try{
+      const batch = writeBatch(db);
+      let matched = 0;
+      myRows.forEach(row=>{
+        if(row.done) return;
+        const val = String(row.data && row.reqField ? row.data[row.reqField] : '').trim();
+        if(val && numbers.includes(val)){
+          batch.update(doc(db,'tokeenRequests',row.id), {done:true, doneAt: serverTimestamp()});
+          matched++;
+        }
+      });
+      if(matched===0){ toast('لم يتم العثور على طلبات مطابقة ضمن الطلبات المسندة إليك', 'err'); }
+      else{
+        await batch.commit();
+        toast(`تم تعليم ${matched} طلب كـ "تم"`, 'ok');
+        content.querySelector('#paste-numbers').value='';
+      }
+    }catch(err){ console.error(err); toast('حدث خطأ أثناء المطابقة', 'err'); }
+    btn.disabled=false; btn.textContent='مطابقة وتعليم كـ "تم"';
+  });
+}
+
+function renderMyStats(rows){
+  const target = rows.length;
+  const done = rows.filter(r=>r.done).length;
+  const remain = target - done;
+  const t = document.getElementById('stat-target');
+  if(!t) return;
+  document.getElementById('stat-target').textContent = target;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-remain').textContent = remain;
+  document.getElementById('progress-fill').style.width = (target? Math.round(done/target*100):0) + '%';
+}
+
+function renderMyRequestsTable(rows){
+  const wrap = document.getElementById('my-requests-table');
+  if(!wrap) return;
+  if(rows.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>لا توجد طلبات مسندة إليك حاليًا</div>`;
+    return;
+  }
+  // union of column keys, preserving order of first row that has most keys
+  const colSet = [];
+  rows.forEach(r=>{
+    Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); });
+  });
+  rows.sort((a,b)=> (a.done - b.done) || String(a.date).localeCompare(b.date));
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>تم</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإسناد</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r=>`
+          <tr>
+            <td><input type="checkbox" class="checkbox-lg row-done-cb" data-id="${r.id}" ${r.done?'checked':''}></td>
+            <td>${esc(r.center||'—')}</td>
+            ${colSet.map(c=>`<td>${esc(r.data ? r.data[c] : '')}</td>`).join('')}
+            <td>${fmtDate(r.date)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  wrap.querySelectorAll('.row-done-cb').forEach(cb=>{
+    cb.addEventListener('change', async ()=>{
+      const id = cb.dataset.id;
+      try{
+        await updateDoc(doc(db,'tokeenRequests',id), {done:cb.checked, doneAt: cb.checked?serverTimestamp():null});
+      }catch(err){ console.error(err); toast('حدث خطأ، حاول مرة أخرى','err'); cb.checked=!cb.checked; }
+    });
+  });
+}
+
+let employeesCache = {}; // uid -> employee data (used by leaderboard + admin)
+function watchEmployeesCache(cb){
+  const unsub = onSnapshot(collection(db,'employees'), (qs)=>{
+    employeesCache = {};
+    qs.forEach(d=> employeesCache[d.id] = d.data());
+    if(cb) cb();
+  }, err=>console.error(err));
+  unsubList.push(unsub);
+}
+
+function renderLeaderboard(counts){
+  const container = document.getElementById('leaderboard-body');
+  if(!container) return;
+  function draw(){
+    const rows = Object.keys(counts).map(uid=>({
+      uid, name: (employeesCache[uid]&&employeesCache[uid].name) || 'موظف',
+      dept: (employeesCache[uid]&&employeesCache[uid].department) || '',
+      target: counts[uid].target, done: counts[uid].done
+    })).sort((a,b)=> b.done - a.done);
+    if(rows.length===0){ container.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>لا توجد بيانات بعد</div>`; return; }
+    container.innerHTML = rows.map((r,i)=>`
+      <div class="leader-row">
+        <div class="leader-rank ${i===0?'top1':i===1?'top2':i===2?'top3':''}">${i+1}</div>
+        <div style="flex:1;">
+          <div class="leader-name">${esc(r.name)}</div>
+          <div class="leader-dept">${esc(r.dept)}</div>
+        </div>
+        <div class="leader-nums">${r.done} / ${r.target}</div>
+      </div>
+    `).join('');
+  }
+  if(Object.keys(employeesCache).length===0){ watchEmployeesCache(draw); } else { draw(); }
+}
+
+/* ============ ADMIN TAB ============ */
+let adminSubtab = 'overview';
+function renderAdminTab(content){
+  adminSubtab = 'overview';
+  content.appendChild(el(`
+    <div class="subtab-row">
+      <button class="subtab-btn active" data-sub="overview">نظرة عامة</button>
+      <button class="subtab-btn" data-sub="upload">رفع بيانات التقنين</button>
+      <button class="subtab-btn" data-sub="employees">إدارة الموظفين</button>
+    </div>
+    <div id="admin-content"></div>
+  `));
+  content.querySelectorAll('.subtab-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      content.querySelectorAll('.subtab-btn').forEach(x=>x.classList.toggle('active', x===b));
+      adminSubtab = b.dataset.sub;
+      const c = content.querySelector('#admin-content');
+      c.innerHTML='';
+      if(adminSubtab==='overview') renderAdminOverview(c);
+      else if(adminSubtab==='upload') renderAdminUpload(c);
+      else if(adminSubtab==='employees') renderAdminEmployees(c);
+    });
+  });
+  renderAdminOverview(content.querySelector('#admin-content'));
+}
+
+function renderAdminOverview(container){
+  container.innerHTML = `<div class="card"><h3>📊 متابعة الحضور والانجاز اليوم — ${fmtDate(todayCairoStr())}</h3>
+    <div class="table-wrap" id="overview-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div></div>`;
+
+  const today = todayCairoStr();
+  let employees = {}, attendance = {}, tokeen = {};
+
+  function draw(){
+    const tbl = document.getElementById('overview-table');
+    if(!tbl) return;
+    const uids = Object.keys(employees);
+    if(uids.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
+    tbl.innerHTML = `
+      <table>
+        <thead><tr><th>الموظف</th><th>القسم</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th><th>مهام اليوم</th><th>تقنين (تم/مستهدف)</th></tr></thead>
+        <tbody>
+          ${uids.map(uid=>{
+            const e = employees[uid];
+            const a = attendance[uid];
+            const t = tokeen[uid] || {target:0, done:0};
+            let statusHtml;
+            if(a && a.checkOut) statusHtml = a.earlyLeaveReason ? `<span class="status-pill pill-warn">انصراف مبكر</span>` : `<span class="status-pill pill-good">مكتمل</span>`;
+            else if(a && a.checkIn) statusHtml = `<span class="status-pill pill-neutral">في العمل</span>`;
+            else statusHtml = `<span class="status-pill pill-bad">لم يحضر</span>`;
+            const taskCount = a && a.tasks ? a.tasks.length : 0;
+            return `<tr>
+              <td>${esc(e.name)}</td>
+              <td><span class="badge-dept">${esc(e.department)}</span></td>
+              <td>${fmtTime(a && a.checkIn)}</td>
+              <td>${fmtTime(a && a.checkOut)}</td>
+              <td>${statusHtml}</td>
+              <td>${taskCount ? `<button class="link-btn" data-uid="${uid}">${taskCount} مهمة</button>` : '—'}</td>
+              <td>${t.done} / ${t.target}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+    tbl.querySelectorAll('.link-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const uid = b.dataset.uid;
+        const a = attendance[uid];
+        const e = employees[uid];
+        showTasksModal(e.name, a.tasks||[], a.earlyLeaveReason);
+      });
+    });
+  }
+
+  const u1 = onSnapshot(collection(db,'employees'), qs=>{ employees={}; qs.forEach(d=> employees[d.id]=d.data()); draw(); });
+  unsubList.push(u1);
+  const u2 = onSnapshot(query(collection(db,'attendance'), where('date','==',today)), qs=>{
+    attendance={}; qs.forEach(d=>{ const r=d.data(); attendance[r.uid]=r; }); draw();
+  });
+  unsubList.push(u2);
+  const u3 = onSnapshot(collection(db,'tokeenRequests'), qs=>{
+    tokeen={};
+    qs.forEach(d=>{
+      const r=d.data();
+      if(!tokeen[r.uid]) tokeen[r.uid]={target:0,done:0};
+      tokeen[r.uid].target++;
+      if(r.done) tokeen[r.uid].done++;
+    });
+    draw();
+  });
+  unsubList.push(u3);
+}
+
+function showTasksModal(name, tasks, earlyReason){
+  const overlay = el(`
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>مهام ${esc(name)} اليوم</h3>
+        ${earlyReason ? `<div class="small-note" style="margin-bottom:12px;"><b>سبب الانصراف المبكر:</b> ${esc(earlyReason)}</div>` : ''}
+        <div>${tasks.map(t=>`<div class="task-chip" style="display:block;margin-bottom:6px;">✓ ${esc(t.text)}</div>`).join('') || '<span class="muted">لا توجد مهام</span>'}</div>
+        <div class="modal-actions"><button class="btn btn-outline btn-block" id="close-modal-btn">إغلاق</button></div>
+      </div>
+    </div>
+  `);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#close-modal-btn').addEventListener('click', ()=> overlay.remove());
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.remove(); });
+}
+
+function renderAdminEmployees(container){
+  container.innerHTML = `<div class="card"><h3>👥 الموظفون</h3><div class="table-wrap" id="emp-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div></div>`;
+  const u = onSnapshot(collection(db,'employees'), qs=>{
+    const rows = []; qs.forEach(d=> rows.push({id:d.id, ...d.data()}));
+    const tbl = document.getElementById('emp-table');
+    if(!tbl) return;
+    if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
+    tbl.innerHTML = `<table><thead><tr><th>الاسم</th><th>القسم</th><th>الهاتف</th><th>البريد</th><th>الدور</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr>
+        <td>${esc(r.name)}</td><td><span class="badge-dept">${esc(r.department)}</span></td>
+        <td>${esc(r.phone)}</td><td>${esc(r.email)}</td>
+        <td>${r.role==='admin' ? '<span class="status-pill pill-good">مدير</span>' : 'موظف'}</td>
+      </tr>`).join('')}</tbody></table>`;
+  });
+  unsubList.push(u);
+}
+
+function renderAdminUpload(container){
+  container.innerHTML = `
+    <div class="card">
+      <h3>📤 رفع ملف إكسيل لطلبات التقنين</h3>
+      <div class="card-sub">اختر الموظف والمركز، ثم ارفع ملف الإكسيل — سيتم عرض جميع أعمدة الملف للموظف تلقائيًا</div>
+      <div class="field">
+        <label>الموظف *</label>
+        <select id="up-emp"><option value="">-- اختر الموظف --</option></select>
+      </div>
+      <div class="field">
+        <label>المركز *</label>
+        <select id="up-center">
+          <option value="">-- اختر المركز --</option>
+          ${DEFAULT_CENTERS.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+          <option value="__other__">مركز آخر (اكتب يدويًا)</option>
+        </select>
+        <input type="text" id="up-center-other" placeholder="اكتب اسم المركز" style="display:none;margin-top:8px;">
+      </div>
+      <div class="field">
+        <label>ملف الإكسيل *</label>
+        <input type="file" id="up-file" accept=".xlsx,.xls,.csv">
+      </div>
+      <div id="up-column-pick" style="display:none;">
+        <div class="field">
+          <label>حدد عمود "رقم الطلب" (يستخدم لاحقًا في المطابقة عند اللصق) *</label>
+          <select id="up-req-field"></select>
+        </div>
+        <div class="small-note" id="up-preview-note" style="margin-bottom:14px;"></div>
+      </div>
+      <button class="btn btn-primary" id="up-submit-btn">رفع الطلبات للموظف</button>
+      <div class="error-text" id="up-err" style="display:none;"></div>
+    </div>
+  `;
+
+  // populate employees select
+  const empSelect = container.querySelector('#up-emp');
+  const u = onSnapshot(collection(db,'employees'), qs=>{
+    const cur = empSelect.value;
+    empSelect.innerHTML = `<option value="">-- اختر الموظف --</option>` +
+      qs.docs.map(d=>`<option value="${d.id}">${esc(d.data().name)} (${esc(d.data().department)})</option>`).join('');
+    if(cur) empSelect.value = cur;
+  });
+  unsubList.push(u);
+
+  container.querySelector('#up-center').addEventListener('change', (e)=>{
+    container.querySelector('#up-center-other').style.display = (e.target.value==='__other__') ? 'block' : 'none';
+  });
+
+  let parsedRows = [];
+  container.querySelector('#up-file').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const wb = XLSX.read(ev.target.result, {type:'array'});
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
+        if(json.length===0){ toast('الملف فارغ أو غير صالح', 'err'); return; }
+        parsedRows = json;
+        const cols = Object.keys(json[0]);
+        const fieldSelect = container.querySelector('#up-req-field');
+        fieldSelect.innerHTML = cols.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        container.querySelector('#up-column-pick').style.display='block';
+        container.querySelector('#up-preview-note').textContent = `تم العثور على ${json.length} صف بالأعمدة: ${cols.join('، ')}`;
+      }catch(err){
+        console.error(err);
+        toast('تعذر قراءة الملف، تأكد من الصيغة', 'err');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  container.querySelector('#up-submit-btn').addEventListener('click', async ()=>{
+    const errBox = container.querySelector('#up-err');
+    errBox.style.display='none';
+    const uid = empSelect.value;
+    let center = container.querySelector('#up-center').value;
+    if(center==='__other__') center = container.querySelector('#up-center-other').value.trim();
+    const reqField = container.querySelector('#up-req-field') ? container.querySelector('#up-req-field').value : '';
+    if(!uid || !center || parsedRows.length===0 || !reqField){
+      errBox.textContent = 'من فضلك أكمل كل الحقول وارفع ملف صالح';
+      errBox.style.display='block';
+      return;
+    }
+    const btn = container.querySelector('#up-submit-btn');
+    btn.disabled=true; btn.textContent='جارِ الرفع...';
+    try{
+      const batchId = `b_${Date.now()}`;
+      const today = todayCairoStr();
+      // Firestore batched writes limited to 500 ops; chunk if needed
+      const chunkSize = 450;
+      for(let i=0;i<parsedRows.length;i+=chunkSize){
+        const chunk = parsedRows.slice(i, i+chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(row=>{
+          const ref2 = doc(collection(db,'tokeenRequests'));
+          batch.set(ref2, {
+            uid, center, date: today, batchId, reqField,
+            data: row, done:false, doneAt:null, uploadedAt: serverTimestamp()
+          });
+        });
+        await batch.commit();
+      }
+      toast(`تم رفع ${parsedRows.length} طلب بنجاح`, 'ok');
+      parsedRows = [];
+      container.querySelector('#up-file').value='';
+      container.querySelector('#up-column-pick').style.display='none';
+    }catch(err){
+      console.error(err);
+      errBox.textContent = 'حدث خطأ أثناء الرفع، حاول مرة أخرى';
+      errBox.style.display='block';
+    }
+    btn.disabled=false; btn.textContent='رفع الطلبات للموظف';
+  });
+}
+</script>
+</body>
+</html>
