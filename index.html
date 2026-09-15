@@ -981,7 +981,7 @@ function renderDoneSection(box){
       });
     }
     const tbl = box.querySelector('#done-table');
-    if(rows.length===0){ tbl.innerHTML = `<div class="empty-state"><div class="emoji">🔍</div>لا توجد نتائج مطابقة</div>`; return; }
+    if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; return; }
     const colSet = [];
     rows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
     rows.sort((a,b)=> String(doneDateOf(b)).localeCompare(String(doneDateOf(a))));
