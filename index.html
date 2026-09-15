@@ -188,6 +188,8 @@
   .emp-stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
   .emp-stat-card .es-name{font-weight:800;font-size:14px;margin-bottom:2px;}
   .emp-stat-card .es-dept{font-size:11.5px;color:var(--sub);margin-bottom:10px;}
+  .emp-stat-card .es-centers{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;}
+  .emp-stat-card .es-centers .badge-dept{font-size:10.5px;padding:2px 7px;}
   .emp-stat-card .es-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;}
   .emp-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
 
@@ -1109,6 +1111,11 @@ function renderAdminDailyReport(container){
           <button class="btn btn-outline btn-sm" id="report-today-btn">اليوم</button>
         </div>
       </div>
+      <div class="stat-row" id="report-mini-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+        <div class="stat-box"><div class="num" id="mini-total">0</div><div class="lbl">عدد الموظفين</div></div>
+        <div class="stat-box" style="background:var(--good-bg);"><div class="num" id="mini-present" style="color:var(--good);">0</div><div class="lbl">عدد الحضور</div></div>
+        <div class="stat-box" style="background:var(--bad-bg);"><div class="num" id="mini-absent" style="color:var(--bad);">0</div><div class="lbl">عدد الغياب</div></div>
+      </div>
       <div class="filter-bar">
         <select id="report-status-filter">
           <option value="all">الكل</option>
@@ -1200,8 +1207,18 @@ function renderAdminDailyReport(container){
     // المدير لا يظهر في سجل الحضور والانصراف
     const uids = Object.keys(employees).filter(uid=> employees[uid].role!=='admin');
     if(uids.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
-    let rows = uids.map(uid=>({uid, e:employees[uid], a:attendance[uid], status: dayStatus(dateStr, attendance[uid])}));
-    if(deptFilter) rows = rows.filter(r=> r.e.department===deptFilter);
+    let allDeptRows = uids.map(uid=>({uid, e:employees[uid], a:attendance[uid], status: dayStatus(dateStr, attendance[uid])}));
+    if(deptFilter) allDeptRows = allDeptRows.filter(r=> r.e.department===deptFilter);
+    // بطاقات إحصائية صغيرة (غير متأثرة بفلتر الحالة، فقط بفلتر القسم)
+    const miniTotal = document.getElementById('mini-total');
+    if(miniTotal){
+      const presentCnt = allDeptRows.filter(r=> r.status==='present'||r.status==='late').length;
+      const absentCnt = allDeptRows.filter(r=> r.status==='absent').length;
+      miniTotal.textContent = allDeptRows.length;
+      document.getElementById('mini-present').textContent = presentCnt;
+      document.getElementById('mini-absent').textContent = absentCnt;
+    }
+    let rows = allDeptRows;
     if(statusFilter==='present') rows = rows.filter(r=> r.status==='present'||r.status==='late');
     if(statusFilter==='absent') rows = rows.filter(r=> r.status==='absent'||r.status==='pending');
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; return; }
@@ -1699,9 +1716,11 @@ function renderAdminRequestsLog(container){
   container.innerHTML = `
     <div class="card">
       <h3>📊 إحصائيات الموظفين (تحديث تلقائي)</h3>
-      <div class="card-sub">المستهدف والمنجز والمتبقي لكل موظف — اختر فترة أو اترك الفلتر على «كل الوقت»</div>
+      <div class="card-sub">لكل موظف: المراكز المسندة إليه، وإجمالي الطلبات وما تم منها — فلترة بتاريخ محدد أو فترة</div>
       <div class="filter-bar">
-        <label class="muted" style="font-size:12.5px;">من</label>
+        <label class="muted" style="font-size:12.5px;">تاريخ محدد</label>
+        <input type="date" id="cards-date">
+        <label class="muted" style="font-size:12.5px;">أو من</label>
         <input type="date" id="cards-from">
         <label class="muted" style="font-size:12.5px;">إلى</label>
         <input type="date" id="cards-to">
@@ -1715,13 +1734,18 @@ function renderAdminRequestsLog(container){
         <h3 style="margin:0;">🔍 سجل كل طلبات التقنين</h3>
         <button class="btn btn-outline btn-sm btn-auto" id="log-export-btn">📤 تصدير إكسيل</button>
       </div>
-      <div class="card-sub">فلترة حسب الموظف والحالة، وبحث برقم الطلب أو أي جزء منه</div>
+      <div class="card-sub">فلترة حسب الموظف والحالة، وبحث برقم الطلب أو أي جزء منه، وترتيب أبجدي</div>
       <div class="filter-bar">
         <select id="log-emp-filter"><option value="">كل الموظفين</option></select>
         <select id="log-status-filter">
           <option value="">كل الحالات</option>
           <option value="done">تم الإدخال</option>
           <option value="pending">لم يتم</option>
+        </select>
+        <select id="log-sort">
+          <option value="default">ترتيب افتراضي</option>
+          <option value="emp">ترتيب أبجدي — الموظف</option>
+          <option value="center">ترتيب أبجدي — المركز</option>
         </select>
         <input type="text" id="log-search" placeholder="ابحث برقم الطلب أو أي بيانات...">
       </div>
@@ -1738,10 +1762,13 @@ function renderAdminRequestsLog(container){
   function drawCards(){
     const cardsBox = container.querySelector('#emp-stat-cards');
     if(!cardsBox) return;
+    const exact = container.querySelector('#cards-date').value;
     const from = container.querySelector('#cards-from').value;
     const to = container.querySelector('#cards-to').value;
     let rows = allRows;
-    if(from || to){
+    if(exact){
+      rows = rows.filter(r=> String(r.date||'')===exact);
+    }else if(from || to){
       rows = rows.filter(r=>{
         const d = String(r.date||'');
         if(from && d<from) return false;
@@ -1751,9 +1778,10 @@ function renderAdminRequestsLog(container){
     }
     const byUid = {};
     rows.forEach(r=>{
-      if(!byUid[r.uid]) byUid[r.uid] = {target:0, done:0};
+      if(!byUid[r.uid]) byUid[r.uid] = {target:0, done:0, centers:new Set()};
       byUid[r.uid].target++;
       if(r.done) byUid[r.uid].done++;
+      if(r.center) byUid[r.uid].centers.add(r.center);
     });
     const uids = Object.keys(byUid).filter(uid=> !employees[uid] || employees[uid].role!=='admin');
     if(uids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات مسندة في هذه الفترة</div>`; return; }
@@ -1761,9 +1789,11 @@ function renderAdminRequestsLog(container){
     cardsBox.innerHTML = uids.map(uid=>{
       const s = byUid[uid];
       const remain = s.target - s.done;
+      const centersArr = [...s.centers].sort((a,b)=>a.localeCompare(b,'ar'));
       return `<div class="emp-stat-card">
         <div class="es-name">${esc(employees[uid]?.name || 'غير معروف')}</div>
         <div class="es-dept">${esc(employees[uid]?.department || '')}</div>
+        ${centersArr.length ? `<div class="es-centers">${centersArr.map(c=>`<span class="badge-dept">${esc(c)}</span>`).join('')}</div>` : ''}
         <div class="es-row"><span class="muted">المستهدف</span><b>${s.target}</b></div>
         <div class="es-row"><span class="muted">تم إنجازه</span><b style="color:var(--good);">${s.done}</b></div>
         <div class="es-row"><span class="muted">المتبقي</span><b style="color:var(--bad);">${remain}</b></div>
@@ -1775,6 +1805,7 @@ function renderAdminRequestsLog(container){
   function draw(){
     const empFilter = container.querySelector('#log-emp-filter').value;
     const statusFilter = container.querySelector('#log-status-filter').value;
+    const sortMode = container.querySelector('#log-sort').value;
     const search = normalizeDigits(container.querySelector('#log-search').value.trim().toLowerCase());
     let rows = allRows.filter(r=> !empFilter || r.uid===empFilter);
     if(statusFilter==='done') rows = rows.filter(r=>r.done);
@@ -1800,7 +1831,13 @@ function renderAdminRequestsLog(container){
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; lastColSet=[]; lastFilteredRows=[]; return; }
     const colSet = [];
     rows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
-    rows.sort((a,b)=> (b.done?1:0) - (a.done?1:0));
+    if(sortMode==='emp'){
+      rows.sort((a,b)=> ((employees[a.uid]&&employees[a.uid].name)||'').localeCompare((employees[b.uid]&&employees[b.uid].name)||'','ar'));
+    }else if(sortMode==='center'){
+      rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar'));
+    }else{
+      rows.sort((a,b)=> (b.done?1:0) - (a.done?1:0));
+    }
     lastColSet = colSet; lastFilteredRows = rows;
     tbl.innerHTML = `
       <table class="sticky-table">
@@ -1837,10 +1874,25 @@ function renderAdminRequestsLog(container){
 
   container.querySelector('#log-emp-filter').addEventListener('change', draw);
   container.querySelector('#log-status-filter').addEventListener('change', draw);
+  container.querySelector('#log-sort').addEventListener('change', draw);
   container.querySelector('#log-search').addEventListener('input', draw);
-  container.querySelector('#cards-from').addEventListener('change', drawCards);
-  container.querySelector('#cards-to').addEventListener('change', drawCards);
+  container.querySelector('#cards-date').addEventListener('change', ()=>{
+    if(container.querySelector('#cards-date').value){
+      container.querySelector('#cards-from').value='';
+      container.querySelector('#cards-to').value='';
+    }
+    drawCards();
+  });
+  container.querySelector('#cards-from').addEventListener('change', ()=>{
+    if(container.querySelector('#cards-from').value) container.querySelector('#cards-date').value='';
+    drawCards();
+  });
+  container.querySelector('#cards-to').addEventListener('change', ()=>{
+    if(container.querySelector('#cards-to').value) container.querySelector('#cards-date').value='';
+    drawCards();
+  });
   container.querySelector('#cards-all-time').addEventListener('click', ()=>{
+    container.querySelector('#cards-date').value='';
     container.querySelector('#cards-from').value='';
     container.querySelector('#cards-to').value='';
     drawCards();
@@ -1856,6 +1908,7 @@ function renderAdminUpload(container){
     <div class="card">
       <h3>📤 رفع ملف إكسيل لطلبات التقنين</h3>
       <div class="card-sub">ارفع ملف إكسيل لمركز واحد أو ملف مجمّع لعدة مراكز — سيتم التعرف على عمود «المركز» تلقائيًا، ثم توزيع كل مركز على الموظف المناسب (يمكن إسناد أكثر من مركز لنفس الموظف)</div>
+      <div class="small-note" style="margin-bottom:14px;">ℹ️ كل ملف يتم رفعه يُضاف إلى الطلبات الموجودة بالفعل، ولا يحذف أو يستبدل أي بيانات سابقة.</div>
       <div class="field">
         <label>ملف الإكسيل *</label>
         <input type="file" id="up-file" accept=".xlsx,.xls,.csv">
@@ -1899,7 +1952,7 @@ function renderAdminUpload(container){
 
     <div class="card" style="margin-top:18px;">
       <h3>📁 الملفات المرفوعة</h3>
-      <div class="card-sub">اسم الملف، الموظف الذي رفعه، وتاريخ الرفع — اضغط على اسم الملف لتنزيله</div>
+      <div class="card-sub">اسم الملف، تاريخ الرفع، وعدد الطلبات — تحميل أو حذف</div>
       <div id="up-files-list"><div class="muted">جارِ التحميل...</div></div>
     </div>
   `;
@@ -2008,7 +2061,7 @@ function renderAdminUpload(container){
     reader.readAsArrayBuffer(file);
   });
 
-  async function saveFileRecord(centersUsed){
+  async function saveFileRecord(centersUsed, batchIds){
     if(!currentFile) return;
     try{
       const path = `tokeenFiles/${Date.now()}_${currentFile.name}`;
@@ -2018,7 +2071,8 @@ function renderAdminUpload(container){
       await setDoc(doc(collection(db,'tokeenFiles')), {
         fileName: currentFile.name, storagePath: path, downloadURL: url,
         uploaderUid: currentUser.uid, uploaderName: currentEmployee.name,
-        uploadedAt: serverTimestamp(), rowCount: parsedRows.length, centers: centersUsed
+        uploadedAt: serverTimestamp(), rowCount: parsedRows.length, centers: centersUsed,
+        batchIds: batchIds
       });
     }catch(err){ console.error('file record error', err); }
   }
@@ -2039,6 +2093,7 @@ function renderAdminUpload(container){
       });
       await batch.commit();
     }
+    return batchId;
   }
 
   container.querySelector('#up-submit-single-btn').addEventListener('click', async ()=>{
@@ -2056,8 +2111,8 @@ function renderAdminUpload(container){
     const btn = container.querySelector('#up-submit-single-btn');
     btn.disabled=true; btn.textContent='جارِ الرفع...';
     try{
-      await uploadRowsFor(uid, center, parsedRows, reqField);
-      await saveFileRecord([center]);
+      const batchId = await uploadRowsFor(uid, center, parsedRows, reqField);
+      await saveFileRecord([center], [batchId]);
       toast(`تم رفع ${parsedRows.length} طلب بنجاح`, 'ok');
       resetForm();
     }catch(err){
@@ -2082,13 +2137,15 @@ function renderAdminUpload(container){
     btn.disabled=true; btn.textContent='جارِ التوزيع والرفع...';
     try{
       const centersUsed = [];
+      const batchIds = [];
       for(const sel of selects){
         const center = sel.dataset.center;
         const uid = sel.value;
         centersUsed.push(center);
-        await uploadRowsFor(uid, center, centersMap[center], reqField);
+        const bId = await uploadRowsFor(uid, center, centersMap[center], reqField);
+        batchIds.push(bId);
       }
-      await saveFileRecord(centersUsed);
+      await saveFileRecord(centersUsed, batchIds);
       toast(`تم توزيع ${parsedRows.length} طلب على ${selects.length} مركز بنجاح`, 'ok');
       resetForm();
     }catch(err){
@@ -2122,33 +2179,91 @@ function renderAdminUpload(container){
       <div class="file-row">
         <div class="f-info">
           <div class="f-name" data-url="${esc(f.downloadURL||'')}" data-name="${esc(f.fileName||'ملف')}">📄 ${esc(f.fileName||'ملف')}</div>
-          <div class="f-meta">رفعه: ${esc(f.uploaderName||'—')} • ${f.uploadedAt?fmtDateTime(f.uploadedAt):'—'} • ${f.rowCount||0} صف${f.centers&&f.centers.length?` • ${f.centers.map(esc).join('، ')}`:''}</div>
+          <div class="f-meta">رفعه: ${esc(f.uploaderName||'—')} • ${f.uploadedAt?fmtDateTime(f.uploadedAt):'—'} • عدد الطلبات: ${f.rowCount||0}${f.centers&&f.centers.length?` • ${f.centers.map(esc).join('، ')}`:''}</div>
         </div>
-        <button class="btn btn-danger btn-sm del-file-btn" data-id="${f.id}" data-path="${esc(f.storagePath||'')}">حذف</button>
+        <div class="action-stack">
+          <button class="btn btn-outline btn-sm dl-file-btn" data-url="${esc(f.downloadURL||'')}" data-name="${esc(f.fileName||'ملف')}">⬇ تحميل</button>
+          <button class="btn btn-danger btn-sm del-file-btn" data-id="${f.id}">حذف</button>
+        </div>
       </div>
     `).join('');
-    box.querySelectorAll('.f-name').forEach(el2=>{
-      el2.addEventListener('click', ()=>{
-        const url = el2.dataset.url;
-        if(!url){ toast('الرابط غير متاح', 'err'); return; }
-        const a = document.createElement('a');
-        a.href = url; a.download = el2.dataset.name; a.target='_blank';
-        document.body.appendChild(a); a.click(); a.remove();
-      });
-    });
+    function downloadFile(url, name){
+      if(!url){ toast('الرابط غير متاح', 'err'); return; }
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.target='_blank';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    box.querySelectorAll('.f-name').forEach(el2=> el2.addEventListener('click', ()=> downloadFile(el2.dataset.url, el2.dataset.name)));
+    box.querySelectorAll('.dl-file-btn').forEach(b=> b.addEventListener('click', ()=> downloadFile(b.dataset.url, b.dataset.name)));
     box.querySelectorAll('.del-file-btn').forEach(b=>{
-      b.addEventListener('click', async ()=>{
-        if(!confirm('هل تريد حذف هذا الملف نهائيًا؟')) return;
-        b.disabled=true; b.textContent='...';
-        try{
-          if(b.dataset.path){ try{ await deleteObject(storageRef(storage, b.dataset.path)); }catch(e){ console.warn(e); } }
-          await deleteDoc(doc(db,'tokeenFiles', b.dataset.id));
-          toast('تم حذف الملف', 'ok');
-        }catch(err){ console.error(err); toast('حدث خطأ أثناء الحذف', 'err'); b.disabled=false; b.textContent='حذف'; }
-      });
+      b.addEventListener('click', ()=> confirmDeleteFile(files.find(f=>f.id===b.dataset.id)));
     });
   }, err=>console.error(err));
   unsubList.push(uf);
+
+  async function confirmDeleteFile(f){
+    if(!f) return;
+    const overlay = el(`
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <h3>حذف ملف: ${esc(f.fileName||'')}</h3>
+          <div class="modal-sub" id="del-file-checking">جارِ التحقق من الطلبات المرتبطة بالملف...</div>
+          <div class="modal-actions">
+            <button class="btn btn-outline" id="dfc-cancel">إلغاء</button>
+            <button class="btn btn-danger" id="dfc-confirm" disabled>تأكيد الحذف</button>
+          </div>
+        </div>
+      </div>
+    `);
+    document.body.appendChild(overlay);
+    overlay.querySelector('#dfc-cancel').addEventListener('click', ()=> overlay.remove());
+    overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+
+    let linkedRequests = [];
+    try{
+      const batchIds = f.batchIds || [];
+      if(batchIds.length){
+        for(let i=0;i<batchIds.length;i+=10){
+          const chunk = batchIds.slice(i,i+10);
+          const qs = await getDocs(query(collection(db,'tokeenRequests'), where('batchId','in',chunk)));
+          qs.forEach(d=> linkedRequests.push({id:d.id, ...d.data()}));
+        }
+      }
+    }catch(err){ console.error(err); }
+
+    const doneCount = linkedRequests.filter(r=>r.done).length;
+    const sub = overlay.querySelector('#del-file-checking');
+    if(linkedRequests.length===0){
+      sub.innerHTML = `لم يتم العثور على طلبات مرتبطة بهذا الملف بشكل مؤكد. سيتم حذف الملف فقط.`;
+    }else if(doneCount>0){
+      sub.innerHTML = `⚠️ هذا الملف يحتوي على <b>${linkedRequests.length}</b> طلب، منها <b style="color:var(--bad);">${doneCount}</b> طلب تم إدخاله بالفعل من قبل الموظفين. حذف الملف سيحذف كل هذه الطلبات نهائيًا بما فيها ما تم إدخاله. هل أنت متأكد؟`;
+    }else{
+      sub.innerHTML = `سيتم حذف الملف وعدد ${linkedRequests.length} طلب مرتبط به (لم يتم إدخال أي منها بعد).`;
+    }
+    const confirmBtn = overlay.querySelector('#dfc-confirm');
+    confirmBtn.disabled = false;
+
+    confirmBtn.addEventListener('click', async ()=>{
+      confirmBtn.disabled=true; confirmBtn.textContent='جارِ الحذف...';
+      try{
+        const chunkSize = 450;
+        for(let i=0;i<linkedRequests.length;i+=chunkSize){
+          const chunk = linkedRequests.slice(i,i+chunkSize);
+          const batch = writeBatch(db);
+          chunk.forEach(r=> batch.delete(doc(db,'tokeenRequests', r.id)));
+          await batch.commit();
+        }
+        if(f.storagePath){ try{ await deleteObject(storageRef(storage, f.storagePath)); }catch(e){ console.warn(e); } }
+        await deleteDoc(doc(db,'tokeenFiles', f.id));
+        toast('تم حذف الملف والطلبات المرتبطة به', 'ok');
+        overlay.remove();
+      }catch(err){
+        console.error(err);
+        toast('حدث خطأ أثناء الحذف', 'err');
+        confirmBtn.disabled=false; confirmBtn.textContent='تأكيد الحذف';
+      }
+    });
+  }
 }
 </script>
 </body>
