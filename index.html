@@ -29,17 +29,11 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
-  body{
-    font-family:'Cairo',sans-serif;
-    background:var(--bg);
-    color:var(--ink);
-    min-height:100vh;
-  }
+  body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
   button, input, select, textarea{font-family:inherit;}
   button{cursor:pointer;}
   #app-root{min-height:100vh;display:flex;flex-direction:column;}
 
-  /* ---------- Loading / Login ---------- */
   .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px;}
   .brand-block{text-align:center;margin-bottom:28px;}
   .brand-block .logo-circle{
@@ -49,36 +43,23 @@
   }
   .brand-block h1{font-size:22px;margin:0 0 4px;font-weight:800;}
   .brand-block p{color:var(--sub);margin:0;font-size:14px;}
-  .auth-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px;width:100%;max-width:380px;text-align:center;border:1px solid var(--border);}
-  .google-btn{
-    display:flex;align-items:center;justify-content:center;gap:10px;
-    width:100%;padding:13px 16px;border-radius:10px;border:1px solid var(--border);
-    background:#fff;font-weight:700;font-size:15px;color:var(--ink);transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.06);
-  }
-  .google-btn:hover{background:#f8f9fb;border-color:#c9d2e0;}
+  .auth-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:30px;width:100%;max-width:400px;border:1px solid var(--border);}
   .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--brand);animation:spin 0.8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .load-text{margin-top:14px;color:var(--sub);font-size:14px;}
 
-  /* ---------- Registration ---------- */
   .form-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:30px;width:100%;max-width:440px;border:1px solid var(--border);}
   .form-card h2{margin:0 0 4px;font-size:19px;}
   .form-card .hint{color:var(--sub);font-size:13px;margin-bottom:20px;}
   .field{margin-bottom:16px;text-align:right;}
   .field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--ink);}
-  .field input[type=text], .field input[type=tel], .field select, .field input[type=email], .field input[type=number], .field textarea{
-    width:100%;padding:11px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;background:#fbfcfe;color:var(--ink);
-    transition:.15s;
+  .field input[type=text], .field input[type=tel], .field input[type=password], .field select, .field input[type=email], .field input[type=number], .field textarea{
+    width:100%;padding:11px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;background:#fbfcfe;color:var(--ink);transition:.15s;
   }
   .field textarea{resize:vertical;min-height:70px;}
   .field input:focus, .field select:focus, .field textarea:focus{outline:none;border-color:var(--brand);background:#fff;}
   .field input:disabled{background:#eef1f6;color:var(--sub);}
-  .field .file-row{display:flex;align-items:center;gap:10px;}
-  .avatar-preview{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);background:#eef1f6;}
-  .btn{
-    display:inline-flex;align-items:center;justify-content:center;gap:8px;
-    padding:11px 18px;border-radius:9px;border:none;font-weight:700;font-size:14px;transition:.15s;
-  }
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:9px;border:none;font-weight:700;font-size:14px;transition:.15s;}
   .btn-primary{background:var(--brand);color:#fff;width:100%;}
   .btn-primary:hover{background:var(--brand-dark);}
   .btn-primary:disabled{background:#a9c3c3;cursor:not-allowed;}
@@ -88,31 +69,22 @@
   .btn-danger:hover{background:#b83a32;}
   .btn-sm{padding:6px 12px;font-size:12.5px;border-radius:7px;}
   .btn-block{width:100%;}
+  .btn-auto{width:auto;}
   .error-text{color:var(--bad);font-size:13px;margin-top:8px;}
 
-  /* ---------- App shell ---------- */
-  .topbar{
-    background:var(--card);border-bottom:1px solid var(--border);
-    display:flex;align-items:center;justify-content:space-between;padding:10px 22px;position:sticky;top:0;z-index:20;
-  }
+  .topbar{background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:10px 22px;position:sticky;top:0;z-index:20;}
   .topbar .left{display:flex;align-items:center;gap:12px;}
   .topbar .logo-circle{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex:none;}
   .topbar .title{font-weight:800;font-size:15.5px;line-height:1.2;}
   .topbar .subtitle{font-size:11.5px;color:var(--sub);}
   .topbar .right{display:flex;align-items:center;gap:12px;}
   .user-chip{display:flex;align-items:center;gap:8px;}
-  .user-chip img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);}
+  .user-chip .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
   .user-chip .u-name{font-size:13.5px;font-weight:700;}
   .user-chip .u-dept{font-size:11px;color:var(--sub);}
 
-  .tabs{
-    display:flex;gap:4px;background:var(--card);border-bottom:1px solid var(--border);
-    padding:0 18px;overflow-x:auto;position:sticky;top:57px;z-index:19;
-  }
-  .tab-btn{
-    padding:13px 16px;border:none;background:none;font-weight:700;font-size:13.5px;color:var(--sub);
-    border-bottom:3px solid transparent;white-space:nowrap;
-  }
+  .tabs{display:flex;gap:4px;background:var(--card);border-bottom:1px solid var(--border);padding:0 18px;overflow-x:auto;position:sticky;top:57px;z-index:19;}
+  .tab-btn{padding:13px 16px;border:none;background:none;font-weight:700;font-size:13.5px;color:var(--sub);border-bottom:3px solid transparent;white-space:nowrap;}
   .tab-btn.active{color:var(--brand);border-bottom-color:var(--brand);}
 
   .container{max-width:1100px;margin:0 auto;width:100%;padding:22px 18px 60px;flex:1;}
@@ -135,13 +107,20 @@
   .time-row .lbl{color:var(--sub);font-size:13px;}
   .time-row .val{font-weight:800;font-size:16px;}
 
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
-  th{color:var(--sub);font-weight:700;font-size:12px;background:#fafbfd;position:sticky;top:0;}
-  tbody tr:hover{background:#fafbfd;}
-  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
+  table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;}
+  th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;background:#fff;}
+  th{color:var(--sub);font-weight:700;font-size:12px;background:#fafbfd;}
+  .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:70vh;}
   .table-wrap table{border:none;}
-  .table-wrap .table-wrap{border:none;}
+
+  .col-action{position:sticky;right:0;z-index:3;min-width:132px;box-shadow:-6px 0 8px -6px rgba(20,30,60,.25);}
+  thead .col-action{z-index:5;}
+  tr.row-done td{background:var(--good-bg);}
+  tr.row-done .col-action{background:var(--good-bg);}
+  .action-stack{display:flex;align-items:center;gap:6px;}
+  .btn-enter{background:var(--brand);color:#fff;}
+  .btn-enter:hover{background:var(--brand-dark);}
+  .btn-entered{background:var(--good);color:#fff;}
 
   .stat-box{background:var(--brand-light);border-radius:12px;padding:16px;text-align:center;}
   .stat-box .num{font-size:26px;font-weight:800;color:var(--brand-dark);}
@@ -149,14 +128,11 @@
   .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
 
   .task-input-row{display:flex;gap:8px;margin-bottom:8px;}
-  .task-input-row input{flex:1;}
+  .task-input-row input{flex:1;padding:11px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;}
   .remove-x{background:var(--bad-bg);color:var(--bad);border:none;border-radius:7px;width:34px;flex:none;font-weight:800;font-size:15px;}
   .task-chip{display:inline-flex;align-items:center;gap:6px;background:var(--brand-light);color:var(--brand-dark);padding:4px 10px;border-radius:16px;font-size:12px;margin:2px 4px 2px 0;}
 
-  .modal-overlay{
-    position:fixed;inset:0;background:rgba(15,25,40,.55);display:flex;align-items:center;justify-content:center;
-    z-index:100;padding:16px;
-  }
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,25,40,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
   .modal-box{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:88vh;overflow-y:auto;}
   .modal-box h3{margin:0 0 6px;font-size:17px;}
   .modal-box .modal-sub{color:var(--sub);font-size:13px;margin-bottom:18px;}
@@ -165,10 +141,7 @@
 
   .badge-dept{padding:3px 9px;border-radius:7px;font-size:11.5px;font-weight:700;background:#eef1f6;color:var(--ink);}
 
-  .toast{
-    position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
-    padding:12px 20px;border-radius:10px;font-size:13.5px;box-shadow:var(--shadow);z-index:200;max-width:90vw;text-align:center;
-  }
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:10px;font-size:13.5px;box-shadow:var(--shadow);z-index:200;max-width:90vw;text-align:center;}
   .toast.err{background:var(--bad);}
   .toast.ok{background:var(--good);}
 
@@ -193,11 +166,12 @@
   .leader-nums{font-size:12.5px;color:var(--sub);font-weight:700;white-space:nowrap;}
 
   .link-btn{background:none;border:none;color:var(--brand);font-weight:700;font-size:12.5px;padding:0;}
-  .checkbox-lg{width:19px;height:19px;cursor:pointer;}
   .muted{color:var(--sub);}
   .flex-between{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-  hr.sep{border:none;border-top:1px solid var(--border);margin:16px 0;}
   .small-note{font-size:12px;color:var(--sub);background:#fafbfd;border:1px dashed var(--border);border-radius:8px;padding:10px 12px;}
+  .filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+  .filter-bar input[type=text], .filter-bar select, .filter-bar input[type=date]{padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;background:#fbfcfe;}
+  .filter-bar input[type=text]{flex:1;min-width:190px;}
 </style>
 </head>
 <body>
@@ -209,12 +183,15 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  updatePassword, EmailAuthProvider, reauthenticateWithCredential,
+  signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, addDoc, query, where,
+  getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, query, where,
   onSnapshot, serverTimestamp, writeBatch, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
 /* ============ Firebase config ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyDb0dlyt1NxIUKWY1ZJr7Q57oJHF3L2wMU",
@@ -226,30 +203,38 @@ const firebaseConfig = {
   measurementId: "G-Q0YKHQTK0Y"
 };
 
-/* ضع هنا إيميلات مديري الإدارة (تُمنح صلاحية المدير تلقائيًا) */
-const ADMIN_EMAILS = [
-  // "manager@gmail.com"
-];
+/* ============ إعدادات عامة ============ */
+const ADMIN_USERNAME = "عبدالستار";      // اسم مستخدم المدير الأساسي
+const ADMIN_PASSWORD = "123123";          // كلمة المرور الافتراضية لأول تشغيل فقط
+const LOGIN_DOMAIN   = "maktap.local";    // نطاق داخلي لتحويل اسم المستخدم لحساب Firebase
 
 const DEPARTMENTS = ["GIS", "قسم الرفع المساحي", "قسم مهندسين المساحة"];
-
 const DEFAULT_CENTERS = [
   "مركز المنيا","مركز ملوي","مركز ديرمواس","مركز مطاي","مركز سمالوط",
   "مركز أبوقرقاص","مركز مغاغة","مركز بني مزار","مركز العدوة"
 ];
-const WORK_START_HOUR = 9; // بعد الساعة 9 صباحًا بدون حضور = غائب / بعدها = متأخر
-const WEEKEND_DAYS = [5,6]; // الجمعة والسبت (0=أحد ... 6=سبت)
+const WORK_START_HOUR = 9;
+const WEEKEND_DAYS = [5,6];
 
-const app = initializeApp(firebaseConfig);
+const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
+const db   = getFirestore(app);
+/* نسخة ثانية من التطبيق تُستخدم لإنشاء المستخدمين دون تسجيل خروج المدير */
+const secondaryApp  = initializeApp(firebaseConfig, 'user-creator');
+const secondaryAuth = getAuth(secondaryApp);
 
 const root = document.getElementById('app-root');
 
 /* ============ Helpers ============ */
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
 function esc(s){ return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function normUser(u){ return String(u||'').trim().replace(/\s+/g,' ').toLowerCase(); }
+/* اسم المستخدم (عربي أو إنجليزي) يتحول لبريد داخلي صالح بصيغة hex */
+function userToEmail(username){
+  const bytes = new TextEncoder().encode(normUser(username));
+  let hex=''; bytes.forEach(b=> hex += b.toString(16).padStart(2,'0'));
+  return `u${hex}@${LOGIN_DOMAIN}`;
+}
 function todayCairoStr(){
   return new Intl.DateTimeFormat('en-CA', {timeZone:'Africa/Cairo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
 }
@@ -273,8 +258,16 @@ function fmtDateTime(ts){
 }
 function fmtDate(str){
   if(!str) return '—';
-  const [y,m,d]=str.split('-');
+  const [y,m,d]=String(str).split('-');
   return `${d}/${m}/${y}`;
+}
+function doneDateOf(r){
+  if(r.doneDate) return r.doneDate;
+  if(r.doneAt){
+    const d = r.doneAt.toDate ? r.doneAt.toDate() : new Date(r.doneAt);
+    return new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+  }
+  return '';
 }
 function toast(msg, type=''){
   document.querySelectorAll('.toast').forEach(t=>t.remove());
@@ -282,14 +275,27 @@ function toast(msg, type=''){
   document.body.appendChild(t);
   setTimeout(()=>t.remove(), 3200);
 }
-function deptShort(d){ return d; }
+function normalizeDigits(s){
+  return String(s||'').replace(/[٠-٩]/g, d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+                      .replace(/[۰-۹]/g, d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+}
+function authErrMsg(code){
+  if(!code) return 'حدث خطأ، حاول مرة أخرى';
+  if(code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('user-not-found'))
+    return 'اسم المستخدم أو كلمة المرور غير صحيحة';
+  if(code.includes('too-many-requests')) return 'محاولات كثيرة، انتظر قليلاً ثم حاول مرة أخرى';
+  if(code.includes('email-already-in-use')) return 'اسم المستخدم مستخدم بالفعل';
+  if(code.includes('weak-password')) return 'كلمة المرور قصيرة — 6 أحرف أو أرقام على الأقل';
+  if(code.includes('network')) return 'تعذر الاتصال بالإنترنت';
+  return 'حدث خطأ، حاول مرة أخرى';
+}
 
 /* ============ State ============ */
 let currentUser = null;
-let currentEmployee = null; // firestore doc data
+let currentEmployee = null;
 let isAdmin = false;
 let unsubList = [];
-function clearSubs(){ unsubList.forEach(u=>u()); unsubList=[]; }
+function clearSubs(){ unsubList.forEach(u=>{ try{u();}catch(e){} }); unsubList=[]; }
 
 /* ============ Auth flow ============ */
 onAuthStateChanged(auth, async (user)=>{
@@ -300,15 +306,15 @@ onAuthStateChanged(auth, async (user)=>{
   try{
     const snap = await getDoc(doc(db,'employees',user.uid));
     if(!snap.exists()){
-      renderRegistration(user);
+      renderCompleteProfile(user);
     }else{
       currentEmployee = snap.data();
-      isAdmin = ADMIN_EMAILS.includes((user.email||'').toLowerCase()) || currentEmployee.role==='admin';
+      isAdmin = currentEmployee.role==='admin';
       renderApp();
     }
   }catch(err){
     console.error(err);
-    renderLoading('حدث خطأ في الاتصال بقاعدة البيانات');
+    renderLoading('تعذر الاتصال بقاعدة البيانات، حدّث الصفحة وحاول مرة أخرى');
   }
 });
 
@@ -327,28 +333,70 @@ function renderLogin(){
         <p>محافظة المنيا - منظومة الحضور والانجاز</p>
       </div>
       <div class="auth-card">
-        <button class="google-btn" id="google-login-btn">
-          <svg width="19" height="19" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.3 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 5.3 29.6 3 24 3c-7.5 0-14 4.2-17.7 10.7z"/><path fill="#4CAF50" d="M24 45c5.5 0 10.4-1.8 14.1-5.2l-6.5-5.5C29.6 36.2 26.9 37 24 37c-5.3 0-9.7-3.1-11.3-7.6l-6.6 5.1C9.9 40.8 16.4 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.5 5.5C41.3 36 44 30.6 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
-          تسجيل الدخول بواسطة Google
-        </button>
+        <div class="field">
+          <label>اسم المستخدم</label>
+          <input type="text" id="login-user" placeholder="اكتب اسم المستخدم" autocomplete="username">
+        </div>
+        <div class="field">
+          <label>كلمة المرور</label>
+          <input type="password" id="login-pass" placeholder="••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" id="login-btn">دخول</button>
         <div class="error-text" id="login-err" style="display:none;"></div>
+        <div class="small-note" style="margin-top:16px;">الحسابات يُنشئها المدير. لو نسيت كلمة المرور تواصل معه.</div>
       </div>
     </div>
   `);
   root.appendChild(wrap);
-  wrap.querySelector('#google-login-btn').addEventListener('click', async ()=>{
-    try{ await signInWithPopup(auth, provider); }
-    catch(err){
-      console.error(err);
-      const e = wrap.querySelector('#login-err');
-      e.style.display='block';
-      e.textContent = 'تعذر تسجيل الدخول، برجاء المحاولة مرة أخرى';
+
+  const errBox = wrap.querySelector('#login-err');
+  const btn = wrap.querySelector('#login-btn');
+
+  async function doLogin(){
+    const username = wrap.querySelector('#login-user').value.trim();
+    const password = wrap.querySelector('#login-pass').value;
+    errBox.style.display='none';
+    if(!username || !password){
+      errBox.textContent = 'اكتب اسم المستخدم وكلمة المرور';
+      errBox.style.display='block';
+      return;
     }
-  });
+    btn.disabled=true; btn.textContent='جارِ الدخول...';
+    const email = userToEmail(username);
+    try{
+      await signInWithEmailAndPassword(auth, email, password);
+      return;
+    }catch(err){
+      const code = (err && err.code) || '';
+      // تهيئة حساب المدير الأساسي في أول تشغيل فقط
+      const isAdminBootstrap = normUser(username)===normUser(ADMIN_USERNAME) && password===ADMIN_PASSWORD;
+      if(isAdminBootstrap && (code.includes('user-not-found') || code.includes('invalid-credential'))){
+        try{
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          await setDoc(doc(db,'employees',cred.user.uid), {
+            uid: cred.user.uid, username: normUser(ADMIN_USERNAME), name: ADMIN_USERNAME,
+            phone: '', department: DEPARTMENTS[0], role: 'admin', createdAt: serverTimestamp()
+          });
+          return;
+        }catch(err2){
+          console.error(err2);
+          errBox.textContent = authErrMsg((err2 && err2.code) || '');
+          errBox.style.display='block';
+        }
+      }else{
+        errBox.textContent = authErrMsg(code);
+        errBox.style.display='block';
+      }
+      btn.disabled=false; btn.textContent='دخول';
+    }
+  }
+
+  btn.addEventListener('click', doLogin);
+  wrap.querySelectorAll('input').forEach(i=> i.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); }));
 }
 
-/* ============ Registration ============ */
-function renderRegistration(user){
+/* ملف الموظف ناقص (حالة نادرة) — استكمال البيانات */
+function renderCompleteProfile(user){
   root.innerHTML='';
   const wrap = el(`
     <div class="center-screen">
@@ -359,19 +407,9 @@ function renderRegistration(user){
       </div>
       <div class="form-card">
         <h2>مرحباً بك 👋</h2>
-        <div class="hint">من فضلك أكمل بياناتك لأول مرة قبل الدخول للمنظومة</div>
-        <div class="field">
-          <label>البريد الإلكتروني</label>
-          <input type="email" value="${esc(user.email||'')}" disabled>
-        </div>
-        <div class="field">
-          <label>الاسم بالكامل *</label>
-          <input type="text" id="reg-name" placeholder="اكتب اسمك بالكامل" value="${esc(user.displayName||'')}">
-        </div>
-        <div class="field">
-          <label>رقم الهاتف *</label>
-          <input type="tel" id="reg-phone" placeholder="01xxxxxxxxx">
-        </div>
+        <div class="hint">أكمل بياناتك للدخول للمنظومة</div>
+        <div class="field"><label>الاسم بالكامل *</label><input type="text" id="reg-name" placeholder="اكتب اسمك بالكامل"></div>
+        <div class="field"><label>رقم الهاتف *</label><input type="tel" id="reg-phone" placeholder="01xxxxxxxxx"></div>
         <div class="field">
           <label>القسم التابع له *</label>
           <select id="reg-dept">
@@ -379,25 +417,18 @@ function renderRegistration(user){
             ${DEPARTMENTS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}
           </select>
         </div>
-        <div class="field">
-          <label>الصورة الشخصية</label>
-          <div class="file-row">
-            <img class="avatar-preview" id="reg-avatar-preview" src="${esc(user.photoURL||'')}" onerror="this.style.opacity=0">
-            <span class="hint" style="margin:0;">سيتم استخدام صورة حساب Google الخاص بك تلقائيًا</span>
-          </div>
-        </div>
         <button class="btn btn-primary" id="reg-submit-btn">حفظ ودخول المنظومة</button>
+        <button class="btn btn-outline btn-block" id="reg-logout-btn" style="margin-top:10px;">تسجيل الخروج</button>
         <div class="error-text" id="reg-err" style="display:none;"></div>
       </div>
     </div>
   `);
   root.appendChild(wrap);
-
+  wrap.querySelector('#reg-logout-btn').addEventListener('click', ()=> signOut(auth));
   wrap.querySelector('#reg-submit-btn').addEventListener('click', async ()=>{
     const name = wrap.querySelector('#reg-name').value.trim();
     const phone = wrap.querySelector('#reg-phone').value.trim();
-    const deptEl = wrap.querySelector('#reg-dept');
-    const dept = deptEl.value;
+    const dept = wrap.querySelector('#reg-dept').value;
     const errBox = wrap.querySelector('#reg-err');
     errBox.style.display='none';
     if(!name || !phone || !dept){
@@ -406,17 +437,11 @@ function renderRegistration(user){
       return;
     }
     const btn = wrap.querySelector('#reg-submit-btn');
-    btn.disabled = true; btn.textContent = 'جارِ الحفظ...';
+    btn.disabled=true; btn.textContent='جارِ الحفظ...';
     try{
-      const photoURL = user.photoURL || '';
-      const data = {
-        uid: user.uid, email: user.email, name, phone, department: dept,
-        photoURL, role: ADMIN_EMAILS.includes((user.email||'').toLowerCase())?'admin':'employee',
-        createdAt: serverTimestamp()
-      };
+      const data = { uid:user.uid, username:'', name, phone, department:dept, role:'employee', createdAt: serverTimestamp() };
       await setDoc(doc(db,'employees',user.uid), data);
-      currentEmployee = data;
-      isAdmin = data.role==='admin';
+      currentEmployee = data; isAdmin = false;
       renderApp();
     }catch(err){
       console.error(err);
@@ -430,7 +455,6 @@ function renderRegistration(user){
 /* ============ App Shell ============ */
 let activeTab = 'home';
 function renderApp(){
-  activeTab = 'home';
   root.innerHTML='';
   const shell = el(`
     <div style="display:flex;flex-direction:column;min-height:100vh;">
@@ -444,7 +468,7 @@ function renderApp(){
         </div>
         <div class="right">
           <div class="user-chip">
-            ${currentEmployee.photoURL ? `<img src="${esc(currentEmployee.photoURL)}">` : `<div class="logo-circle" style="width:34px;height:34px;font-size:13px;">${esc((currentEmployee.name||'?')[0])}</div>`}
+            <div class="avatar">${esc((currentEmployee.name||'؟')[0])}</div>
             <div>
               <div class="u-name">${esc(currentEmployee.name)}</div>
               <div class="u-dept">${esc(currentEmployee.department)}${isAdmin?' • مدير':''}</div>
@@ -457,15 +481,14 @@ function renderApp(){
         ${isAdmin ? `` : `<button class="tab-btn" data-tab="home">الرئيسية</button>`}
         <button class="tab-btn" data-tab="tokeen">أعمال التقنين</button>
         ${isAdmin ? `<button class="tab-btn" data-tab="admin">لوحة المدير</button>` : ``}
+        <button class="tab-btn" data-tab="account">حسابي</button>
       </div>
       <div class="container" id="tab-content"></div>
     </div>
   `);
   root.appendChild(shell);
   shell.querySelector('#logout-btn').addEventListener('click', ()=> signOut(auth));
-  shell.querySelectorAll('.tab-btn').forEach(b=>{
-    b.addEventListener('click', ()=> switchTab(b.dataset.tab));
-  });
+  shell.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
   switchTab(isAdmin ? 'admin' : 'home');
 }
 
@@ -473,11 +496,97 @@ function switchTab(tab){
   activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
   const content = document.getElementById('tab-content');
+  if(!content) return;
   content.innerHTML = '';
   clearSubs();
   if(tab==='home') renderHomeTab(content);
   else if(tab==='tokeen') renderTokeenTab(content);
   else if(tab==='admin') renderAdminTab(content);
+  else if(tab==='account') renderAccountTab(content);
+}
+
+/* ============ ACCOUNT TAB ============ */
+function renderAccountTab(content){
+  content.appendChild(el(`
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>👤 بياناتي</h3>
+        <div class="field"><label>اسم المستخدم</label><input type="text" id="acc-username" value="${esc(currentEmployee.username||'')}" disabled></div>
+        <div class="field"><label>الاسم بالكامل *</label><input type="text" id="acc-name" value="${esc(currentEmployee.name||'')}"></div>
+        <div class="field"><label>رقم الهاتف *</label><input type="tel" id="acc-phone" value="${esc(currentEmployee.phone||'')}"></div>
+        <div class="field">
+          <label>القسم *</label>
+          <select id="acc-dept">${DEPARTMENTS.map(d=>`<option value="${esc(d)}" ${d===currentEmployee.department?'selected':''}>${esc(d)}</option>`).join('')}</select>
+        </div>
+        <button class="btn btn-primary" id="acc-save-btn">حفظ البيانات</button>
+        <div class="error-text" id="acc-err" style="display:none;"></div>
+      </div>
+
+      <div class="card">
+        <h3>🔑 تغيير كلمة المرور</h3>
+        <div class="field"><label>كلمة المرور الحالية *</label><input type="password" id="pw-old" autocomplete="current-password"></div>
+        <div class="field"><label>كلمة المرور الجديدة *</label><input type="password" id="pw-new" placeholder="6 أحرف أو أرقام على الأقل" autocomplete="new-password"></div>
+        <div class="field"><label>تأكيد كلمة المرور الجديدة *</label><input type="password" id="pw-new2" autocomplete="new-password"></div>
+        <button class="btn btn-primary" id="pw-save-btn">تغيير كلمة المرور</button>
+        <div class="error-text" id="pw-err" style="display:none;"></div>
+      </div>
+    </div>
+  `));
+
+  content.querySelector('#acc-save-btn').addEventListener('click', async ()=>{
+    const name = content.querySelector('#acc-name').value.trim();
+    const phone = content.querySelector('#acc-phone').value.trim();
+    const department = content.querySelector('#acc-dept').value;
+    const errBox = content.querySelector('#acc-err');
+    errBox.style.display='none';
+    if(!name || !phone){
+      errBox.textContent='من فضلك أكمل الاسم ورقم الهاتف';
+      errBox.style.display='block';
+      return;
+    }
+    const btn = content.querySelector('#acc-save-btn');
+    btn.disabled=true; btn.textContent='جارِ الحفظ...';
+    try{
+      await updateDoc(doc(db,'employees',currentUser.uid), {name, phone, department});
+      currentEmployee = {...currentEmployee, name, phone, department};
+      toast('تم حفظ بياناتك', 'ok');
+      document.querySelector('.user-chip .u-name').textContent = name;
+      document.querySelector('.user-chip .u-dept').textContent = department + (isAdmin?' • مدير':'');
+      document.querySelector('.user-chip .avatar').textContent = name[0];
+    }catch(err){
+      console.error(err);
+      errBox.textContent='حدث خطأ أثناء الحفظ';
+      errBox.style.display='block';
+    }
+    btn.disabled=false; btn.textContent='حفظ البيانات';
+  });
+
+  content.querySelector('#pw-save-btn').addEventListener('click', async ()=>{
+    const oldPw = content.querySelector('#pw-old').value;
+    const newPw = content.querySelector('#pw-new').value;
+    const newPw2 = content.querySelector('#pw-new2').value;
+    const errBox = content.querySelector('#pw-err');
+    errBox.style.display='none';
+    if(!oldPw || !newPw || !newPw2){ errBox.textContent='أكمل كل الحقول'; errBox.style.display='block'; return; }
+    if(newPw.length<6){ errBox.textContent='كلمة المرور الجديدة 6 خانات على الأقل'; errBox.style.display='block'; return; }
+    if(newPw!==newPw2){ errBox.textContent='كلمتا المرور غير متطابقتين'; errBox.style.display='block'; return; }
+    const btn = content.querySelector('#pw-save-btn');
+    btn.disabled=true; btn.textContent='جارِ التغيير...';
+    try{
+      const cred = EmailAuthProvider.credential(currentUser.email, oldPw);
+      await reauthenticateWithCredential(currentUser, cred);
+      await updatePassword(currentUser, newPw);
+      toast('تم تغيير كلمة المرور', 'ok');
+      content.querySelector('#pw-old').value='';
+      content.querySelector('#pw-new').value='';
+      content.querySelector('#pw-new2').value='';
+    }catch(err){
+      console.error(err);
+      errBox.textContent = authErrMsg((err&&err.code)||'');
+      errBox.style.display='block';
+    }
+    btn.disabled=false; btn.textContent='تغيير كلمة المرور';
+  });
 }
 
 /* ============ HOME TAB (attendance) ============ */
@@ -546,7 +655,7 @@ function renderTodayCard(container, data, docId, today){
         await setDoc(doc(db,'attendance',docId), {
           uid: currentUser.uid, date: today, checkIn: serverTimestamp(),
           checkOut: null, earlyLeaveReason: null, tasks: []
-        });
+        }, {merge:true});
         toast('تم تسجيل الحضور بنجاح', 'ok');
       }catch(err){ console.error(err); toast('حدث خطأ، حاول مرة أخرى', 'err'); e.target.disabled=false; e.target.textContent='تسجيل حضور الآن'; }
     });
@@ -570,10 +679,9 @@ function renderTodayCard(container, data, docId, today){
   container.querySelector('#checkout-btn').addEventListener('click', ()=> openCheckoutModal(docId));
 }
 
-/* ---- Checkout modal (reason + tasks) ---- */
 function openCheckoutModal(docId){
   const now = cairoNow();
-  const isEarly = (now.hour < 16); // قبل الساعة 4 عصرًا بتوقيت مصر
+  const isEarly = (now.hour < 16);
   const overlay = el(`
     <div class="modal-overlay">
       <div class="modal-box">
@@ -583,8 +691,7 @@ function openCheckoutModal(docId){
           <div class="field">
             <label>⚠️ أنت تنصرف قبل الساعة 4 عصرًا — من فضلك اكتب سبب الانصراف المبكر *</label>
             <textarea id="early-reason" placeholder="اكتب السبب هنا..."></textarea>
-          </div>
-        ` : ``}
+          </div>` : ``}
         <div class="field">
           <label>المهام والإنجازات التي تمت اليوم * (يمكن إضافة أكثر من مهمة)</label>
           <div id="tasks-list"></div>
@@ -606,9 +713,7 @@ function openCheckoutModal(docId){
       <input type="text" class="task-input" placeholder="اكتب المهمة..." value="${esc(value)}">
       <button type="button" class="remove-x">×</button>
     </div>`);
-    row.querySelector('.remove-x').addEventListener('click', ()=>{
-      if(tasksList.children.length>1) row.remove();
-    });
+    row.querySelector('.remove-x').addEventListener('click', ()=>{ if(tasksList.children.length>1) row.remove(); });
     tasksList.appendChild(row);
   }
   addTaskRow();
@@ -622,17 +727,9 @@ function openCheckoutModal(docId){
     errBox.style.display='none';
     const reasonEl = overlay.querySelector('#early-reason');
     const reason = reasonEl ? reasonEl.value.trim() : '';
-    if(isEarly && !reason){
-      errBox.textContent = 'من فضلك اكتب سبب الانصراف المبكر';
-      errBox.style.display='block';
-      return;
-    }
+    if(isEarly && !reason){ errBox.textContent='من فضلك اكتب سبب الانصراف المبكر'; errBox.style.display='block'; return; }
     const taskInputs = [...overlay.querySelectorAll('.task-input')].map(i=>i.value.trim()).filter(Boolean);
-    if(taskInputs.length===0){
-      errBox.textContent = 'من فضلك اكتب مهمة واحدة على الأقل';
-      errBox.style.display='block';
-      return;
-    }
+    if(taskInputs.length===0){ errBox.textContent='من فضلك اكتب مهمة واحدة على الأقل'; errBox.style.display='block'; return; }
     const btn = overlay.querySelector('#confirm-checkout-btn');
     btn.disabled=true; btn.textContent='جارِ الحفظ...';
     try{
@@ -645,155 +742,15 @@ function openCheckoutModal(docId){
       overlay.remove();
     }catch(err){
       console.error(err);
-      errBox.textContent = 'حدث خطأ أثناء الحفظ، حاول مرة أخرى';
+      errBox.textContent='حدث خطأ أثناء الحفظ، حاول مرة أخرى';
       errBox.style.display='block';
       btn.disabled=false; btn.textContent='تأكيد الانصراف';
     }
   });
 }
 
-/* ============ TOKEEN TAB ============ */
-function renderTokeenTab(content){
-  content.appendChild(el(`
-    <div class="grid" style="grid-template-columns:1fr;">
-      <div class="card">
-        <h3>🏆 لوحة إنجاز أعمال التقنين — كل الموظفين</h3>
-        <div class="card-sub">تحديث لحظي — يظهر للجميع</div>
-        <div id="leaderboard-body"><div class="muted">جارِ التحميل...</div></div>
-      </div>
-
-      <div class="card">
-        <h3>📊 إحصائياتي</h3>
-        <div class="stat-row">
-          <div class="stat-box"><div class="num" id="stat-target">0</div><div class="lbl">المستهدف</div></div>
-          <div class="stat-box"><div class="num" id="stat-done">0</div><div class="lbl">تم إدخاله</div></div>
-          <div class="stat-box"><div class="num" id="stat-remain">0</div><div class="lbl">المتبقي</div></div>
-        </div>
-        <div class="progress-bar"><div id="progress-fill" style="width:0%;"></div></div>
-      </div>
-
-      <div class="card">
-        <h3>📋 لصق أرقام الطلبات التي تم إدخالها</h3>
-        <div class="card-sub">الصق أرقام الطلبات (كل رقم في سطر أو مفصول بفاصلة) وسيتم تعليمها "تم" تلقائيًا عند المطابقة</div>
-        <textarea id="paste-numbers" placeholder="مثال:&#10;12345&#10;12346&#10;12347" style="width:100%;min-height:90px;padding:11px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;"></textarea>
-        <button class="btn btn-primary" id="match-paste-btn" style="margin-top:10px;">مطابقة وتعليم كـ "تم"</button>
-      </div>
-
-      <div class="card">
-        <h3>📁 طلباتي المسندة</h3>
-        <div class="card-sub">اضغط ✓ لتعليم الطلب "تم" — يمكن إلغاء التعليم بالضغط مرة أخرى</div>
-        <div class="table-wrap" id="my-requests-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
-      </div>
-    </div>
-  `));
-
-  // My requests
-  const uid = currentUser.uid;
-  const q = query(collection(db,'tokeenRequests'), where('uid','==',uid));
-  let myRows = [];
-  const unsub = onSnapshot(q, (qs)=>{
-    myRows = [];
-    qs.forEach(d=> myRows.push({id:d.id, ...d.data()}));
-    renderMyRequestsTable(myRows);
-    renderMyStats(myRows);
-  }, err=>console.error(err));
-  unsubList.push(unsub);
-
-  // Leaderboard (all requests + employees)
-  const unsub2 = onSnapshot(collection(db,'tokeenRequests'), (qs)=>{
-    const counts = {}; // uid -> {target, done}
-    qs.forEach(d=>{
-      const r = d.data();
-      if(!counts[r.uid]) counts[r.uid] = {target:0, done:0};
-      counts[r.uid].target++;
-      if(r.done) counts[r.uid].done++;
-    });
-    renderLeaderboard(counts);
-  }, err=>console.error(err));
-  unsubList.push(unsub2);
-
-  content.querySelector('#match-paste-btn').addEventListener('click', async ()=>{
-    const raw = content.querySelector('#paste-numbers').value.trim();
-    if(!raw){ toast('الصق أرقام الطلبات أولاً', 'err'); return; }
-    const numbers = raw.split(/[\s,،\n]+/).map(s=>s.trim()).filter(Boolean);
-    if(numbers.length===0){ toast('لم يتم العثور على أرقام صالحة', 'err'); return; }
-    const btn = content.querySelector('#match-paste-btn');
-    btn.disabled=true; btn.textContent='جارِ المطابقة...';
-    try{
-      const batch = writeBatch(db);
-      let matched = 0;
-      myRows.forEach(row=>{
-        if(row.done) return;
-        const val = String(row.data && row.reqField ? row.data[row.reqField] : '').trim();
-        if(val && numbers.includes(val)){
-          batch.update(doc(db,'tokeenRequests',row.id), {done:true, doneAt: serverTimestamp()});
-          matched++;
-        }
-      });
-      if(matched===0){ toast('لم يتم العثور على طلبات مطابقة ضمن الطلبات المسندة إليك', 'err'); }
-      else{
-        await batch.commit();
-        toast(`تم تعليم ${matched} طلب كـ "تم"`, 'ok');
-        content.querySelector('#paste-numbers').value='';
-      }
-    }catch(err){ console.error(err); toast('حدث خطأ أثناء المطابقة', 'err'); }
-    btn.disabled=false; btn.textContent='مطابقة وتعليم كـ "تم"';
-  });
-}
-
-function renderMyStats(rows){
-  const target = rows.length;
-  const done = rows.filter(r=>r.done).length;
-  const remain = target - done;
-  const t = document.getElementById('stat-target');
-  if(!t) return;
-  document.getElementById('stat-target').textContent = target;
-  document.getElementById('stat-done').textContent = done;
-  document.getElementById('stat-remain').textContent = remain;
-  document.getElementById('progress-fill').style.width = (target? Math.round(done/target*100):0) + '%';
-}
-
-function renderMyRequestsTable(rows){
-  const wrap = document.getElementById('my-requests-table');
-  if(!wrap) return;
-  if(rows.length===0){
-    wrap.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>لا توجد طلبات مسندة إليك حاليًا</div>`;
-    return;
-  }
-  // union of column keys, preserving order of first row that has most keys
-  const colSet = [];
-  rows.forEach(r=>{
-    Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); });
-  });
-  rows.sort((a,b)=> (a.done - b.done) || String(a.date).localeCompare(b.date));
-  wrap.innerHTML = `
-    <table>
-      <thead><tr>
-        <th>تم</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإسناد</th>
-      </tr></thead>
-      <tbody>
-        ${rows.map(r=>`
-          <tr>
-            <td><input type="checkbox" class="checkbox-lg row-done-cb" data-id="${r.id}" ${r.done?'checked':''}></td>
-            <td>${esc(r.center||'—')}</td>
-            ${colSet.map(c=>`<td>${esc(r.data ? r.data[c] : '')}</td>`).join('')}
-            <td>${fmtDate(r.date)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-  wrap.querySelectorAll('.row-done-cb').forEach(cb=>{
-    cb.addEventListener('change', async ()=>{
-      const id = cb.dataset.id;
-      try{
-        await updateDoc(doc(db,'tokeenRequests',id), {done:cb.checked, doneAt: cb.checked?serverTimestamp():null});
-      }catch(err){ console.error(err); toast('حدث خطأ، حاول مرة أخرى','err'); cb.checked=!cb.checked; }
-    });
-  });
-}
-
-let employeesCache = {}; // uid -> employee data (used by leaderboard + admin)
+/* ============ EMPLOYEES CACHE ============ */
+let employeesCache = {};
 function watchEmployeesCache(cb){
   const unsub = onSnapshot(collection(db,'employees'), (qs)=>{
     employeesCache = {};
@@ -802,49 +759,277 @@ function watchEmployeesCache(cb){
   }, err=>console.error(err));
   unsubList.push(unsub);
 }
+function empName(uid){ return (employeesCache[uid] && employeesCache[uid].name) || 'غير معروف'; }
+function empDept(uid){ return (employeesCache[uid] && employeesCache[uid].department) || ''; }
 
-function renderLeaderboard(counts){
-  const container = document.getElementById('leaderboard-body');
-  if(!container) return;
+/* ============ TOKEEN TAB ============ */
+function renderTokeenTab(content){
+  content.appendChild(el(`
+    <div>
+      <div class="subtab-row" id="tokeen-subtabs">
+        <button class="subtab-btn active" data-sub="mine">📁 طلباتي المسندة</button>
+        <button class="subtab-btn" data-sub="done">✅ ما تم إدخاله (الكل)</button>
+      </div>
+      <div id="tokeen-content"></div>
+    </div>
+  `));
+  const box = content.querySelector('#tokeen-content');
+  content.querySelectorAll('#tokeen-subtabs .subtab-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      content.querySelectorAll('#tokeen-subtabs .subtab-btn').forEach(x=> x.classList.toggle('active', x===b));
+      box.innerHTML='';
+      if(b.dataset.sub==='mine') renderMyRequests(box);
+      else renderDoneSection(box);
+    });
+  });
+  watchEmployeesCache();
+  renderMyRequests(box);
+}
+
+function renderMyRequests(box){
+  box.innerHTML = `
+    <div class="card">
+      <h3>📊 إحصائياتي</h3>
+      <div class="stat-row">
+        <div class="stat-box"><div class="num" id="stat-target">0</div><div class="lbl">المستهدف</div></div>
+        <div class="stat-box"><div class="num" id="stat-done">0</div><div class="lbl">تم إدخاله</div></div>
+        <div class="stat-box"><div class="num" id="stat-remain">0</div><div class="lbl">المتبقي</div></div>
+      </div>
+      <div class="progress-bar"><div id="progress-fill" style="width:0%;"></div></div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <h3>📁 الطلبات المسندة إليّ</h3>
+      <div class="card-sub">اضغط «تم الإدخال» أمام الطلب لينتقل إلى قسم «ما تم إدخاله». الزر ثابت على اليمين أثناء تمرير الجدول.</div>
+      <div class="filter-bar">
+        <input type="text" id="mine-search" placeholder="ابحث برقم الطلب أو أي جزء منه...">
+        <select id="mine-filter">
+          <option value="pending">لم يتم إدخاله</option>
+          <option value="all">الكل</option>
+          <option value="done">تم إدخاله</option>
+        </select>
+      </div>
+      <div class="table-wrap" id="my-requests-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+    </div>
+  `;
+
+  let myRows = [];
+  const q = query(collection(db,'tokeenRequests'), where('uid','==',currentUser.uid));
+  const unsub = onSnapshot(q, (qs)=>{
+    myRows = [];
+    qs.forEach(d=> myRows.push({id:d.id, ...d.data()}));
+    renderMyStats(myRows);
+    draw();
+  }, err=>{ console.error(err); const t=document.getElementById('my-requests-table'); if(t) t.innerHTML=`<div class="empty-state">تعذر تحميل الطلبات</div>`; });
+  unsubList.push(unsub);
+
   function draw(){
-    const rows = Object.keys(counts).map(uid=>({
-      uid, name: (employeesCache[uid]&&employeesCache[uid].name) || 'موظف',
-      dept: (employeesCache[uid]&&employeesCache[uid].department) || '',
-      target: counts[uid].target, done: counts[uid].done
-    })).sort((a,b)=> b.done - a.done);
-    if(rows.length===0){ container.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>لا توجد بيانات بعد</div>`; return; }
-    container.innerHTML = rows.map((r,i)=>`
+    const wrap = box.querySelector('#my-requests-table');
+    if(!wrap) return;
+    const mode = box.querySelector('#mine-filter').value;
+    const search = normalizeDigits(box.querySelector('#mine-search').value.trim().toLowerCase());
+    let rows = myRows.filter(r=> mode==='all' ? true : (mode==='done' ? r.done : !r.done));
+    if(search){
+      rows = rows.filter(r=> normalizeDigits(JSON.stringify(r.data||{}) + ' ' + (r.center||'')).toLowerCase().includes(search));
+    }
+    if(rows.length===0){
+      wrap.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>${myRows.length ? 'لا توجد نتائج مطابقة' : 'لا توجد طلبات مسندة إليك حاليًا'}</div>`;
+      return;
+    }
+    const colSet = [];
+    myRows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
+    rows.sort((a,b)=> (a.done?1:0)-(b.done?1:0) || String(a.date).localeCompare(String(b.date)));
+    wrap.innerHTML = `
+      <table>
+        <thead><tr>
+          <th class="col-action">الإدخال</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإسناد</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>`
+            <tr class="${r.done?'row-done':''}">
+              <td class="col-action">
+                ${r.done
+                  ? `<div class="action-stack">
+                       <span class="btn btn-sm btn-entered">✓ تم الإدخال</span>
+                       <button class="btn btn-sm btn-outline undo-btn" data-id="${r.id}">إلغاء</button>
+                     </div>`
+                  : `<button class="btn btn-sm btn-enter mark-btn" data-id="${r.id}">تم الإدخال</button>`}
+              </td>
+              <td>${esc(r.center||'—')}</td>
+              ${colSet.map(c=>`<td>${esc(r.data ? r.data[c] : '')}</td>`).join('')}
+              <td>${fmtDate(r.date)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    `;
+    wrap.querySelectorAll('.mark-btn').forEach(b=> b.addEventListener('click', ()=> setDone(b, b.dataset.id, true)));
+    wrap.querySelectorAll('.undo-btn').forEach(b=> b.addEventListener('click', ()=> setDone(b, b.dataset.id, false)));
+  }
+
+  async function setDone(btn, id, val){
+    btn.disabled = true;
+    const old = btn.textContent;
+    btn.textContent = '...';
+    try{
+      await updateDoc(doc(db,'tokeenRequests',id), val
+        ? {done:true, doneAt: serverTimestamp(), doneDate: todayCairoStr()}
+        : {done:false, doneAt: null, doneDate: null});
+      toast(val ? 'تم نقل الطلب إلى «ما تم إدخاله»' : 'تم التراجع عن الإدخال', 'ok');
+    }catch(err){
+      console.error(err);
+      toast('حدث خطأ، حاول مرة أخرى', 'err');
+      btn.disabled=false; btn.textContent=old;
+    }
+  }
+
+  box.querySelector('#mine-filter').addEventListener('change', draw);
+  box.querySelector('#mine-search').addEventListener('input', draw);
+}
+
+function renderMyStats(rows){
+  const target = rows.length;
+  const done = rows.filter(r=>r.done).length;
+  const t = document.getElementById('stat-target');
+  if(!t) return;
+  t.textContent = target;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-remain').textContent = target - done;
+  document.getElementById('progress-fill').style.width = (target? Math.round(done/target*100):0) + '%';
+}
+
+function renderDoneSection(box){
+  box.innerHTML = `
+    <div class="card">
+      <h3>🏆 إحصائيات الإدخال لكل موظف</h3>
+      <div class="card-sub">اختر فترة زمنية أو اترك الفترة فارغة لعرض كل الوقت</div>
+      <div class="filter-bar">
+        <label class="muted" style="font-size:12.5px;">من</label>
+        <input type="date" id="done-from">
+        <label class="muted" style="font-size:12.5px;">إلى</label>
+        <input type="date" id="done-to">
+        <button class="btn btn-outline btn-sm" id="done-all-time">كل الوقت</button>
+      </div>
+      <div id="done-leaderboard"><div class="muted">جارِ التحميل...</div></div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <h3>✅ سجل الطلبات التي تم إدخالها</h3>
+      <div class="card-sub">للعرض فقط — غير قابل للتعديل</div>
+      <div class="filter-bar">
+        <select id="done-emp"><option value="">كل الموظفين</option></select>
+        <input type="text" id="done-search" placeholder="ابحث برقم الطلب أو أي جزء من الرقم...">
+      </div>
+      <div class="table-wrap" id="done-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+    </div>
+  `;
+
+  let allDone = [];
+  const q = query(collection(db,'tokeenRequests'), where('done','==',true));
+  const unsub = onSnapshot(q, (qs)=>{
+    allDone = [];
+    qs.forEach(d=> allDone.push({id:d.id, ...d.data()}));
+    fillEmpSelect(); draw();
+  }, err=>{ console.error(err); const t=box.querySelector('#done-table'); if(t) t.innerHTML=`<div class="empty-state">تعذر تحميل البيانات</div>`; });
+  unsubList.push(unsub);
+
+  watchEmployeesCache(()=>{ fillEmpSelect(); draw(); });
+
+  function fillEmpSelect(){
+    const sel = box.querySelector('#done-emp');
+    if(!sel) return;
+    const cur = sel.value;
+    const uids = [...new Set(allDone.map(r=>r.uid))];
+    sel.innerHTML = `<option value="">كل الموظفين</option>` + uids.map(u=>`<option value="${esc(u)}">${esc(empName(u))}</option>`).join('');
+    sel.value = cur;
+  }
+
+  function inPeriod(r){
+    const from = box.querySelector('#done-from').value;
+    const to = box.querySelector('#done-to').value;
+    if(!from && !to) return true;
+    const d = doneDateOf(r);
+    if(!d) return false;
+    if(from && d < from) return false;
+    if(to && d > to) return false;
+    return true;
+  }
+
+  function draw(){
+    const periodRows = allDone.filter(inPeriod);
+    const counts = {};
+    periodRows.forEach(r=>{ counts[r.uid] = (counts[r.uid]||0)+1; });
+    const board = box.querySelector('#done-leaderboard');
+    const list = Object.keys(counts).map(uid=>({uid, n:counts[uid]})).sort((a,b)=> b.n-a.n);
+    board.innerHTML = list.length ? list.map((r,i)=>`
       <div class="leader-row">
         <div class="leader-rank ${i===0?'top1':i===1?'top2':i===2?'top3':''}">${i+1}</div>
         <div style="flex:1;">
-          <div class="leader-name">${esc(r.name)}</div>
-          <div class="leader-dept">${esc(r.dept)}</div>
+          <div class="leader-name">${esc(empName(r.uid))}</div>
+          <div class="leader-dept">${esc(empDept(r.uid))}</div>
         </div>
-        <div class="leader-nums">${r.done} / ${r.target}</div>
-      </div>
-    `).join('');
+        <div class="leader-nums">${r.n} طلب</div>
+      </div>`).join('') + `<div class="small-note" style="margin-top:12px;">إجمالي ما تم إدخاله في الفترة: ${periodRows.length} طلب</div>`
+      : `<div class="empty-state"><div class="emoji">📊</div>لا توجد طلبات مُدخلة في هذه الفترة</div>`;
+
+    const empFilter = box.querySelector('#done-emp').value;
+    const search = normalizeDigits(box.querySelector('#done-search').value.trim().toLowerCase());
+    let rows = periodRows.filter(r=> !empFilter || r.uid===empFilter);
+    if(search){
+      rows = rows.filter(r=>{
+        const hay = [r.center||'', empName(r.uid), JSON.stringify(r.data||{})].join(' ');
+        return normalizeDigits(hay).toLowerCase().includes(search);
+      });
+    }
+    const tbl = box.querySelector('#done-table');
+    if(rows.length===0){ tbl.innerHTML = `<div class="empty-state"><div class="emoji">🔍</div>لا توجد نتائج مطابقة</div>`; return; }
+    const colSet = [];
+    rows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
+    rows.sort((a,b)=> String(doneDateOf(b)).localeCompare(String(doneDateOf(a))));
+    tbl.innerHTML = `
+      <table>
+        <thead><tr><th>الموظف</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإدخال</th></tr></thead>
+        <tbody>${rows.map(r=>`
+          <tr>
+            <td>${esc(empName(r.uid))}</td>
+            <td>${esc(r.center||'—')}</td>
+            ${colSet.map(c=>`<td>${esc(r.data?r.data[c]:'')}</td>`).join('')}
+            <td>${r.doneAt ? fmtDateTime(r.doneAt) : fmtDate(doneDateOf(r))}</td>
+          </tr>`).join('')}</tbody>
+      </table>
+    `;
   }
-  if(Object.keys(employeesCache).length===0){ watchEmployeesCache(draw); } else { draw(); }
+
+  box.querySelector('#done-from').addEventListener('change', draw);
+  box.querySelector('#done-to').addEventListener('change', draw);
+  box.querySelector('#done-emp').addEventListener('change', draw);
+  box.querySelector('#done-search').addEventListener('input', draw);
+  box.querySelector('#done-all-time').addEventListener('click', ()=>{
+    box.querySelector('#done-from').value='';
+    box.querySelector('#done-to').value='';
+    draw();
+  });
 }
 
 /* ============ ADMIN TAB ============ */
-let adminSubtab = 'overview';
+let adminSubtab = 'daily';
 function renderAdminTab(content){
-  adminSubtab = 'overview';
+  adminSubtab = 'daily';
   content.appendChild(el(`
-    <div class="subtab-row">
-      <button class="subtab-btn active" data-sub="daily">التقرير اليومي</button>
-      <button class="subtab-btn" data-sub="upload">رفع بيانات التقنين</button>
-      <button class="subtab-btn" data-sub="requests">سجل طلبات التقنين</button>
-      <button class="subtab-btn" data-sub="employees">إدارة الموظفين</button>
+    <div>
+      <div class="subtab-row" id="admin-subtabs">
+        <button class="subtab-btn active" data-sub="daily">التقرير اليومي</button>
+        <button class="subtab-btn" data-sub="upload">رفع بيانات التقنين</button>
+        <button class="subtab-btn" data-sub="requests">سجل طلبات التقنين</button>
+        <button class="subtab-btn" data-sub="employees">إدارة المستخدمين</button>
+      </div>
+      <div id="admin-content"></div>
     </div>
-    <div id="admin-content"></div>
   `));
-  content.querySelectorAll('.subtab-btn').forEach(b=>{
+  const c = content.querySelector('#admin-content');
+  content.querySelectorAll('#admin-subtabs .subtab-btn').forEach(b=>{
     b.addEventListener('click', ()=>{
-      content.querySelectorAll('.subtab-btn').forEach(x=>x.classList.toggle('active', x===b));
+      content.querySelectorAll('#admin-subtabs .subtab-btn').forEach(x=>x.classList.toggle('active', x===b));
       adminSubtab = b.dataset.sub;
-      const c = content.querySelector('#admin-content');
       c.innerHTML='';
       if(adminSubtab==='daily') renderAdminDailyReport(c);
       else if(adminSubtab==='upload') renderAdminUpload(c);
@@ -852,10 +1037,11 @@ function renderAdminTab(content){
       else if(adminSubtab==='employees') renderAdminEmployees(c);
     });
   });
-  renderAdminDailyReport(content.querySelector('#admin-content'));
+  renderAdminDailyReport(c);
 }
 
 function renderAdminDailyReport(container){
+  if(!container) return;
   const today = todayCairoStr();
   container.innerHTML = `
     <div class="card">
@@ -879,13 +1065,12 @@ function renderAdminDailyReport(container){
           <label class="muted" style="font-size:12.5px;">إلى</label>
           <input type="date" id="stats-to" value="${today}" max="${today}" style="padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;">
         </div>
-        <button class="btn btn-primary btn-sm" id="stats-refresh-btn">تحديث الإحصائيات</button>
+        <button class="btn btn-primary btn-sm btn-auto" id="stats-refresh-btn">تحديث الإحصائيات</button>
       </div>
       <div class="table-wrap" id="stats-table"><div class="muted" style="padding:14px;">اختر فترة واضغط تحديث</div></div>
     </div>
   `;
 
-  // default "from" = 13 days before today
   const d0 = new Date(today+'T12:00:00');
   d0.setDate(d0.getDate()-13);
   container.querySelector('#stats-from').value = d0.toISOString().slice(0,10);
@@ -898,7 +1083,7 @@ function renderAdminDailyReport(container){
     const u = onSnapshot(collection(db,'employees'), qs=>{
       employees={}; qs.forEach(d=> employees[d.id]=d.data());
       cb();
-    });
+    }, err=>console.error(err));
     unsubList.push(u);
   }
 
@@ -924,13 +1109,14 @@ function renderAdminDailyReport(container){
       qs.forEach(d=>{ const r=d.data(); attendance[r.uid]=r; });
       drawReport(dateStr, attendance);
     }, err=>console.error(err));
+    unsubList.push(()=>{ if(reportUnsub) reportUnsub(); });
   }
 
   function drawReport(dateStr, attendance){
     const tbl = container.querySelector('#report-table');
     if(!tbl) return;
     const uids = Object.keys(employees);
-    if(uids.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
+    if(uids.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد مستخدمون بعد</div>`; return; }
     const rows = uids.map(uid=>({uid, e:employees[uid], a:attendance[uid], status: dayStatus(dateStr, attendance[uid])}));
     const order = {absent:0, pending:1, late:2, present:3};
     rows.sort((x,y)=> order[x.status]-order[y.status]);
@@ -968,7 +1154,7 @@ function renderAdminDailyReport(container){
     tbl.querySelectorAll('.link-btn').forEach(b=>{
       b.addEventListener('click', ()=>{
         const r = rows.find(x=>x.uid===b.dataset.uid);
-        showTasksModal(r.e.name + ' — ' + fmtDate(dateStr), r.a.tasks||[], r.a.earlyLeaveReason);
+        showTasksModal(r.e.name + ' — ' + fmtDate(dateStr), (r.a && r.a.tasks)||[], r.a && r.a.earlyLeaveReason);
       });
     });
     tbl.querySelectorAll('.save-reason-btn').forEach(b=>{
@@ -978,9 +1164,7 @@ function renderAdminDailyReport(container){
         const val = input.value.trim();
         b.disabled=true; b.textContent='...';
         try{
-          await setDoc(doc(db,'attendance',`${uid}_${dateStr}`), {
-            uid, date: dateStr, absenceReason: val
-          }, {merge:true});
+          await setDoc(doc(db,'attendance',`${uid}_${dateStr}`), { uid, date: dateStr, absenceReason: val }, {merge:true});
           toast('تم حفظ سبب الغياب', 'ok');
         }catch(err){ console.error(err); toast('حدث خطأ أثناء الحفظ', 'err'); }
         b.disabled=false; b.textContent='حفظ';
@@ -993,10 +1177,8 @@ function renderAdminDailyReport(container){
     dateInput.value = today;
     loadReportForDate(today);
   });
-
   loadEmployees(()=> loadReportForDate(dateInput.value || today));
 
-  // ---- Stats panel ----
   container.querySelector('#stats-refresh-btn').addEventListener('click', async ()=>{
     const from = container.querySelector('#stats-from').value;
     const to = container.querySelector('#stats-to').value;
@@ -1008,7 +1190,6 @@ function renderAdminDailyReport(container){
       const byUidDate = {};
       qs.forEach(d=>{ const r=d.data(); byUidDate[`${r.uid}_${r.date}`] = r; });
 
-      // build list of work dates (exclude Fri/Sat), skip today if before work-start
       const dates = [];
       let cur = new Date(from+'T12:00:00');
       const end = new Date(to+'T12:00:00');
@@ -1029,12 +1210,12 @@ function renderAdminDailyReport(container){
           const st = dayStatus(ds, rec);
           if(st==='absent') absent++;
           else if(st==='late') late++;
-          if((st==='present'||st==='late') && (!rec.tasks || rec.tasks.length===0)) noWork++;
+          if((st==='present'||st==='late') && (!rec || !rec.tasks || rec.tasks.length===0)) noWork++;
         });
         return {uid, name: employees[uid].name, dept: employees[uid].department, late, absent, noWork};
       }).sort((a,b)=> (b.absent+b.late) - (a.absent+a.late));
 
-      if(stats.length===0){ statsTbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
+      if(stats.length===0){ statsTbl.innerHTML = `<div class="empty-state">لا يوجد مستخدمون بعد</div>`; return; }
       statsTbl.innerHTML = `
         <table>
           <thead><tr><th>الموظف</th><th>القسم</th><th>أيام التأخير</th><th>أيام الغياب</th><th>أيام بدون إنجاز</th></tr></thead>
@@ -1071,28 +1252,98 @@ function showTasksModal(name, tasks, earlyReason){
   overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.remove(); });
 }
 
+/* ---- إدارة المستخدمين ---- */
 function renderAdminEmployees(container){
-  container.innerHTML = `<div class="card"><h3>👥 الموظفون (كل من سجل دخوله)</h3><div class="table-wrap" id="emp-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div></div>`;
+  container.innerHTML = `
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:14px;">
+        <h3 style="margin:0;">👥 المستخدمون</h3>
+        <button class="btn btn-primary btn-sm btn-auto" id="add-user-btn">+ إضافة مستخدم</button>
+      </div>
+      <div class="table-wrap" id="emp-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+    </div>
+  `;
+  container.querySelector('#add-user-btn').addEventListener('click', openAddUserModal);
+
   const u = onSnapshot(collection(db,'employees'), qs=>{
     const rows = []; qs.forEach(d=> rows.push({id:d.id, ...d.data()}));
     const tbl = document.getElementById('emp-table');
     if(!tbl) return;
-    if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
-    tbl.innerHTML = `<table><thead><tr><th>الاسم</th><th>القسم</th><th>الهاتف</th><th>البريد</th><th>الدور</th><th></th></tr></thead>
+    if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد مستخدمون بعد</div>`; return; }
+    tbl.innerHTML = `<table><thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>القسم</th><th>الهاتف</th><th>الدور</th><th></th></tr></thead>
       <tbody>${rows.map(r=>`<tr>
-        <td>${esc(r.name)}</td><td><span class="badge-dept">${esc(r.department)}</span></td>
-        <td>${esc(r.phone)}</td><td>${esc(r.email)}</td>
+        <td>${esc(r.name)}</td>
+        <td>${esc(r.username||'—')}</td>
+        <td><span class="badge-dept">${esc(r.department)}</span></td>
+        <td>${esc(r.phone||'—')}</td>
         <td>${r.role==='admin' ? '<span class="status-pill pill-good">مدير</span>' : 'موظف'}</td>
         <td><button class="btn btn-outline btn-sm edit-emp-btn" data-id="${r.id}">تعديل</button></td>
       </tr>`).join('')}</tbody></table>`;
     tbl.querySelectorAll('.edit-emp-btn').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        const emp = rows.find(r=>r.id===b.dataset.id);
-        openEditEmployeeModal(emp);
-      });
+      b.addEventListener('click', ()=> openEditEmployeeModal(rows.find(r=>r.id===b.dataset.id)));
     });
-  });
+  }, err=>console.error(err));
   unsubList.push(u);
+}
+
+function openAddUserModal(){
+  const overlay = el(`
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>إضافة مستخدم جديد</h3>
+        <div class="modal-sub">اسم المستخدم وكلمة المرور هما اللي هيدخل بيهم الموظف</div>
+        <div class="field"><label>اسم المستخدم *</label><input type="text" id="nu-username" placeholder="مثال: محمد أو mohamed"></div>
+        <div class="field"><label>كلمة المرور *</label><input type="text" id="nu-pass" placeholder="6 خانات على الأقل"></div>
+        <div class="field"><label>الاسم بالكامل *</label><input type="text" id="nu-name"></div>
+        <div class="field"><label>رقم الهاتف</label><input type="tel" id="nu-phone" placeholder="01xxxxxxxxx"></div>
+        <div class="field">
+          <label>القسم *</label>
+          <select id="nu-dept">${DEPARTMENTS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}</select>
+        </div>
+        <div class="field">
+          <label>الدور</label>
+          <select id="nu-role"><option value="employee">موظف</option><option value="admin">مدير</option></select>
+        </div>
+        <div class="error-text" id="nu-err" style="display:none;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="nu-cancel">إلغاء</button>
+          <button class="btn btn-primary" id="nu-save">إنشاء الحساب</button>
+        </div>
+      </div>
+    </div>
+  `);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#nu-cancel').addEventListener('click', ()=> overlay.remove());
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+
+  overlay.querySelector('#nu-save').addEventListener('click', async ()=>{
+    const username = overlay.querySelector('#nu-username').value.trim();
+    const pass = overlay.querySelector('#nu-pass').value;
+    const name = overlay.querySelector('#nu-name').value.trim();
+    const phone = overlay.querySelector('#nu-phone').value.trim();
+    const department = overlay.querySelector('#nu-dept').value;
+    const role = overlay.querySelector('#nu-role').value;
+    const errBox = overlay.querySelector('#nu-err');
+    errBox.style.display='none';
+    if(!username || !pass || !name){ errBox.textContent='أكمل اسم المستخدم وكلمة المرور والاسم'; errBox.style.display='block'; return; }
+    if(pass.length<6){ errBox.textContent='كلمة المرور 6 خانات على الأقل'; errBox.style.display='block'; return; }
+    const btn = overlay.querySelector('#nu-save');
+    btn.disabled=true; btn.textContent='جارِ الإنشاء...';
+    try{
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, userToEmail(username), pass);
+      await setDoc(doc(db,'employees',cred.user.uid), {
+        uid: cred.user.uid, username: normUser(username), name, phone, department, role, createdAt: serverTimestamp()
+      });
+      await signOut(secondaryAuth);
+      toast('تم إنشاء حساب المستخدم', 'ok');
+      overlay.remove();
+    }catch(err){
+      console.error(err);
+      errBox.textContent = authErrMsg((err&&err.code)||'');
+      errBox.style.display='block';
+      btn.disabled=false; btn.textContent='إنشاء الحساب';
+    }
+  });
 }
 
 function openEditEmployeeModal(emp){
@@ -1100,8 +1351,9 @@ function openEditEmployeeModal(emp){
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>تعديل بيانات ${esc(emp.name)}</h3>
+        <div class="field"><label>اسم المستخدم</label><input type="text" value="${esc(emp.username||'')}" disabled></div>
         <div class="field"><label>الاسم *</label><input type="text" id="edit-name" value="${esc(emp.name)}"></div>
-        <div class="field"><label>رقم الهاتف *</label><input type="tel" id="edit-phone" value="${esc(emp.phone||'')}"></div>
+        <div class="field"><label>رقم الهاتف</label><input type="tel" id="edit-phone" value="${esc(emp.phone||'')}"></div>
         <div class="field">
           <label>القسم *</label>
           <select id="edit-dept">${DEPARTMENTS.map(d=>`<option value="${esc(d)}" ${d===emp.department?'selected':''}>${esc(d)}</option>`).join('')}</select>
@@ -1113,6 +1365,7 @@ function openEditEmployeeModal(emp){
             <option value="admin" ${emp.role==='admin'?'selected':''}>مدير</option>
           </select>
         </div>
+        <div class="small-note">كلمة المرور يغيّرها المستخدم من تبويب «حسابي». لو نسيها، أنشئ له حسابًا جديدًا باسم مستخدم آخر.</div>
         <div class="error-text" id="edit-err" style="display:none;"></div>
         <div class="modal-actions">
           <button class="btn btn-outline" id="cancel-edit-btn">إلغاء</button>
@@ -1130,35 +1383,36 @@ function openEditEmployeeModal(emp){
     const department = overlay.querySelector('#edit-dept').value;
     const role = overlay.querySelector('#edit-role').value;
     const errBox = overlay.querySelector('#edit-err');
-    if(!name || !phone || !department){
-      errBox.textContent = 'من فضلك أكمل كل الحقول';
-      errBox.style.display='block';
-      return;
-    }
+    if(!name || !department){ errBox.textContent='من فضلك أكمل الاسم والقسم'; errBox.style.display='block'; return; }
     const btn = overlay.querySelector('#save-edit-btn');
     btn.disabled=true; btn.textContent='جارِ الحفظ...';
     try{
       await updateDoc(doc(db,'employees',emp.id), {name, phone, department, role});
-      toast('تم تحديث بيانات الموظف', 'ok');
+      toast('تم تحديث بيانات المستخدم', 'ok');
       overlay.remove();
     }catch(err){
       console.error(err);
-      errBox.textContent = 'حدث خطأ أثناء الحفظ';
+      errBox.textContent='حدث خطأ أثناء الحفظ';
       errBox.style.display='block';
       btn.disabled=false; btn.textContent='حفظ التعديلات';
     }
   });
 }
 
-/* ---- Admin: full tokeen requests log with employee filter + search ---- */
+/* ---- Admin: سجل كل الطلبات ---- */
 function renderAdminRequestsLog(container){
   container.innerHTML = `
     <div class="card">
       <h3>🔍 سجل كل طلبات التقنين</h3>
-      <div class="card-sub">فلترة حسب الموظف، وبحث لمعرفة مين عمل إدخال، إمتى، وكام مرة</div>
-      <div class="flex-between" style="margin-bottom:14px;">
-        <select id="log-emp-filter" style="max-width:260px;"><option value="">كل الموظفين</option></select>
-        <input type="text" id="log-search" placeholder="ابحث برقم الطلب أو أي بيانات..." style="flex:1;min-width:200px;padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;">
+      <div class="card-sub">فلترة حسب الموظف والحالة، وبحث برقم الطلب أو أي جزء منه</div>
+      <div class="filter-bar">
+        <select id="log-emp-filter"><option value="">كل الموظفين</option></select>
+        <select id="log-status-filter">
+          <option value="">كل الحالات</option>
+          <option value="done">تم الإدخال</option>
+          <option value="pending">لم يتم</option>
+        </select>
+        <input type="text" id="log-search" placeholder="ابحث برقم الطلب أو أي بيانات...">
       </div>
       <div id="log-summary" style="margin-bottom:14px;"></div>
       <div class="table-wrap" id="log-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
@@ -1170,15 +1424,17 @@ function renderAdminRequestsLog(container){
 
   function draw(){
     const empFilter = container.querySelector('#log-emp-filter').value;
-    const search = container.querySelector('#log-search').value.trim().toLowerCase();
+    const statusFilter = container.querySelector('#log-status-filter').value;
+    const search = normalizeDigits(container.querySelector('#log-search').value.trim().toLowerCase());
     let rows = allRows.filter(r=> !empFilter || r.uid===empFilter);
+    if(statusFilter==='done') rows = rows.filter(r=>r.done);
+    if(statusFilter==='pending') rows = rows.filter(r=>!r.done);
     if(search){
       rows = rows.filter(r=>{
-        const hay = [r.center, (employees[r.uid]&&employees[r.uid].name)||'', JSON.stringify(r.data||{})].join(' ').toLowerCase();
-        return hay.includes(search);
+        const hay = [r.center||'', (employees[r.uid]&&employees[r.uid].name)||'', JSON.stringify(r.data||{})].join(' ');
+        return normalizeDigits(hay).toLowerCase().includes(search);
       });
     }
-    // summary: count done entries per employee within filtered set
     const summaryMap = {};
     rows.forEach(r=>{
       const name = (employees[r.uid]&&employees[r.uid].name) || 'غير معروف';
@@ -1194,20 +1450,19 @@ function renderAdminRequestsLog(container){
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; return; }
     const colSet = [];
     rows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
-    rows.sort((a,b)=> (b.doneAt?1:0) - (a.doneAt?1:0));
+    rows.sort((a,b)=> (b.done?1:0) - (a.done?1:0));
     tbl.innerHTML = `
       <table>
-        <thead><tr><th>الموظف</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>الحالة</th><th>تاريخ الإسناد</th><th>تاريخ الإتمام</th></tr></thead>
+        <thead><tr><th>الموظف</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>الحالة</th><th>تاريخ الإسناد</th><th>تاريخ الإدخال</th></tr></thead>
         <tbody>${rows.map(r=>`
-          <tr>
+          <tr class="${r.done?'row-done':''}">
             <td>${esc((employees[r.uid]&&employees[r.uid].name)||'—')}</td>
             <td>${esc(r.center||'—')}</td>
             ${colSet.map(c=>`<td>${esc(r.data?r.data[c]:'')}</td>`).join('')}
             <td>${r.done ? '<span class="status-pill pill-good">تم</span>' : '<span class="status-pill pill-neutral">لم يتم</span>'}</td>
             <td>${fmtDate(r.date)}</td>
             <td>${r.doneAt ? fmtDateTime(r.doneAt) : '—'}</td>
-          </tr>
-        `).join('')}</tbody>
+          </tr>`).join('')}</tbody>
       </table>
     `;
   }
@@ -1215,20 +1470,22 @@ function renderAdminRequestsLog(container){
   const u1 = onSnapshot(collection(db,'employees'), qs=>{
     employees={}; qs.forEach(d=> employees[d.id]=d.data());
     const sel = container.querySelector('#log-emp-filter');
+    if(!sel) return;
     const cur = sel.value;
     sel.innerHTML = `<option value="">كل الموظفين</option>` + Object.keys(employees).map(uid=>`<option value="${uid}">${esc(employees[uid].name)}</option>`).join('');
     sel.value = cur;
     draw();
-  });
+  }, err=>console.error(err));
   unsubList.push(u1);
 
   const u2 = onSnapshot(collection(db,'tokeenRequests'), qs=>{
     allRows = []; qs.forEach(d=> allRows.push({id:d.id, ...d.data()}));
     draw();
-  });
+  }, err=>console.error(err));
   unsubList.push(u2);
 
   container.querySelector('#log-emp-filter').addEventListener('change', draw);
+  container.querySelector('#log-status-filter').addEventListener('change', draw);
   container.querySelector('#log-search').addEventListener('input', draw);
 }
 
@@ -1256,7 +1513,7 @@ function renderAdminUpload(container){
       </div>
       <div id="up-column-pick" style="display:none;">
         <div class="field">
-          <label>حدد عمود "رقم الطلب" (يستخدم لاحقًا في المطابقة عند اللصق) *</label>
+          <label>حدد عمود "رقم الطلب" (يُستخدم في البحث) *</label>
           <select id="up-req-field"></select>
         </div>
         <div class="small-note" id="up-preview-note" style="margin-bottom:14px;"></div>
@@ -1266,14 +1523,13 @@ function renderAdminUpload(container){
     </div>
   `;
 
-  // populate employees select
   const empSelect = container.querySelector('#up-emp');
   const u = onSnapshot(collection(db,'employees'), qs=>{
     const cur = empSelect.value;
     empSelect.innerHTML = `<option value="">-- اختر الموظف --</option>` +
       qs.docs.map(d=>`<option value="${d.id}">${esc(d.data().name)} (${esc(d.data().department)})</option>`).join('');
     if(cur) empSelect.value = cur;
-  });
+  }, err=>console.error(err));
   unsubList.push(u);
 
   container.querySelector('#up-center').addEventListener('change', (e)=>{
@@ -1293,8 +1549,7 @@ function renderAdminUpload(container){
         if(json.length===0){ toast('الملف فارغ أو غير صالح', 'err'); return; }
         parsedRows = json;
         const cols = Object.keys(json[0]);
-        const fieldSelect = container.querySelector('#up-req-field');
-        fieldSelect.innerHTML = cols.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        container.querySelector('#up-req-field').innerHTML = cols.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
         container.querySelector('#up-column-pick').style.display='block';
         container.querySelector('#up-preview-note').textContent = `تم العثور على ${json.length} صف بالأعمدة: ${cols.join('، ')}`;
       }catch(err){
@@ -1322,7 +1577,6 @@ function renderAdminUpload(container){
     try{
       const batchId = `b_${Date.now()}`;
       const today = todayCairoStr();
-      // Firestore batched writes limited to 500 ops; chunk if needed
       const chunkSize = 450;
       for(let i=0;i<parsedRows.length;i+=chunkSize){
         const chunk = parsedRows.slice(i, i+chunkSize);
@@ -1331,7 +1585,7 @@ function renderAdminUpload(container){
           const ref2 = doc(collection(db,'tokeenRequests'));
           batch.set(ref2, {
             uid, center, date: today, batchId, reqField,
-            data: row, done:false, doneAt:null, uploadedAt: serverTimestamp()
+            data: row, done:false, doneAt:null, doneDate:null, uploadedAt: serverTimestamp()
           });
         });
         await batch.commit();
