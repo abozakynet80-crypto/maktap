@@ -215,10 +215,6 @@ import {
   getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where,
   onSnapshot, serverTimestamp, writeBatch, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-import {
-  getStorage, ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
-
 /* ============ Firebase config ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyDb0dlyt1NxIUKWY1ZJr7Q57oJHF3L2wMU",
@@ -245,7 +241,6 @@ const DEFAULT_CENTERS = [
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
 
 const root = document.getElementById('app-root');
@@ -378,10 +373,10 @@ function renderRegistration(user){
           </select>
         </div>
         <div class="field">
-          <label>صورة شخصية (اختياري)</label>
+          <label>الصورة الشخصية</label>
           <div class="file-row">
             <img class="avatar-preview" id="reg-avatar-preview" src="${esc(user.photoURL||'')}" onerror="this.style.opacity=0">
-            <input type="file" id="reg-photo" accept="image/*" style="flex:1;">
+            <span class="hint" style="margin:0;">سيتم استخدام صورة حساب Google الخاص بك تلقائيًا</span>
           </div>
         </div>
         <button class="btn btn-primary" id="reg-submit-btn">حفظ ودخول المنظومة</button>
@@ -390,11 +385,6 @@ function renderRegistration(user){
     </div>
   `);
   root.appendChild(wrap);
-
-  wrap.querySelector('#reg-photo').addEventListener('change', (e)=>{
-    const f = e.target.files[0];
-    if(f){ wrap.querySelector('#reg-avatar-preview').src = URL.createObjectURL(f); wrap.querySelector('#reg-avatar-preview').style.opacity=1; }
-  });
 
   wrap.querySelector('#reg-submit-btn').addEventListener('click', async ()=>{
     const name = wrap.querySelector('#reg-name').value.trim();
@@ -411,13 +401,7 @@ function renderRegistration(user){
     const btn = wrap.querySelector('#reg-submit-btn');
     btn.disabled = true; btn.textContent = 'جارِ الحفظ...';
     try{
-      let photoURL = user.photoURL || '';
-      const file = wrap.querySelector('#reg-photo').files[0];
-      if(file){
-        const sref = ref(storage, `employee_photos/${user.uid}_${Date.now()}`);
-        await uploadBytes(sref, file);
-        photoURL = await getDownloadURL(sref);
-      }
+      const photoURL = user.photoURL || '';
       const data = {
         uid: user.uid, email: user.email, name, phone, department: dept,
         photoURL, role: ADMIN_EMAILS.includes((user.email||'').toLowerCase())?'admin':'employee',
