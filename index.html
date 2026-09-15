@@ -212,7 +212,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where,
+  getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, collection, addDoc, query, where,
   onSnapshot, serverTimestamp, writeBatch, orderBy
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 /* ============ Firebase config ============ */
@@ -237,6 +237,8 @@ const DEFAULT_CENTERS = [
   "مركز المنيا","مركز ملوي","مركز ديرمواس","مركز مطاي","مركز سمالوط",
   "مركز أبوقرقاص","مركز مغاغة","مركز بني مزار","مركز العدوة"
 ];
+const WORK_START_HOUR = 9; // بعد الساعة 9 صباحًا بدون حضور = غائب / بعدها = متأخر
+const WEEKEND_DAYS = [5,6]; // الجمعة والسبت (0=أحد ... 6=سبت)
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -831,7 +833,7 @@ function renderAdminTab(content){
   adminSubtab = 'overview';
   content.appendChild(el(`
     <div class="subtab-row">
-      <button class="subtab-btn active" data-sub="overview">نظرة عامة</button>
+      <button class="subtab-btn active" data-sub="daily">التقرير اليومي</button>
       <button class="subtab-btn" data-sub="upload">رفع بيانات التقنين</button>
       <button class="subtab-btn" data-sub="requests">سجل طلبات التقنين</button>
       <button class="subtab-btn" data-sub="employees">إدارة الموظفين</button>
@@ -844,48 +846,120 @@ function renderAdminTab(content){
       adminSubtab = b.dataset.sub;
       const c = content.querySelector('#admin-content');
       c.innerHTML='';
-      if(adminSubtab==='overview') renderAdminOverview(c);
+      if(adminSubtab==='daily') renderAdminDailyReport(c);
       else if(adminSubtab==='upload') renderAdminUpload(c);
       else if(adminSubtab==='requests') renderAdminRequestsLog(c);
       else if(adminSubtab==='employees') renderAdminEmployees(c);
     });
   });
-  renderAdminOverview(content.querySelector('#admin-content'));
+  renderAdminDailyReport(content.querySelector('#admin-content'));
 }
 
-function renderAdminOverview(container){
-  container.innerHTML = `<div class="card"><h3>📊 متابعة الحضور والانجاز اليوم — ${fmtDate(todayCairoStr())}</h3>
-    <div class="table-wrap" id="overview-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div></div>`;
-
+function renderAdminDailyReport(container){
   const today = todayCairoStr();
-  let employees = {}, attendance = {}, tokeen = {};
+  container.innerHTML = `
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:14px;">
+        <h3 style="margin:0;">📅 تقرير الحضور والانجاز اليومي</h3>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="date" id="report-date" value="${today}" max="${today}" style="padding:9px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13.5px;">
+          <button class="btn btn-outline btn-sm" id="report-today-btn">اليوم</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="report-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+    </div>
 
-  function draw(){
-    const tbl = document.getElementById('overview-table');
+    <div class="card" style="margin-top:18px;">
+      <h3>📈 إحصائيات فترة</h3>
+      <div class="card-sub">عدد أيام التأخير، الغياب، والأيام بدون أي إنجاز مسجل لكل موظف خلال الفترة المختارة (بدون الجمعة والسبت)</div>
+      <div class="flex-between" style="margin-bottom:14px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label class="muted" style="font-size:12.5px;">من</label>
+          <input type="date" id="stats-from" max="${today}" style="padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;">
+          <label class="muted" style="font-size:12.5px;">إلى</label>
+          <input type="date" id="stats-to" value="${today}" max="${today}" style="padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;">
+        </div>
+        <button class="btn btn-primary btn-sm" id="stats-refresh-btn">تحديث الإحصائيات</button>
+      </div>
+      <div class="table-wrap" id="stats-table"><div class="muted" style="padding:14px;">اختر فترة واضغط تحديث</div></div>
+    </div>
+  `;
+
+  // default "from" = 13 days before today
+  const d0 = new Date(today+'T12:00:00');
+  d0.setDate(d0.getDate()-13);
+  container.querySelector('#stats-from').value = d0.toISOString().slice(0,10);
+
+  let employees = {};
+  let reportUnsub = null;
+  const dateInput = container.querySelector('#report-date');
+
+  function loadEmployees(cb){
+    const u = onSnapshot(collection(db,'employees'), qs=>{
+      employees={}; qs.forEach(d=> employees[d.id]=d.data());
+      cb();
+    });
+    unsubList.push(u);
+  }
+
+  function dayStatus(dateStr, record){
+    if(record && record.checkIn){
+      const ciDate = record.checkIn.toDate ? record.checkIn.toDate() : new Date(record.checkIn);
+      const hh = +new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Cairo', hour:'2-digit', hour12:false}).format(ciDate);
+      const mm = +new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Cairo', minute:'2-digit'}).format(ciDate);
+      const late = (hh>WORK_START_HOUR) || (hh===WORK_START_HOUR && mm>0);
+      return late ? 'late' : 'present';
+    }
+    const now = cairoNow();
+    if(dateStr===today && now.hour<WORK_START_HOUR) return 'pending';
+    return 'absent';
+  }
+
+  function loadReportForDate(dateStr){
+    if(reportUnsub){ reportUnsub(); reportUnsub=null; }
+    const tbl = container.querySelector('#report-table');
+    if(tbl) tbl.innerHTML = `<div class="muted" style="padding:14px;">جارِ التحميل...</div>`;
+    reportUnsub = onSnapshot(query(collection(db,'attendance'), where('date','==',dateStr)), qs=>{
+      const attendance = {};
+      qs.forEach(d=>{ const r=d.data(); attendance[r.uid]=r; });
+      drawReport(dateStr, attendance);
+    }, err=>console.error(err));
+  }
+
+  function drawReport(dateStr, attendance){
+    const tbl = container.querySelector('#report-table');
     if(!tbl) return;
     const uids = Object.keys(employees);
     if(uids.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
+    const rows = uids.map(uid=>({uid, e:employees[uid], a:attendance[uid], status: dayStatus(dateStr, attendance[uid])}));
+    const order = {absent:0, pending:1, late:2, present:3};
+    rows.sort((x,y)=> order[x.status]-order[y.status]);
     tbl.innerHTML = `
       <table>
-        <thead><tr><th>الموظف</th><th>القسم</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th><th>مهام اليوم</th><th>تقنين (تم/مستهدف)</th></tr></thead>
+        <thead><tr><th>الموظف</th><th>القسم</th><th>الحالة</th><th>وقت الحضور</th><th>وقت الانصراف</th><th>المهام</th><th>سبب الغياب</th></tr></thead>
         <tbody>
-          ${uids.map(uid=>{
-            const e = employees[uid];
-            const a = attendance[uid];
-            const t = tokeen[uid] || {target:0, done:0};
-            let statusHtml;
-            if(a && a.checkOut) statusHtml = a.earlyLeaveReason ? `<span class="status-pill pill-warn">انصراف مبكر</span>` : `<span class="status-pill pill-good">مكتمل</span>`;
-            else if(a && a.checkIn) statusHtml = `<span class="status-pill pill-neutral">في العمل</span>`;
-            else statusHtml = `<span class="status-pill pill-bad">لم يحضر</span>`;
-            const taskCount = a && a.tasks ? a.tasks.length : 0;
+          ${rows.map(r=>{
+            let pill, reasonCell='<span class="muted">—</span>';
+            if(r.status==='pending') pill = `<span class="status-pill pill-neutral">⏺ لم يحضر حتى الآن</span>`;
+            else if(r.status==='absent'){
+              pill = `<span class="status-pill pill-bad">● غائب</span>`;
+              const cur = (r.a && r.a.absenceReason) || '';
+              reasonCell = `<div style="display:flex;gap:6px;">
+                <input type="text" class="absence-reason-input" data-uid="${r.uid}" value="${esc(cur)}" placeholder="اكتب السبب..." style="width:150px;padding:6px 8px;border-radius:7px;border:1.5px solid var(--border);font-size:12.5px;">
+                <button class="btn btn-outline btn-sm save-reason-btn" data-uid="${r.uid}">حفظ</button>
+              </div>`;
+            }
+            else if(r.status==='late') pill = `<span class="status-pill pill-warn">● حاضر (متأخر)</span>`;
+            else pill = `<span class="status-pill pill-good">● حاضر</span>`;
+            const taskCount = r.a && r.a.tasks ? r.a.tasks.length : 0;
             return `<tr>
-              <td>${esc(e.name)}</td>
-              <td><span class="badge-dept">${esc(e.department)}</span></td>
-              <td>${fmtTime(a && a.checkIn)}</td>
-              <td>${fmtTime(a && a.checkOut)}</td>
-              <td>${statusHtml}</td>
-              <td>${taskCount ? `<button class="link-btn" data-uid="${uid}">${taskCount} مهمة</button>` : '—'}</td>
-              <td>${t.done} / ${t.target}</td>
+              <td>${esc(r.e.name)}</td>
+              <td><span class="badge-dept">${esc(r.e.department)}</span></td>
+              <td>${pill}</td>
+              <td>${fmtTime(r.a && r.a.checkIn)}</td>
+              <td>${fmtTime(r.a && r.a.checkOut)}</td>
+              <td>${taskCount ? `<button class="link-btn" data-uid="${r.uid}">${taskCount} مهمة</button>` : '<span class="muted">—</span>'}</td>
+              <td>${reasonCell}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -893,38 +967,99 @@ function renderAdminOverview(container){
     `;
     tbl.querySelectorAll('.link-btn').forEach(b=>{
       b.addEventListener('click', ()=>{
+        const r = rows.find(x=>x.uid===b.dataset.uid);
+        showTasksModal(r.e.name + ' — ' + fmtDate(dateStr), r.a.tasks||[], r.a.earlyLeaveReason);
+      });
+    });
+    tbl.querySelectorAll('.save-reason-btn').forEach(b=>{
+      b.addEventListener('click', async ()=>{
         const uid = b.dataset.uid;
-        const a = attendance[uid];
-        const e = employees[uid];
-        showTasksModal(e.name, a.tasks||[], a.earlyLeaveReason);
+        const input = tbl.querySelector(`.absence-reason-input[data-uid="${uid}"]`);
+        const val = input.value.trim();
+        b.disabled=true; b.textContent='...';
+        try{
+          await setDoc(doc(db,'attendance',`${uid}_${dateStr}`), {
+            uid, date: dateStr, absenceReason: val
+          }, {merge:true});
+          toast('تم حفظ سبب الغياب', 'ok');
+        }catch(err){ console.error(err); toast('حدث خطأ أثناء الحفظ', 'err'); }
+        b.disabled=false; b.textContent='حفظ';
       });
     });
   }
 
-  const u1 = onSnapshot(collection(db,'employees'), qs=>{ employees={}; qs.forEach(d=> employees[d.id]=d.data()); draw(); });
-  unsubList.push(u1);
-  const u2 = onSnapshot(query(collection(db,'attendance'), where('date','==',today)), qs=>{
-    attendance={}; qs.forEach(d=>{ const r=d.data(); attendance[r.uid]=r; }); draw();
+  dateInput.addEventListener('change', ()=> loadReportForDate(dateInput.value || today));
+  container.querySelector('#report-today-btn').addEventListener('click', ()=>{
+    dateInput.value = today;
+    loadReportForDate(today);
   });
-  unsubList.push(u2);
-  const u3 = onSnapshot(collection(db,'tokeenRequests'), qs=>{
-    tokeen={};
-    qs.forEach(d=>{
-      const r=d.data();
-      if(!tokeen[r.uid]) tokeen[r.uid]={target:0,done:0};
-      tokeen[r.uid].target++;
-      if(r.done) tokeen[r.uid].done++;
-    });
-    draw();
+
+  loadEmployees(()=> loadReportForDate(dateInput.value || today));
+
+  // ---- Stats panel ----
+  container.querySelector('#stats-refresh-btn').addEventListener('click', async ()=>{
+    const from = container.querySelector('#stats-from').value;
+    const to = container.querySelector('#stats-to').value;
+    const statsTbl = container.querySelector('#stats-table');
+    if(!from || !to || from>to){ toast('اختر فترة صحيحة', 'err'); return; }
+    statsTbl.innerHTML = `<div class="muted" style="padding:14px;">جارِ الحساب...</div>`;
+    try{
+      const qs = await getDocs(query(collection(db,'attendance'), where('date','>=',from), where('date','<=',to)));
+      const byUidDate = {};
+      qs.forEach(d=>{ const r=d.data(); byUidDate[`${r.uid}_${r.date}`] = r; });
+
+      // build list of work dates (exclude Fri/Sat), skip today if before work-start
+      const dates = [];
+      let cur = new Date(from+'T12:00:00');
+      const end = new Date(to+'T12:00:00');
+      const now = cairoNow();
+      while(cur<=end){
+        const ds = cur.toISOString().slice(0,10);
+        const dow = cur.getDay();
+        const isFutureOrPendingToday = (ds===today && now.hour<WORK_START_HOUR) || ds>today;
+        if(!WEEKEND_DAYS.includes(dow) && !isFutureOrPendingToday) dates.push(ds);
+        cur.setDate(cur.getDate()+1);
+      }
+
+      const uids = Object.keys(employees);
+      const stats = uids.map(uid=>{
+        let late=0, absent=0, noWork=0;
+        dates.forEach(ds=>{
+          const rec = byUidDate[`${uid}_${ds}`];
+          const st = dayStatus(ds, rec);
+          if(st==='absent') absent++;
+          else if(st==='late') late++;
+          if((st==='present'||st==='late') && (!rec.tasks || rec.tasks.length===0)) noWork++;
+        });
+        return {uid, name: employees[uid].name, dept: employees[uid].department, late, absent, noWork};
+      }).sort((a,b)=> (b.absent+b.late) - (a.absent+a.late));
+
+      if(stats.length===0){ statsTbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
+      statsTbl.innerHTML = `
+        <table>
+          <thead><tr><th>الموظف</th><th>القسم</th><th>أيام التأخير</th><th>أيام الغياب</th><th>أيام بدون إنجاز</th></tr></thead>
+          <tbody>${stats.map(s=>`<tr>
+            <td>${esc(s.name)}</td>
+            <td><span class="badge-dept">${esc(s.dept)}</span></td>
+            <td>${s.late ? `<span class="status-pill pill-warn">${s.late}</span>` : '0'}</td>
+            <td>${s.absent ? `<span class="status-pill pill-bad">${s.absent}</span>` : '0'}</td>
+            <td>${s.noWork ? `<span class="status-pill pill-neutral">${s.noWork}</span>` : '0'}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+        <div class="small-note" style="margin:10px;">عدد أيام العمل المحسوبة في الفترة: ${dates.length} يوم (باستثناء الجمعة والسبت)</div>
+      `;
+    }catch(err){
+      console.error(err);
+      statsTbl.innerHTML = `<div class="empty-state">حدث خطأ أثناء حساب الإحصائيات</div>`;
+    }
   });
-  unsubList.push(u3);
 }
 
 function showTasksModal(name, tasks, earlyReason){
   const overlay = el(`
     <div class="modal-overlay">
       <div class="modal-box">
-        <h3>مهام ${esc(name)} اليوم</h3>
+        <h3>مهام ${esc(name)}</h3>
         ${earlyReason ? `<div class="small-note" style="margin-bottom:12px;"><b>سبب الانصراف المبكر:</b> ${esc(earlyReason)}</div>` : ''}
         <div>${tasks.map(t=>`<div class="task-chip" style="display:block;margin-bottom:6px;">✓ ${esc(t.text)}</div>`).join('') || '<span class="muted">لا توجد مهام</span>'}</div>
         <div class="modal-actions"><button class="btn btn-outline btn-block" id="close-modal-btn">إغلاق</button></div>
