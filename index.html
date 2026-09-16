@@ -188,17 +188,24 @@
   .file-row .f-name:hover{text-decoration:underline;}
   .file-row .f-meta{font-size:11.5px;color:var(--sub);margin-top:2px;}
 
-  .emp-stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
-  .emp-stat-card .es-name{font-weight:800;font-size:14px;margin-bottom:2px;}
-  .emp-stat-card .es-dept{font-size:11.5px;color:var(--sub);margin-bottom:10px;}
+  .emp-stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;height:272px;}
+  .emp-stat-card .es-name{font-weight:800;font-size:14px;margin-bottom:2px;flex:none;}
+  .emp-stat-card .es-dept{font-size:11.5px;color:var(--sub);margin-bottom:10px;flex:none;}
   .emp-stat-card .es-centers{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;}
   .emp-stat-card .es-centers .badge-dept{font-size:10.5px;padding:2px 7px;}
-  .emp-stat-card .stat-row{margin-bottom:0;gap:6px;}
+  .emp-stat-card .stat-row{margin-bottom:0;gap:6px;flex:none;}
   .emp-stat-card .stat-box{padding:8px 4px;border-radius:9px;}
   .emp-stat-card .stat-box .num{font-size:18px;}
   .emp-stat-card .stat-box .lbl{font-size:10px;}
   .emp-stat-card .es-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;}
-  .emp-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+  .emp-stat-card .es-centers-list{border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);margin:2px 0 10px;padding:2px 4px;flex:1 1 auto;overflow-y:auto;min-height:0;}
+  .emp-stat-card .es-empty-note{flex:1 1 auto;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:12px;margin-bottom:10px;}
+  .emp-stat-card{border-top:4px solid var(--sub);transition:.15s;}
+  .emp-stat-card.perf-good{border-top-color:var(--good);}
+  .emp-stat-card.perf-warn{border-top-color:var(--warn);}
+  .emp-stat-card.perf-bad{border-top-color:var(--bad);}
+  .emp-stat-card.perf-none{border-top-color:var(--border);}
+  .emp-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;align-items:stretch;}
 
   .center-chip{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fafbfd;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
   .center-chip .cc-name{font-weight:700;font-size:13.5px;}
@@ -338,6 +345,29 @@ function exportRowsToExcel(rows, colSet, filename, employeesMap){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'طلبات');
   XLSX.writeFile(wb, filename);
+}
+/* بطاقة إحصائيات موظف احترافية — تدعم أكثر من مركز مسند لنفس الموظف، وتظهر حتى لو الموظف لسه صفر */
+function centerCardBodyHTML(centerStats){
+  const totalTarget = centerStats.reduce((s,c)=>s+c.target,0);
+  const totalDone = centerStats.reduce((s,c)=>s+c.done,0);
+  const totalRemain = totalTarget - totalDone;
+  const multi = centerStats.length > 1;
+  return `
+    ${centerStats.length ? `<div class="es-centers-list">${centerStats.map(c=>`<div class="es-row"><span>${esc(c.center)}</span><span><b>${c.done}</b>/${c.target}</span></div>`).join('')}</div>` : `<div class="es-empty-note">لا توجد مراكز/طلبات مسندة بعد</div>`}
+    <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
+      <div class="stat-box"><div class="num">${totalTarget}</div><div class="lbl">${multi?'إجمالي المستهدف':'المستهدف'}</div></div>
+      <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${totalDone}</div><div class="lbl">${multi?'إجمالي ما تم':'تم إنجازه'}</div></div>
+      <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${totalRemain}</div><div class="lbl">المتبقي</div></div>
+    </div>
+    <div class="progress-bar" style="margin-top:10px;"><div style="width:${totalTarget?Math.round(totalDone/totalTarget*100):0}%;"></div></div>
+  `;
+}
+function perfClass(target, done){
+  if(!target) return 'perf-none';
+  const pct = done/target*100;
+  if(pct>=90) return 'perf-good';
+  if(pct>=50) return 'perf-warn';
+  return 'perf-bad';
 }
 function authErrMsg(code){
   if(!code) return 'حدث خطأ، حاول مرة أخرى';
@@ -1055,7 +1085,7 @@ function renderDoneSection(box){
   box.innerHTML = `
     <div class="card">
       <h3>🏆 إحصائيات الإدخال لكل موظف</h3>
-      <div class="card-sub">اختر فترة زمنية أو اترك الفترة فارغة لعرض كل الوقت</div>
+      <div class="card-sub">لكل موظف: المراكز المسندة إليه (وتفصيل كل مركز إن كان لديه أكثر من مركز)، والمستهدف وما تم وما تبقى — اختر فترة زمنية أو اترك الفترة فارغة لعرض كل الوقت</div>
       <div class="filter-bar">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="done-from">
@@ -1063,7 +1093,7 @@ function renderDoneSection(box){
         <input type="date" id="done-to">
         <button class="btn btn-outline btn-sm" id="done-all-time">كل الوقت</button>
       </div>
-      <div id="done-leaderboard"><div class="muted">جارِ التحميل...</div></div>
+      <div class="emp-stat-grid" id="done-leaderboard"><div class="muted">جارِ التحميل...</div></div>
     </div>
 
     <div class="card" style="margin-top:18px;">
@@ -1078,15 +1108,25 @@ function renderDoneSection(box){
   `;
 
   let allDone = [];
-  const q = query(collection(db,'tokeenRequests'), where('done','==',true));
-  const unsub = onSnapshot(q, (qs)=>{
+  let allRows = [];
+
+  const q1 = query(collection(db,'tokeenRequests'), where('done','==',true));
+  const unsub1 = onSnapshot(q1, (qs)=>{
     allDone = [];
     qs.forEach(d=> allDone.push({id:d.id, ...d.data()}));
     fillEmpSelect(); draw();
   }, err=>{ console.error(err); const t=box.querySelector('#done-table'); if(t) t.innerHTML=`<div class="empty-state">تعذر تحميل البيانات</div>`; });
-  unsubList.push(unsub);
+  unsubList.push(unsub1);
 
-  watchEmployeesCache(()=>{ fillEmpSelect(); draw(); });
+  const q2 = query(collection(db,'tokeenRequests'));
+  const unsub2 = onSnapshot(q2, (qs)=>{
+    allRows = [];
+    qs.forEach(d=> allRows.push({id:d.id, ...d.data()}));
+    drawLeaderboard();
+  }, err=>{ console.error(err); const b=box.querySelector('#done-leaderboard'); if(b) b.innerHTML=`<div class="empty-state">تعذر تحميل البيانات</div>`; });
+  unsubList.push(unsub2);
+
+  watchEmployeesCache(()=>{ fillEmpSelect(); draw(); drawLeaderboard(); });
 
   function fillEmpSelect(){
     const sel = box.querySelector('#done-emp');
@@ -1108,23 +1148,46 @@ function renderDoneSection(box){
     return true;
   }
 
+  function inAssignPeriod(r){
+    const from = box.querySelector('#done-from').value;
+    const to = box.querySelector('#done-to').value;
+    if(!from && !to) return true;
+    const d = String(r.date||'');
+    if(from && d < from) return false;
+    if(to && d > to) return false;
+    return true;
+  }
+
+  function drawLeaderboard(){
+    const board = box.querySelector('#done-leaderboard');
+    if(!board) return;
+    const rows = allRows.filter(inAssignPeriod);
+    const byUid = {};
+    rows.forEach(r=>{
+      if(!byUid[r.uid]) byUid[r.uid] = {target:0, done:0, centers:{}};
+      byUid[r.uid].target++;
+      if(r.done) byUid[r.uid].done++;
+      const c = r.center || 'بدون مركز';
+      if(!byUid[r.uid].centers[c]) byUid[r.uid].centers[c] = {target:0, done:0};
+      byUid[r.uid].centers[c].target++;
+      if(r.done) byUid[r.uid].centers[c].done++;
+    });
+    const uids = Object.keys(employeesCache).filter(uid=> employeesCache[uid].role!=='admin');
+    if(uids.length===0){ board.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>لا يوجد موظفون مسجلون</div>`; return; }
+    uids.sort((a,b)=> (byUid[b]?.done||0) - (byUid[a]?.done||0) || empName(a).localeCompare(empName(b),'ar'));
+    board.innerHTML = uids.map(uid=>{
+      const s = byUid[uid] || {target:0, done:0, centers:{}};
+      const centerStats = Object.keys(s.centers).sort((a,b)=>a.localeCompare(b,'ar')).map(c=>({center:c, target:s.centers[c].target, done:s.centers[c].done}));
+      return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
+        <div class="es-name">${esc(empName(uid))}</div>
+        <div class="es-dept">${esc(empDept(uid))}</div>
+        ${centerCardBodyHTML(centerStats)}
+      </div>`;
+    }).join('');
+  }
+
   function draw(){
     const periodRows = allDone.filter(inPeriod);
-    const counts = {};
-    periodRows.forEach(r=>{ counts[r.uid] = (counts[r.uid]||0)+1; });
-    const board = box.querySelector('#done-leaderboard');
-    const list = Object.keys(counts).map(uid=>({uid, n:counts[uid]})).sort((a,b)=> b.n-a.n);
-    board.innerHTML = list.length ? list.map((r,i)=>`
-      <div class="leader-row">
-        <div class="leader-rank ${i===0?'top1':i===1?'top2':i===2?'top3':''}">${i+1}</div>
-        <div style="flex:1;">
-          <div class="leader-name">${esc(empName(r.uid))}</div>
-          <div class="leader-dept">${esc(empDept(r.uid))}</div>
-        </div>
-        <div class="leader-nums">${r.n} طلب</div>
-      </div>`).join('') + `<div class="small-note" style="margin-top:12px;">إجمالي ما تم إدخاله في الفترة: ${periodRows.length} طلب</div>`
-      : `<div class="empty-state"><div class="emoji">📊</div>لا توجد طلبات مُدخلة في هذه الفترة</div>`;
-
     const empFilter = box.querySelector('#done-emp').value;
     const search = normalizeDigits(box.querySelector('#done-search').value.trim().toLowerCase());
     let rows = periodRows.filter(r=> !empFilter || r.uid===empFilter);
@@ -1138,7 +1201,7 @@ function renderDoneSection(box){
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; return; }
     const colSet = [];
     rows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
-    rows.sort((a,b)=> String(doneDateOf(b)).localeCompare(String(doneDateOf(a))));
+    rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar') || String(doneDateOf(b)).localeCompare(String(doneDateOf(a))));
     tbl.innerHTML = `
       <table>
         <thead><tr><th>الموظف</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإدخال</th></tr></thead>
@@ -1153,14 +1216,14 @@ function renderDoneSection(box){
     `;
   }
 
-  box.querySelector('#done-from').addEventListener('change', draw);
-  box.querySelector('#done-to').addEventListener('change', draw);
+  box.querySelector('#done-from').addEventListener('change', ()=>{ draw(); drawLeaderboard(); });
+  box.querySelector('#done-to').addEventListener('change', ()=>{ draw(); drawLeaderboard(); });
   box.querySelector('#done-emp').addEventListener('change', draw);
   box.querySelector('#done-search').addEventListener('input', draw);
   box.querySelector('#done-all-time').addEventListener('click', ()=>{
     box.querySelector('#done-from').value='';
     box.querySelector('#done-to').value='';
-    draw();
+    draw(); drawLeaderboard();
   });
 }
 
@@ -1174,6 +1237,7 @@ function renderAdminTab(content){
         <button class="subtab-btn active" data-sub="daily">التقرير اليومي</button>
         <button class="subtab-btn" data-sub="upload">رفع بيانات التقنين</button>
         <button class="subtab-btn" data-sub="requests">سجل طلبات التقنين</button>
+        <button class="subtab-btn" data-sub="done">✅ ما تم إدخاله (الكل)</button>
         <button class="subtab-btn" data-sub="employees">إدارة المستخدمين</button>
       </div>
       <div id="admin-content"></div>
@@ -1188,6 +1252,7 @@ function renderAdminTab(content){
       if(adminSubtab==='daily') renderAdminDailyReport(c);
       else if(adminSubtab==='upload') renderAdminUpload(c);
       else if(adminSubtab==='requests') renderAdminRequestsLog(c);
+      else if(adminSubtab==='done') renderDoneSection(c);
       else if(adminSubtab==='employees') renderAdminEmployees(c);
     });
   });
@@ -1836,9 +1901,9 @@ function renderAdminRequestsLog(container){
           <option value="pending">لم يتم</option>
         </select>
         <select id="log-sort">
-          <option value="default">ترتيب افتراضي</option>
+          <option value="default">ترتيب تلقائي — المركز</option>
           <option value="emp">ترتيب أبجدي — الموظف</option>
-          <option value="center">ترتيب أبجدي — المركز</option>
+          <option value="status">ترتيب — الحالة</option>
         </select>
         <input type="text" id="log-search" placeholder="ابحث برقم الطلب أو أي بيانات...">
       </div>
@@ -1867,19 +1932,21 @@ function renderAdminRequestsLog(container){
     }
     const byUid = {};
     rows.forEach(r=>{
-      if(!byUid[r.uid]) byUid[r.uid] = {target:0, done:0, centers:new Set()};
+      if(!byUid[r.uid]) byUid[r.uid] = {target:0, done:0, centers:{}};
       byUid[r.uid].target++;
       if(r.done) byUid[r.uid].done++;
-      if(r.center) byUid[r.uid].centers.add(r.center);
+      const c = r.center || 'بدون مركز';
+      if(!byUid[r.uid].centers[c]) byUid[r.uid].centers[c] = {target:0, done:0};
+      byUid[r.uid].centers[c].target++;
+      if(r.done) byUid[r.uid].centers[c].done++;
     });
-    const uids = Object.keys(byUid).filter(uid=> !employees[uid] || employees[uid].role!=='admin');
-    if(uids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات مسندة في هذه الفترة</div>`; return; }
+    const uids = Object.keys(employees).filter(uid=> employees[uid].role!=='admin');
+    if(uids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا يوجد موظفون مسجلون</div>`; return; }
     uids.sort((a,b)=> (employees[a]?.name||'').localeCompare(employees[b]?.name||'','ar'));
     cardsBox.innerHTML = uids.map(uid=>{
-      const s = byUid[uid];
-      const remain = s.target - s.done;
-      const centersArr = [...s.centers].sort((a,b)=>a.localeCompare(b,'ar'));
-      return `<div class="emp-stat-card">
+      const s = byUid[uid] || {target:0, done:0, centers:{}};
+      const centerStats = Object.keys(s.centers).sort((a,b)=>a.localeCompare(b,'ar')).map(c=>({center:c, target:s.centers[c].target, done:s.centers[c].done}));
+      return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
         <div class="flex-between" style="align-items:flex-start;">
           <div>
             <div class="es-name">${esc(employees[uid]?.name || 'غير معروف')}</div>
@@ -1887,13 +1954,7 @@ function renderAdminRequestsLog(container){
           </div>
           <button class="btn btn-outline btn-sm btn-auto emp-export-btn" data-uid="${esc(uid)}" title="تصدير طلبات هذا الموظف إلى إكسيل">📤 تصدير</button>
         </div>
-        ${centersArr.length ? `<div class="es-centers">${centersArr.map(c=>`<span class="badge-dept">${esc(c)}</span>`).join('')}</div>` : ''}
-        <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
-          <div class="stat-box"><div class="num">${s.target}</div><div class="lbl">المستهدف</div></div>
-          <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${s.done}</div><div class="lbl">تم إنجازه</div></div>
-          <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${remain}</div><div class="lbl">المتبقي</div></div>
-        </div>
-        <div class="progress-bar" style="margin-top:10px;"><div style="width:${s.target?Math.round(s.done/s.target*100):0}%;"></div></div>
+        ${centerCardBodyHTML(centerStats)}
       </div>`;
     }).join('');
     cardsBox.querySelectorAll('.emp-export-btn').forEach(b=>{
@@ -1930,21 +1991,21 @@ function renderAdminRequestsLog(container){
     rows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
     if(sortMode==='emp'){
       rows.sort((a,b)=> ((employees[a.uid]&&employees[a.uid].name)||'').localeCompare((employees[b.uid]&&employees[b.uid].name)||'','ar'));
-    }else if(sortMode==='center'){
-      rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar'));
-    }else{
+    }else if(sortMode==='status'){
       rows.sort((a,b)=> (b.done?1:0) - (a.done?1:0));
+    }else{
+      rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar'));
     }
     lastColSet = colSet; lastFilteredRows = rows;
     tbl.innerHTML = `
       <table class="sticky-table">
-        <thead><tr><th>الموظف</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>الحالة</th><th>تاريخ الإسناد</th><th>تاريخ الإدخال</th></tr></thead>
+        <thead><tr><th>الموظف</th><th>المركز</th><th>الحالة</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإسناد</th><th>تاريخ الإدخال</th></tr></thead>
         <tbody>${rows.map(r=>`
           <tr class="${r.done?'row-done':''}">
             <td>${esc((employees[r.uid]&&employees[r.uid].name)||'—')}</td>
             <td>${esc(r.center||'—')}</td>
-            ${colSet.map(c=>`<td>${esc(r.data?r.data[c]:'')}</td>`).join('')}
             <td>${r.done ? '<span class="status-pill pill-good">تم</span>' : '<span class="status-pill pill-neutral">لم يتم</span>'}</td>
+            ${colSet.map(c=>`<td>${esc(r.data?r.data[c]:'')}</td>`).join('')}
             <td>${fmtDate(r.date)}</td>
             <td>${r.doneAt ? fmtDateTime(r.doneAt) : '—'}</td>
           </tr>`).join('')}</tbody>
@@ -1954,20 +2015,25 @@ function renderAdminRequestsLog(container){
 
   const u1 = onSnapshot(collection(db,'employees'), qs=>{
     employees={}; qs.forEach(d=> employees[d.id]=d.data());
-    const sel = container.querySelector('#log-emp-filter');
-    if(!sel) return;
-    const cur = sel.value;
-    sel.innerHTML = `<option value="">كل الموظفين</option>` + Object.keys(employees).filter(uid=>employees[uid].role!=='admin').map(uid=>`<option value="${uid}">${esc(employees[uid].name)}</option>`).join('');
-    sel.value = cur;
-    draw(); drawCards();
+    draw(); drawCards(); refreshEmpFilter();
   }, err=>console.error(err));
   unsubList.push(u1);
 
   const u2 = onSnapshot(collection(db,'tokeenRequests'), qs=>{
     allRows = []; qs.forEach(d=> allRows.push({id:d.id, ...d.data()}));
-    draw(); drawCards();
+    draw(); drawCards(); refreshEmpFilter();
   }, err=>console.error(err));
   unsubList.push(u2);
+
+  function refreshEmpFilter(){
+    const sel = container.querySelector('#log-emp-filter');
+    if(!sel) return;
+    const cur = sel.value;
+    const assignedUids = [...new Set(allRows.map(r=>r.uid))].filter(uid=> !employees[uid] || employees[uid].role!=='admin');
+    assignedUids.sort((a,b)=> (employees[a]?.name||'').localeCompare(employees[b]?.name||'','ar'));
+    sel.innerHTML = `<option value="">كل الموظفين</option>` + assignedUids.map(uid=>`<option value="${uid}">${esc(employees[uid]?.name || 'غير معروف')}</option>`).join('');
+    sel.value = assignedUids.includes(cur) ? cur : '';
+  }
 
   container.querySelector('#log-emp-filter').addEventListener('change', draw);
   container.querySelector('#log-status-filter').addEventListener('change', draw);
