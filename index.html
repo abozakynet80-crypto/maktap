@@ -323,12 +323,18 @@ function normalizeDigits(s){
                       .replace(/[۰-۹]/g, d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
 }
 /* تعرّف تلقائي على عمود "المركز" داخل ملف إكسيل */
-const CENTER_HEADER_HINTS = ['مركز','المركز','اسم المركز','center','Center','CENTER'];
+const CENTER_HEADER_HINTS = ['مركز','المركز','اسم المركز','center','sec'];
 function detectCenterColumn(cols){
-  let hit = cols.find(c=> CENTER_HEADER_HINTS.some(h=> String(c).trim()===h));
+  let hit = cols.find(c=> CENTER_HEADER_HINTS.includes(String(c).trim().toLowerCase()));
   if(hit) return hit;
   hit = cols.find(c=> String(c).trim().indexOf('مركز')!==-1 || String(c).toLowerCase().indexOf('center')!==-1);
   return hit || null;
+}
+/* الأعمدة المسموح بعرضها/استخدامها من بيانات الإكسيل (غير عمود المركز الذي يُكتشف تلقائيًا ويُخزَّن منفصلًا) —
+   يُطبَّق هذا الفلتر عند العرض في كل الجداول، فيغطي الملفات القديمة والجديدة معًا دون الحاجة لتعديل البيانات المخزَّنة */
+const ALLOWED_DATA_COLUMNS = ['requestnumber','area','unitname','arabicfullname','regularizationrequestnumber'];
+function filterAllowedCols(keys){
+  return keys.filter(k=> ALLOWED_DATA_COLUMNS.includes(String(k).trim().toLowerCase()));
 }
 function exportRowsToExcel(rows, colSet, filename, employeesMap){
   const data = rows.map(r=>{
@@ -953,7 +959,7 @@ function renderMyRequests(box){
       return;
     }
     const colSet = [];
-    myRows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
+    myRows.forEach(r=> filterAllowedCols(Object.keys(r.data||{})).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
     lastRows = rows; lastColSet = colSet;
     rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar') || (a.done?1:0)-(b.done?1:0) || String(a.date).localeCompare(String(b.date)));
 
@@ -1101,6 +1107,10 @@ function renderDoneSection(box){
       <div class="card-sub">للعرض فقط — غير قابل للتعديل</div>
       <div class="filter-bar">
         <select id="done-emp"><option value="">كل الموظفين</option></select>
+        <select id="done-sort">
+          <option value="center">ترتيب حسب المركز</option>
+          <option value="emp">ترتيب حسب الموظف</option>
+        </select>
         <input type="text" id="done-search" placeholder="ابحث برقم الطلب أو أي جزء من الرقم...">
       </div>
       <div class="table-wrap" id="done-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
@@ -1200,8 +1210,13 @@ function renderDoneSection(box){
     const tbl = box.querySelector('#done-table');
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; return; }
     const colSet = [];
-    rows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
-    rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar') || String(doneDateOf(b)).localeCompare(String(doneDateOf(a))));
+    rows.forEach(r=> filterAllowedCols(Object.keys(r.data||{})).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
+    const sortMode = box.querySelector('#done-sort') ? box.querySelector('#done-sort').value : 'center';
+    if(sortMode==='emp'){
+      rows.sort((a,b)=> empName(a.uid).localeCompare(empName(b.uid),'ar') || String(doneDateOf(b)).localeCompare(String(doneDateOf(a))));
+    }else{
+      rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar') || String(doneDateOf(b)).localeCompare(String(doneDateOf(a))));
+    }
     tbl.innerHTML = `
       <table>
         <thead><tr><th>الموظف</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإدخال</th></tr></thead>
@@ -1219,6 +1234,7 @@ function renderDoneSection(box){
   box.querySelector('#done-from').addEventListener('change', ()=>{ draw(); drawLeaderboard(); });
   box.querySelector('#done-to').addEventListener('change', ()=>{ draw(); drawLeaderboard(); });
   box.querySelector('#done-emp').addEventListener('change', draw);
+  box.querySelector('#done-sort').addEventListener('change', draw);
   box.querySelector('#done-search').addEventListener('input', draw);
   box.querySelector('#done-all-time').addEventListener('click', ()=>{
     box.querySelector('#done-from').value='';
@@ -1875,16 +1891,17 @@ function openEditEmployeeModal(emp){
 function renderAdminRequestsLog(container){
   container.innerHTML = `
     <div class="card">
-      <h3>📊 إحصائيات الموظفين (تحديث تلقائي)</h3>
-      <div class="card-sub">لكل موظف: المراكز المسندة إليه، وإجمالي الطلبات وما تم منها</div>
+      <h3>📊 إحصائيات عامة (تحديث تلقائي)</h3>
+      <div class="card-sub">إجمالي المستهدف وما تم والمتبقي لكل الموظفين — أو ابحث باسم موظف لعرض إحصائياته وحده</div>
       <div class="filter-bar filter-bar-oneline">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="cards-from">
         <label class="muted" style="font-size:12.5px;">إلى</label>
         <input type="date" id="cards-to">
         <button class="btn btn-outline btn-sm" id="cards-all-time">كل الوقت</button>
+        <input type="text" id="emp-stat-search" placeholder="🔍 ابحث باسم الموظف..." style="margin-inline-start:auto;min-width:200px;">
       </div>
-      <div class="emp-stat-grid" id="emp-stat-cards"><div class="muted">جارِ التحميل...</div></div>
+      <div id="emp-stat-cards"><div class="muted">جارِ التحميل...</div></div>
     </div>
 
     <div class="card" style="margin-top:18px;">
@@ -1921,6 +1938,7 @@ function renderAdminRequestsLog(container){
     if(!cardsBox) return;
     const from = container.querySelector('#cards-from').value;
     const to = container.querySelector('#cards-to').value;
+    const searchTerm = (container.querySelector('#emp-stat-search').value||'').trim();
     let rows = allRows;
     if(from || to){
       rows = rows.filter(r=>{
@@ -1942,28 +1960,47 @@ function renderAdminRequestsLog(container){
     });
     const uids = Object.keys(byUid).filter(uid=> !employees[uid] || employees[uid].role!=='admin');
     if(uids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات مسندة في هذه الفترة</div>`; return; }
-    uids.sort((a,b)=> (employees[a]?.name||'').localeCompare(employees[b]?.name||'','ar'));
-    cardsBox.innerHTML = uids.map(uid=>{
-      const s = byUid[uid];
-      const centerStats = Object.keys(s.centers).sort((a,b)=>a.localeCompare(b,'ar')).map(c=>({center:c, target:s.centers[c].target, done:s.centers[c].done}));
-      return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
-        <div class="flex-between" style="align-items:flex-start;">
-          <div>
-            <div class="es-name">${esc(employees[uid]?.name || 'غير معروف')}</div>
-            <div class="es-dept">${esc(employees[uid]?.department || '')}</div>
+
+    if(searchTerm){
+      // وضع البحث: بطاقة تفصيلية لكل موظف يطابق اسمه البحث
+      const matchUids = uids.filter(uid=> String(employees[uid]?.name||'').toLowerCase().includes(searchTerm.toLowerCase()));
+      if(matchUids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا يوجد موظف بهذا الاسم</div>`; return; }
+      matchUids.sort((a,b)=> (employees[a]?.name||'').localeCompare(employees[b]?.name||'','ar'));
+      cardsBox.className = 'emp-stat-grid';
+      cardsBox.innerHTML = matchUids.map(uid=>{
+        const s = byUid[uid];
+        const centerStats = Object.keys(s.centers).sort((a,b)=>a.localeCompare(b,'ar')).map(c=>({center:c, target:s.centers[c].target, done:s.centers[c].done}));
+        return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
+          <div class="flex-between" style="align-items:flex-start;">
+            <div>
+              <div class="es-name">${esc(employees[uid]?.name || 'غير معروف')}</div>
+              <div class="es-dept">${esc(employees[uid]?.department || '')}</div>
+            </div>
+            <button class="btn btn-outline btn-sm btn-auto emp-export-btn" data-uid="${esc(uid)}" title="تصدير طلبات هذا الموظف إلى إكسيل">📤 تصدير</button>
           </div>
-          <button class="btn btn-outline btn-sm btn-auto emp-export-btn" data-uid="${esc(uid)}" title="تصدير طلبات هذا الموظف إلى إكسيل">📤 تصدير</button>
-        </div>
-        ${centerCardBodyHTML(centerStats)}
-      </div>`;
-    }).join('');
+          ${centerCardBodyHTML(centerStats)}
+        </div>`;
+      }).join('');
+    }else{
+      // بدون بحث: إحصائية إجمالية واحدة فقط لكل الموظفين، في خط واحد
+      const totalTarget = uids.reduce((s,uid)=> s+byUid[uid].target, 0);
+      const totalDone = uids.reduce((s,uid)=> s+byUid[uid].done, 0);
+      const totalRemain = totalTarget - totalDone;
+      cardsBox.className = '';
+      cardsBox.innerHTML = `
+        <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
+          <div class="stat-box"><div class="num">${totalTarget}</div><div class="lbl">إجمالي المستهدف</div></div>
+          <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${totalDone}</div><div class="lbl">إجمالي ما تم</div></div>
+          <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${totalRemain}</div><div class="lbl">المتبقي</div></div>
+        </div>`;
+    }
     cardsBox.querySelectorAll('.emp-export-btn').forEach(b=>{
       b.addEventListener('click', ()=>{
         const uid = b.dataset.uid;
         const empRows = rows.filter(r=> r.uid===uid);
         if(empRows.length===0){ toast('لا توجد بيانات لتصديرها لهذا الموظف', 'err'); return; }
         const colSet = [];
-        empRows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
+        empRows.forEach(r=> filterAllowedCols(Object.keys(r.data||{})).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
         const empName = employees[uid]?.name || uid;
         exportRowsToExcel(empRows, colSet, `طلبات_${empName}_${todayCairoStr()}.xlsx`, employees);
       });
@@ -1988,7 +2025,7 @@ function renderAdminRequestsLog(container){
     const tbl = container.querySelector('#log-table');
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; lastColSet=[]; lastFilteredRows=[]; return; }
     const colSet = [];
-    rows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
+    rows.forEach(r=> filterAllowedCols(Object.keys(r.data||{})).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
     if(sortMode==='emp'){
       rows.sort((a,b)=> ((employees[a.uid]&&employees[a.uid].name)||'').localeCompare((employees[b.uid]&&employees[b.uid].name)||'','ar'));
     }else if(sortMode==='status'){
@@ -2041,6 +2078,7 @@ function renderAdminRequestsLog(container){
   container.querySelector('#log-search').addEventListener('input', draw);
   container.querySelector('#cards-from').addEventListener('change', drawCards);
   container.querySelector('#cards-to').addEventListener('change', drawCards);
+  container.querySelector('#emp-stat-search').addEventListener('input', drawCards);
   container.querySelector('#cards-all-time').addEventListener('click', ()=>{
     container.querySelector('#cards-from').value='';
     container.querySelector('#cards-to').value='';
@@ -2152,13 +2190,22 @@ function renderAdminUpload(container){
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
         if(json.length===0){ toast('الملف فارغ أو غير صالح', 'err'); return; }
-        parsedRows = json;
-        const cols = Object.keys(json[0]);
+        const rawCols = Object.keys(json[0]);
+        detectedCenterCol = detectCenterColumn(rawCols);
+
+        // نُبقي فقط على الأعمدة المسموح بها + عمود المركز المكتشف (sec أو المركز)، ونتجاهل أي عمود آخر في الملف
+        let cols = filterAllowedCols(rawCols).sort((a,b)=> ALLOWED_DATA_COLUMNS.indexOf(String(a).trim().toLowerCase()) - ALLOWED_DATA_COLUMNS.indexOf(String(b).trim().toLowerCase()));
+        if(cols.length===0) cols = rawCols; // احتياطًا إن لم يتطابق أي عمود مع الأسماء المتوقعة
+        const keepCols = detectedCenterCol && !cols.includes(detectedCenterCol) ? [...cols, detectedCenterCol] : cols;
+        parsedRows = json.map(row=>{
+          const o = {};
+          keepCols.forEach(c=> o[c] = row[c]);
+          return o;
+        });
 
         container.querySelector('#up-req-field').innerHTML = cols.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
         container.querySelector('#up-reqfield-wrap').style.display='block';
 
-        detectedCenterCol = detectCenterColumn(cols);
         centersMap = {};
         if(detectedCenterCol){
           parsedRows.forEach(row=>{
