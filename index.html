@@ -170,7 +170,7 @@
   .flex-between{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
   .small-note{font-size:12px;color:var(--sub);background:#fafbfd;border:1px dashed var(--border);border-radius:8px;padding:10px 12px;}
   .filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
-  .filter-bar input[type=text], .filter-bar select, .filter-bar input[type=date]{padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;background:#fbfcfe;}
+  .filter-bar input[type=text], .filter-bar select, .filter-bar input[type=date], .filter-bar input[type=month]{padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;background:#fbfcfe;}
   .filter-bar input[type=text]{flex:1;min-width:190px;}
   .filter-bar-oneline{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;}
   .filter-bar-oneline select, .filter-bar-oneline input{flex-shrink:0;}
@@ -303,6 +303,49 @@ function fmtDate(str){
   if(!str) return '—';
   const [y,m,d]=String(str).split('-');
   return `${d}/${m}/${y}`;
+}
+/* التاريخ فقط من Timestamp */
+function fmtDateOnly(ts){
+  if(!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return new Intl.DateTimeFormat('ar-EG', {timeZone:'Africa/Cairo', day:'2-digit', month:'2-digit', year:'numeric'}).format(d);
+}
+/* الساعة والدقيقة بتوقيت القاهرة من Timestamp */
+function cairoHM(ts){
+  if(!ts) return null;
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const parts = new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Cairo',hour12:false,hour:'2-digit',minute:'2-digit'}).formatToParts(d);
+  const o={}; parts.forEach(p=>o[p.type]=p.value);
+  return {h:+o.hour, m:+o.minute};
+}
+/* هل انصرف قبل الموعد (قبل 4 عصرًا) */
+function isEarlyLeave(rec){
+  if(!rec || !rec.checkOut) return false;
+  if(rec.earlyLeaveReason) return true;
+  const t = cairoHM(rec.checkOut);
+  return !!(t && t.h < 16);
+}
+/* أيام العمل بين تاريخين بدون الجمعة والسبت */
+function workDaysBetween(fromStr, toStr){
+  const out=[];
+  if(!fromStr || !toStr || fromStr>toStr) return out;
+  let cur = new Date(fromStr+'T12:00:00');
+  const end = new Date(toStr+'T12:00:00');
+  while(cur<=end){
+    const ds = cur.toISOString().slice(0,10);
+    if(!WEEKEND_DAYS.includes(cur.getDay())) out.push(ds);
+    cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+/* أول وآخر يوم في شهر بصيغة YYYY-MM */
+function monthBounds(m, todayStr){
+  const [y,mo] = m.split('-').map(Number);
+  const first = `${m}-01`;
+  const lastDay = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  let last = `${m}-${String(lastDay).padStart(2,'0')}`;
+  if(last > todayStr) last = todayStr;
+  return {first, last};
 }
 function doneDateOf(r){
   if(r.doneDate) return r.doneDate;
@@ -739,6 +782,7 @@ function renderHomeTab(content){
   const uid = currentUser.uid;
   const today = todayCairoStr();
   const docId = `${uid}_${today}`;
+  const curMonth = today.slice(0,7);
 
   content.appendChild(el(`
     <div class="grid grid-2">
@@ -747,44 +791,162 @@ function renderHomeTab(content){
         <div id="today-body"><div class="muted">جارِ التحميل...</div></div>
       </div>
       <div class="card">
-        <h3>🕒 سجل الحضور والإنجاز — كل الأيام</h3>
-        <div class="table-wrap"><table>
-          <thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th><th>المهام المنجزة</th></tr></thead>
-          <tbody id="history-body"><tr><td colspan="5" class="muted">جارِ التحميل...</td></tr></tbody>
-        </table></div>
+        <div class="flex-between" style="margin-bottom:10px;">
+          <h3 style="margin:0;">📈 إحصائياتي الشهرية</h3>
+          <input type="month" id="att-month" value="${curMonth}" max="${curMonth}"
+                 style="padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;">
+        </div>
+        <div class="stat-row" style="grid-template-columns:repeat(2,1fr);">
+          <div class="stat-box" style="background:var(--good-bg);"><div class="num" id="m-present" style="color:var(--good);">0</div><div class="lbl">أيام الحضور</div></div>
+          <div class="stat-box" style="background:var(--bad-bg);"><div class="num" id="m-absent" style="color:var(--bad);">0</div><div class="lbl">أيام الغياب</div></div>
+          <div class="stat-box" style="background:var(--warn-bg);"><div class="num" id="m-late" style="color:var(--warn);">0</div><div class="lbl">أيام التأخير</div></div>
+          <div class="stat-box"><div class="num" id="m-early">0</div><div class="lbl">انصراف قبل الموعد</div></div>
+        </div>
+        <div class="small-note" style="margin-top:10px;" id="m-note">—</div>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <h3>🕒 سجل الحضور والإنجاز — كل الأيام</h3>
+      <div class="card-sub">يعرض كل أيام العمل (الجمعة والسبت لا تُحتسب غيابًا) مع الحالة وأوقات الحضور والانصراف والمهام</div>
+      <div class="filter-bar">
+        <input type="date" id="att-date" max="${today}">
+        <select id="att-status">
+          <option value="all">كل الحالات</option>
+          <option value="present">حاضر</option>
+          <option value="late">متأخر</option>
+          <option value="absent">غائب</option>
+          <option value="early">انصراف قبل الموعد</option>
+        </select>
+        <button class="btn btn-outline btn-sm" id="att-clear">مسح الفلاتر</button>
+      </div>
+      <div class="table-wrap"><table class="sticky-table">
+        <thead><tr><th>التاريخ</th><th>الحالة</th><th>الحضور</th><th>الانصراف</th><th>المهام المنجزة</th><th>ملاحظات</th></tr></thead>
+        <tbody id="history-body"><tr><td colspan="6" class="muted">جارِ التحميل...</td></tr></tbody>
+      </table></div>
     </div>
   `));
 
+  /* بطاقة اليوم */
   const unsub = onSnapshot(doc(db,'attendance',docId), (snap)=>{
     renderTodayCard(document.getElementById('today-body'), snap.exists()?snap.data():null, docId, today);
   }, err=>console.error(err));
   unsubList.push(unsub);
 
-  const q = query(collection(db,'attendance'), where('uid','==',uid), orderBy('date','desc'));
+  /* سجل كل الأيام — بدون orderBy لتفادي الحاجة لفهرس مركّب في Firestore */
+  let records = {};
+  const q = query(collection(db,'attendance'), where('uid','==',uid));
   const unsub2 = onSnapshot(q, (qs)=>{
-    const rows = [];
-    qs.forEach(d=> rows.push(d.data()));
+    records = {};
+    qs.forEach(d=>{ const r=d.data(); if(r && r.date) records[r.date]=r; });
+    drawStats(); drawTable();
+  }, err=>{
+    console.error(err);
+    const tb = document.getElementById('history-body');
+    if(tb) tb.innerHTML = `<tr><td colspan="6" class="muted">تعذر تحميل السجل — حدّث الصفحة وحاول مرة أخرى</td></tr>`;
+  });
+  unsubList.push(unsub2);
+
+  function firstDateStr(){
+    const ds = Object.keys(records).sort();
+    let start = ds.length ? ds[0] : today;
+    const c = currentEmployee && currentEmployee.createdAt;
+    if(c){
+      const d = c.toDate ? c.toDate() : new Date(c);
+      const cd = new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+      if(cd && cd < start) start = cd;
+    }
+    return start;
+  }
+
+  function statusOf(ds){
+    const rec = records[ds];
+    if(rec && rec.checkIn){
+      const t = cairoHM(rec.checkIn);
+      const late = t && ((t.h>WORK_START_HOUR) || (t.h===WORK_START_HOUR && t.m>0));
+      return late ? 'late' : 'present';
+    }
+    const now = cairoNow();
+    if(ds===today && now.hour<WORK_START_HOUR) return 'pending';
+    return 'absent';
+  }
+
+  function drawStats(){
+    const monthEl = document.getElementById('att-month');
+    if(!monthEl) return;
+    const m = monthEl.value || curMonth;
+    const {first,last} = monthBounds(m, today);
+    const days = workDaysBetween(first, last);
+    let present=0, absent=0, late=0, early=0;
+    days.forEach(ds=>{
+      const st = statusOf(ds);
+      if(st==='present') present++;
+      else if(st==='late'){ late++; present++; }
+      else if(st==='absent') absent++;
+      if(isEarlyLeave(records[ds])) early++;
+    });
+    document.getElementById('m-present').textContent = present;
+    document.getElementById('m-absent').textContent = absent;
+    document.getElementById('m-late').textContent = late;
+    document.getElementById('m-early').textContent = early;
+    document.getElementById('m-note').textContent = days.length
+      ? `عدد أيام العمل بالشهر حتى الآن: ${days.length} يوم (بدون الجمعة والسبت) — أيام التأخير محسوبة ضمن أيام الحضور`
+      : 'لا توجد أيام عمل محتسبة في هذا الشهر بعد';
+  }
+
+  function drawTable(){
     const tbody = document.getElementById('history-body');
     if(!tbody) return;
-    if(rows.length===0){ tbody.innerHTML = `<tr><td colspan="5" class="muted">لا يوجد سجل بعد</td></tr>`; return; }
-    tbody.innerHTML = rows.map((r,i)=>{
-      let statusHtml;
-      if(r.checkOut) statusHtml = r.earlyLeaveReason ? `<span class="status-pill pill-warn">انصراف مبكر</span>` : `<span class="status-pill pill-good">مكتمل</span>`;
-      else if(r.checkIn) statusHtml = `<span class="status-pill pill-neutral">لم ينصرف بعد</span>`;
-      else statusHtml = `<span class="status-pill pill-bad">غياب</span>`;
-      const taskCount = r.tasks ? r.tasks.length : 0;
-      return `<tr><td>${fmtDate(r.date)}</td><td>${fmtTime(r.checkIn)}</td><td>${fmtTime(r.checkOut)}</td><td>${statusHtml}</td>
-        <td>${taskCount ? `<button class="link-btn" data-idx="${i}">${taskCount} مهمة</button>` : '—'}</td></tr>`;
+    const dateFilter = document.getElementById('att-date').value;
+    const statusFilter = document.getElementById('att-status').value;
+
+    let days = workDaysBetween(firstDateStr(), today);
+    Object.keys(records).forEach(ds=>{ if(ds<=today && !days.includes(ds)) days.push(ds); }); // أيام عمل استثنائية (جمعة/سبت بحضور)
+    days = [...new Set(days)].sort().reverse();
+
+    let rows = days.map(ds=>({date:ds, rec:records[ds], status:statusOf(ds)}));
+    if(dateFilter) rows = rows.filter(r=> r.date===dateFilter);
+    if(statusFilter==='early') rows = rows.filter(r=> isEarlyLeave(r.rec));
+    else if(statusFilter!=='all') rows = rows.filter(r=> r.status===statusFilter);
+
+    if(rows.length===0){
+      tbody.innerHTML = `<tr><td colspan="6" class="muted">لا توجد نتائج مطابقة</td></tr>`;
+      return;
+    }
+    const lbl = {present:'حاضر', late:'حاضر (متأخر)', absent:'غائب', pending:'لم يحضر بعد'};
+    const pill = {present:'pill-good', late:'pill-warn', absent:'pill-bad', pending:'pill-neutral'};
+    tbody.innerHTML = rows.map(r=>{
+      const taskCount = r.rec && r.rec.tasks ? r.rec.tasks.length : 0;
+      const notes = [];
+      if(isEarlyLeave(r.rec)) notes.push(`<span class="status-pill pill-warn">انصراف مبكر</span>`);
+      if(r.rec && r.rec.earlyLeaveReason) notes.push(esc(r.rec.earlyLeaveReason));
+      if(r.rec && r.rec.absenceReason) notes.push('سبب الغياب: ' + esc(r.rec.absenceReason));
+      return `<tr>
+        <td>${fmtDate(r.date)}</td>
+        <td><span class="status-pill ${pill[r.status]}">${lbl[r.status]}</span></td>
+        <td>${fmtTime(r.rec && r.rec.checkIn)}</td>
+        <td>${fmtTime(r.rec && r.rec.checkOut)}</td>
+        <td>${taskCount ? `<button class="link-btn day-tasks-btn" data-date="${r.date}">${taskCount} مهمة</button>` : '<span class="muted">—</span>'}</td>
+        <td>${notes.length ? notes.join(' ') : '<span class="muted">—</span>'}</td>
+      </tr>`;
     }).join('');
-    tbody.querySelectorAll('.link-btn').forEach(b=>{
+
+    tbody.querySelectorAll('.day-tasks-btn').forEach(b=>{
       b.addEventListener('click', ()=>{
-        const r = rows[+b.dataset.idx];
-        showTasksModal(currentEmployee.name + ' — ' + fmtDate(r.date), r.tasks||[], r.earlyLeaveReason);
+        const rec = records[b.dataset.date] || {};
+        showTasksModal(currentEmployee.name + ' — ' + fmtDate(b.dataset.date), rec.tasks||[], rec.earlyLeaveReason);
       });
     });
-  }, err=>console.error(err));
-  unsubList.push(unsub2);
+  }
+
+  content.querySelector('#att-month').addEventListener('change', drawStats);
+  content.querySelector('#att-date').addEventListener('change', drawTable);
+  content.querySelector('#att-status').addEventListener('change', drawTable);
+  content.querySelector('#att-clear').addEventListener('click', ()=>{
+    content.querySelector('#att-date').value = '';
+    content.querySelector('#att-status').value = 'all';
+    drawTable();
+  });
 }
 
 function renderTodayCard(container, data, docId, today){
@@ -1633,7 +1795,6 @@ function openEditAttendanceModal(uid, name, dateStr, rec){
       const [h,m] = hhmm.split(':').map(Number);
       // نبني وقتًا بتوقيت القاهرة لليوم المحدد
       const iso = `${dateStr}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`;
-      // تقريب: نفترض إزاحة +02:00/+03:00 حسب التوقيت الصيفي غير مطبق حاليًا في مصر، لذا +02:00 ثابتة
       const d = new Date(iso+'+02:00');
       return Timestamp.fromDate(d);
     }
@@ -1834,9 +1995,7 @@ function openEditEmployeeModal(emp){
     btn.disabled=true; btn.textContent='جارِ الإرسال...';
     try{
       /* لا يمكن لحساب المدير تغيير كلمة مرور مستخدم آخر مباشرة من المتصفح (قيود Firebase Auth).
-         لذلك يتم تسجيل طلب هنا، وتحتاج Cloud Function صغيرة (admin.auth().updateUser) لتنفيذه فعليًا:
-         exports.applyPasswordReset = functions.firestore.document('passwordResetRequests/{id}')
-           .onCreate(async (snap)=>{ const d=snap.data(); await admin.auth().updateUser(d.uid,{password:d.newPassword}); await snap.ref.update({status:'done'}); }); */
+         لذلك يتم تسجيل طلب هنا، وتحتاج Cloud Function صغيرة (admin.auth().updateUser) لتنفيذه فعليًا. */
       await setDoc(doc(collection(db,'passwordResetRequests')), {
         uid: emp.id, name: emp.name, newPassword: '123123',
         requestedBy: currentUser.uid, requestedAt: serverTimestamp(), status: 'pending'
@@ -1925,11 +2084,9 @@ function renderAdminRequestsLog(container){
 
     let totalTarget, totalDone, totalRemain;
     if(!from && !to){
-      // بدون تحديد فترة = إحصائية اليوم الحالي: المستهدف = المتبقي من الأيام السابقة + ما تم إسناده وإدخاله اليوم
       const s = rolloverStats(baseRows);
       totalTarget = s.target; totalDone = s.done; totalRemain = s.target - s.done;
     }else{
-      // فترة محددة: إجمالي ما تم إسناده خلال الفترة، وما تم إدخاله منه، والمتبقي عليه
       const rows = baseRows.filter(r=>{
         const d = String(r.date||'');
         if(from && d<from) return false;
@@ -2080,8 +2237,8 @@ function renderAdminUpload(container){
 
     <div class="card" style="margin-top:18px;">
       <h3>📁 الملفات المرفوعة</h3>
-      <div class="card-sub">اسم الملف، تاريخ الرفع، وعدد الطلبات — تحميل أو حذف</div>
-      <div id="up-files-list"><div class="muted">جارِ التحميل...</div></div>
+      <div class="card-sub">اضغط على اسم الملف لتحميله — الحذف يحذف الملف وكل الطلبات المرتبطة به بعد تأكيد</div>
+      <div class="table-wrap" id="up-files-list"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
     </div>
   `;
 
@@ -2134,7 +2291,7 @@ function renderAdminUpload(container){
         const rawCols = Object.keys(json[0]);
         detectedCenterCol = detectCenterColumn(rawCols);
 
-        // نُبقي فقط على الأعمدة المسموح بها + عمود المركز المكتشف (sec أو المركز)، ونتجاهل أي عمود آخر في الملف
+        // نُبقي فقط على الأعمدة المسموح بها + عمود المركز المكتشف، ونتجاهل أي عمود آخر في الملف
         let cols = filterAllowedCols(rawCols).sort((a,b)=> ALLOWED_DATA_COLUMNS.indexOf(String(a).trim().toLowerCase()) - ALLOWED_DATA_COLUMNS.indexOf(String(b).trim().toLowerCase()));
         if(cols.length===0) cols = rawCols; // احتياطًا إن لم يتطابق أي عمود مع الأسماء المتوقعة
         const keepCols = detectedCenterCol && !cols.includes(detectedCenterCol) ? [...cols, detectedCenterCol] : cols;
@@ -2320,34 +2477,46 @@ function renderAdminUpload(container){
     container.querySelector('#up-emp').value='';
   }
 
-  /* ---- قائمة الملفات المرفوعة ---- */
+  /* ---- جدول الملفات المرفوعة ---- */
   const uf = onSnapshot(query(collection(db,'tokeenFiles'), orderBy('uploadedAt','desc')), qs=>{
     const box = container.querySelector('#up-files-list');
     if(!box) return;
     const files = []; qs.forEach(d=> files.push({id:d.id, ...d.data()}));
     if(files.length===0){ box.innerHTML = `<div class="empty-state">لا توجد ملفات مرفوعة بعد</div>`; return; }
-    box.innerHTML = files.map(f=>{
-      const hasUrl = !!f.downloadURL;
-      return `
-      <div class="file-row">
-        <div class="f-info">
-          <div class="f-name" data-url="${esc(f.downloadURL||'')}" data-name="${esc(f.fileName||'ملف')}" ${hasUrl?'':'style="cursor:default;color:var(--sub);"'}>📄 ${esc(f.fileName||'ملف')}</div>
-          <div class="f-meta">رفعه: ${esc(f.uploaderName||'—')} • ${f.uploadedAt?fmtDateTime(f.uploadedAt):'—'} • عدد الطلبات: ${f.rowCount||0}${f.centers&&f.centers.length?` • ${f.centers.map(esc).join('، ')}`:''}${hasUrl?'':' • <span style="color:var(--bad);">نسخة التنزيل غير متاحة</span>'}</div>
-        </div>
-        <div class="action-stack">
-          <button class="btn btn-outline btn-sm dl-file-btn" data-url="${esc(f.downloadURL||'')}" data-name="${esc(f.fileName||'ملف')}" ${hasUrl?'':'disabled'}>⬇ تحميل</button>
-          <button class="btn btn-danger btn-sm del-file-btn" data-id="${f.id}">حذف</button>
-        </div>
-      </div>
-    `;}).join('');
-    function downloadFile(url, name){
-      if(!url){ toast('الرابط غير متاح', 'err'); return; }
-      const a = document.createElement('a');
-      a.href = url; a.download = name; a.target='_blank';
-      document.body.appendChild(a); a.click(); a.remove();
-    }
-    box.querySelectorAll('.f-name').forEach(el2=> el2.addEventListener('click', ()=> downloadFile(el2.dataset.url, el2.dataset.name)));
-    box.querySelectorAll('.dl-file-btn').forEach(b=> b.addEventListener('click', ()=> downloadFile(b.dataset.url, b.dataset.name)));
+    box.innerHTML = `
+      <table class="sticky-table">
+        <thead><tr>
+          <th>اسم الملف</th><th>القائم بالرفع</th><th>تاريخ الرفع</th><th>توقيت الرفع</th>
+          <th>عدد الطلبات</th><th>عدد المراكز</th><th>حذف</th>
+        </tr></thead>
+        <tbody>
+          ${files.map(f=>{
+            const hasUrl = !!f.downloadURL;
+            const centers = f.centers || [];
+            const nameCell = hasUrl
+              ? `<button class="link-btn dl-file-btn" data-url="${esc(f.downloadURL)}" data-name="${esc(f.fileName||'ملف')}">📄 ${esc(f.fileName||'ملف')}</button>`
+              : `<span class="muted" title="نسخة التنزيل غير متاحة">📄 ${esc(f.fileName||'ملف')}</span>`;
+            return `<tr>
+              <td>${nameCell}</td>
+              <td>${esc(f.uploaderName||'—')}</td>
+              <td>${f.uploadedAt ? fmtDateOnly(f.uploadedAt) : '—'}</td>
+              <td>${f.uploadedAt ? fmtTime(f.uploadedAt) : '—'}</td>
+              <td>${f.rowCount||0}</td>
+              <td title="${esc(centers.join('، '))}">${centers.length}</td>
+              <td><button class="btn btn-danger btn-sm del-file-btn" data-id="${esc(f.id)}">حذف</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+    box.querySelectorAll('.dl-file-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        if(!b.dataset.url){ toast('الرابط غير متاح', 'err'); return; }
+        const a = document.createElement('a');
+        a.href = b.dataset.url; a.download = b.dataset.name; a.target='_blank';
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+    });
     box.querySelectorAll('.del-file-btn').forEach(b=>{
       b.addEventListener('click', ()=> confirmDeleteFile(files.find(f=>f.id===b.dataset.id)));
     });
@@ -2363,7 +2532,7 @@ function renderAdminUpload(container){
     const overlay = el(`
       <div class="modal-overlay">
         <div class="modal-box">
-          <h3>حذف ملف: ${esc(f.fileName||'')}</h3>
+          <h3>⚠️ تأكيد حذف ملف: ${esc(f.fileName||'')}</h3>
           <div class="modal-sub" id="del-file-checking">جارِ التحقق من الطلبات المرتبطة بالملف...</div>
           <div class="modal-actions">
             <button class="btn btn-outline" id="dfc-cancel">إلغاء</button>
@@ -2391,11 +2560,11 @@ function renderAdminUpload(container){
     const doneCount = linkedRequests.filter(r=>r.done).length;
     const sub = overlay.querySelector('#del-file-checking');
     if(linkedRequests.length===0){
-      sub.innerHTML = `لم يتم العثور على طلبات مرتبطة بهذا الملف بشكل مؤكد. سيتم حذف الملف فقط.`;
+      sub.innerHTML = `لم يتم العثور على طلبات مرتبطة بهذا الملف بشكل مؤكد. سيتم حذف الملف فقط. هل أنت متأكد؟`;
     }else if(doneCount>0){
       sub.innerHTML = `⚠️ هذا الملف يحتوي على <b>${linkedRequests.length}</b> طلب، منها <b style="color:var(--bad);">${doneCount}</b> طلب تم إدخاله بالفعل من قبل الموظفين. حذف الملف سيحذف كل هذه الطلبات نهائيًا بما فيها ما تم إدخاله. هل أنت متأكد؟`;
     }else{
-      sub.innerHTML = `سيتم حذف الملف وعدد ${linkedRequests.length} طلب مرتبط به (لم يتم إدخال أي منها بعد).`;
+      sub.innerHTML = `سيتم حذف الملف وعدد <b>${linkedRequests.length}</b> طلب مرتبط به (لم يتم إدخال أي منها بعد). هل أنت متأكد؟`;
     }
     const confirmBtn = overlay.querySelector('#dfc-confirm');
     confirmBtn.disabled = false;
