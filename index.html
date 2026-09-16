@@ -869,14 +869,18 @@ function renderMyRequests(box){
         <h3 style="margin:0;">📁 الطلبات المسندة إليّ</h3>
         <button class="btn btn-outline btn-sm btn-auto" id="my-export-btn">📤 تصدير إكسيل</button>
       </div>
-      <div class="card-sub">اضغط «تم الإدخال» أمام الطلب لينتقل إلى قسم «ما تم إدخاله». الزر ثابت على اليمين أثناء تمرير الجدول — التصدير يعتمد على الفلاتر المطبقة حاليًا.</div>
+      <div class="card-sub">اضغط «تم الإدخال» أمام الطلب لينتقل إلى قسم «ما تم إدخاله»، أو حدد أكثر من طلب بالمربعات واضغط «تم إدخال المحدد». الجدول مرتب تلقائيًا حسب المركز. التصدير يعتمد على الفلاتر المطبقة حاليًا.</div>
       <div class="filter-bar">
         <input type="text" id="mine-search" placeholder="ابحث برقم الطلب أو أي جزء منه...">
+        <select id="mine-center-filter"><option value="">كل المراكز</option></select>
         <select id="mine-filter">
           <option value="pending">لم يتم إدخاله</option>
           <option value="all">الكل</option>
           <option value="done">تم إدخاله</option>
         </select>
+      </div>
+      <div class="filter-bar" id="mine-bulk-bar" style="justify-content:flex-start;">
+        <button class="btn btn-primary btn-sm btn-auto" id="mine-bulk-done-btn" disabled>✓ تم إدخال المحدد</button>
       </div>
       <div class="table-wrap" id="my-requests-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
     </div>
@@ -885,6 +889,7 @@ function renderMyRequests(box){
   let myRows = [];
   let lastRows = [];
   let lastColSet = [];
+  let selectedIds = new Set();
   const q = query(collection(db,'tokeenRequests'), where('uid','==',currentUser.uid));
   const unsub = onSnapshot(q, (qs)=>{
     myRows = [];
@@ -899,27 +904,42 @@ function renderMyRequests(box){
     if(!wrap) return;
     const mode = box.querySelector('#mine-filter').value;
     const search = normalizeDigits(box.querySelector('#mine-search').value.trim().toLowerCase());
+
+    const centerSel = box.querySelector('#mine-center-filter');
+    const centers = [...new Set(myRows.map(r=>r.center).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+    const prevCenterVal = centerSel.value;
+    centerSel.innerHTML = `<option value="">كل المراكز</option>` + centers.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    centerSel.value = centers.includes(prevCenterVal) ? prevCenterVal : '';
+    const centerFilter = centerSel.value;
+
     let rows = myRows.filter(r=> mode==='all' ? true : (mode==='done' ? r.done : !r.done));
+    if(centerFilter) rows = rows.filter(r=> r.center===centerFilter);
     if(search){
       rows = rows.filter(r=> normalizeDigits(JSON.stringify(r.data||{}) + ' ' + (r.center||'')).toLowerCase().includes(search));
     }
     if(rows.length===0){
       wrap.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>${myRows.length ? 'لا توجد نتائج مطابقة' : 'لا توجد طلبات مسندة إليك حاليًا'}</div>`;
-      lastRows = []; lastColSet = [];
+      lastRows = []; lastColSet = []; selectedIds.clear(); updateBulkBar();
       return;
     }
     const colSet = [];
     myRows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
     lastRows = rows; lastColSet = colSet;
-    rows.sort((a,b)=> (a.done?1:0)-(b.done?1:0) || String(a.date).localeCompare(String(b.date)));
+    rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar') || (a.done?1:0)-(b.done?1:0) || String(a.date).localeCompare(String(b.date)));
+
+    const stillPending = new Set(rows.filter(r=>!r.done).map(r=>r.id));
+    [...selectedIds].forEach(id=>{ if(!stillPending.has(id)) selectedIds.delete(id); });
+
     wrap.innerHTML = `
       <table>
         <thead><tr>
+          <th style="width:32px;"><input type="checkbox" id="sel-all-chk"></th>
           <th class="col-action">الإدخال</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإسناد</th>
         </tr></thead>
         <tbody>
           ${rows.map(r=>`
             <tr class="${r.done?'row-done':''}">
+              <td>${r.done ? '' : `<input type="checkbox" class="row-chk" data-id="${r.id}" ${selectedIds.has(r.id)?'checked':''}>`}</td>
               <td class="col-action">
                 ${r.done
                   ? `<div class="action-stack">
@@ -937,7 +957,63 @@ function renderMyRequests(box){
     `;
     wrap.querySelectorAll('.mark-btn').forEach(b=> b.addEventListener('click', ()=> setDone(b, b.dataset.id, true)));
     wrap.querySelectorAll('.undo-btn').forEach(b=> b.addEventListener('click', ()=> setDone(b, b.dataset.id, false)));
+    wrap.querySelectorAll('.row-chk').forEach(chk=>{
+      chk.addEventListener('change', ()=>{
+        if(chk.checked) selectedIds.add(chk.dataset.id); else selectedIds.delete(chk.dataset.id);
+        syncSelectAllState(); updateBulkBar();
+      });
+    });
+    const selAll = wrap.querySelector('#sel-all-chk');
+    selAll.addEventListener('change', ()=>{
+      wrap.querySelectorAll('.row-chk').forEach(chk=>{
+        chk.checked = selAll.checked;
+        if(selAll.checked) selectedIds.add(chk.dataset.id); else selectedIds.delete(chk.dataset.id);
+      });
+      updateBulkBar();
+    });
+    syncSelectAllState();
+    updateBulkBar();
   }
+
+  function syncSelectAllState(){
+    const wrap = box.querySelector('#my-requests-table');
+    if(!wrap) return;
+    const chks = wrap.querySelectorAll('.row-chk');
+    const selAll = wrap.querySelector('#sel-all-chk');
+    if(!selAll) return;
+    selAll.checked = chks.length>0 && [...chks].every(c=>c.checked);
+  }
+
+  function updateBulkBar(){
+    const btn = box.querySelector('#mine-bulk-done-btn');
+    if(!btn) return;
+    const n = selectedIds.size;
+    btn.textContent = n>0 ? `✓ تم إدخال المحدد (${n})` : '✓ تم إدخال المحدد';
+    btn.disabled = n===0;
+  }
+
+  box.querySelector('#mine-bulk-done-btn').addEventListener('click', async ()=>{
+    const ids = [...selectedIds];
+    if(ids.length===0) return;
+    const btn = box.querySelector('#mine-bulk-done-btn');
+    btn.disabled = true; btn.textContent = 'جارِ التحديث...';
+    try{
+      const chunkSize = 450;
+      for(let i=0;i<ids.length;i+=chunkSize){
+        const chunk = ids.slice(i,i+chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(id=> batch.update(doc(db,'tokeenRequests',id), {done:true, doneAt: serverTimestamp(), doneDate: todayCairoStr()}));
+        await batch.commit();
+      }
+      toast(`تم تحديد ${ids.length} طلب كـ«تم الإدخال»`, 'ok');
+      selectedIds.clear();
+      updateBulkBar();
+    }catch(err){
+      console.error(err);
+      toast('حدث خطأ أثناء التحديث الجماعي، حاول مرة أخرى', 'err');
+      updateBulkBar();
+    }
+  });
 
   async function setDone(btn, id, val){
     btn.disabled = true;
@@ -957,6 +1033,7 @@ function renderMyRequests(box){
 
   box.querySelector('#mine-filter').addEventListener('change', draw);
   box.querySelector('#mine-search').addEventListener('input', draw);
+  box.querySelector('#mine-center-filter').addEventListener('change', draw);
   box.querySelector('#my-export-btn').addEventListener('click', ()=>{
     if(lastRows.length===0){ toast('لا توجد بيانات لتصديرها', 'err'); return; }
     exportRowsToExcel(lastRows, lastColSet, `طلباتي_المسندة_${todayCairoStr()}.xlsx`);
