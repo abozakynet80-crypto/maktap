@@ -785,6 +785,7 @@ function renderHomeTab(content){
   const curMonth = today.slice(0,7);
 
   content.appendChild(el(`
+   <div>
     <div class="grid grid-2">
       <div class="card" id="today-card">
         <h3>📋 حالة اليوم — ${fmtDate(today)}</h3>
@@ -825,6 +826,7 @@ function renderHomeTab(content){
         <tbody id="history-body"><tr><td colspan="6" class="muted">جارِ التحميل...</td></tr></tbody>
       </table></div>
     </div>
+   </div>
   `));
 
   /* بطاقة اليوم */
