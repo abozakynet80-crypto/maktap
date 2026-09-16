@@ -605,9 +605,17 @@ function renderApp(){
         </div>
       </div>
       <div class="tabs" id="tabs-row">
-        ${isAdmin ? `` : `<button class="tab-btn" data-tab="home">الرئيسية</button>`}
-        ${isAdmin ? `` : `<button class="tab-btn" data-tab="tokeen">أعمال التقنين</button>`}
-        ${isAdmin ? `<button class="tab-btn" data-tab="admin">لوحة المدير</button>` : ``}
+        ${isAdmin ? `
+          <button class="tab-btn" data-tab="admin-daily">التقرير اليومي</button>
+          <button class="tab-btn" data-tab="admin-upload">رفع بيانات التقنين</button>
+          <button class="tab-btn" data-tab="admin-requests">سجل طلبات التقنين</button>
+          <button class="tab-btn" data-tab="admin-done">✅ ما تم إدخاله (الكل)</button>
+          <button class="tab-btn" data-tab="admin-employees">إدارة المستخدمين</button>
+        ` : `
+          <button class="tab-btn" data-tab="home">قسم الحضور والانصراف</button>
+          <button class="tab-btn" data-tab="mine">📁 قسم طلباتي المسندة</button>
+          <button class="tab-btn" data-tab="done">✅ قسم ما تم إدخاله للكل</button>
+        `}
       </div>
       <div class="container" id="tab-content"></div>
     </div>
@@ -616,7 +624,7 @@ function renderApp(){
   shell.querySelector('#logout-btn').addEventListener('click', ()=> signOut(auth));
   shell.querySelector('#account-btn').addEventListener('click', openAccountModal);
   shell.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
-  switchTab(isAdmin ? 'admin' : 'home');
+  switchTab(isAdmin ? 'admin-daily' : 'home');
 }
 
 function switchTab(tab){
@@ -627,8 +635,13 @@ function switchTab(tab){
   content.innerHTML = '';
   clearSubs();
   if(tab==='home') renderHomeTab(content);
-  else if(tab==='tokeen') renderTokeenTab(content);
-  else if(tab==='admin') renderAdminTab(content);
+  else if(tab==='mine') renderMyRequests(content);
+  else if(tab==='done') renderDoneSection(content);
+  else if(tab==='admin-daily') renderAdminDailyReport(content);
+  else if(tab==='admin-upload') renderAdminUpload(content);
+  else if(tab==='admin-requests') renderAdminRequestsLog(content);
+  else if(tab==='admin-done') renderDoneSection(content);
+  else if(tab==='admin-employees') renderAdminEmployees(content);
 }
 
 /* ============ ACCOUNT MODAL (حسابي) ============ */
@@ -895,29 +908,6 @@ function empName(uid){ return (employeesCache[uid] && employeesCache[uid].name) 
 function empDept(uid){ return (employeesCache[uid] && employeesCache[uid].department) || ''; }
 
 /* ============ TOKEEN TAB ============ */
-function renderTokeenTab(content){
-  content.appendChild(el(`
-    <div>
-      <div class="subtab-row" id="tokeen-subtabs">
-        <button class="subtab-btn active" data-sub="mine">📁 طلباتي المسندة</button>
-        <button class="subtab-btn" data-sub="done">✅ ما تم إدخاله (الكل)</button>
-      </div>
-      <div id="tokeen-content"></div>
-    </div>
-  `));
-  const box = content.querySelector('#tokeen-content');
-  content.querySelectorAll('#tokeen-subtabs .subtab-btn').forEach(b=>{
-    b.addEventListener('click', ()=>{
-      content.querySelectorAll('#tokeen-subtabs .subtab-btn').forEach(x=> x.classList.toggle('active', x===b));
-      box.innerHTML='';
-      if(b.dataset.sub==='mine') renderMyRequests(box);
-      else renderDoneSection(box);
-    });
-  });
-  watchEmployeesCache();
-  renderMyRequests(box);
-}
-
 function renderMyRequests(box){
   box.innerHTML = `
     <div class="card">
@@ -1268,37 +1258,6 @@ function renderDoneSection(box){
 }
 
 /* ============ ADMIN TAB ============ */
-let adminSubtab = 'daily';
-function renderAdminTab(content){
-  adminSubtab = 'daily';
-  content.appendChild(el(`
-    <div>
-      <div class="subtab-row" id="admin-subtabs">
-        <button class="subtab-btn active" data-sub="daily">التقرير اليومي</button>
-        <button class="subtab-btn" data-sub="upload">رفع بيانات التقنين</button>
-        <button class="subtab-btn" data-sub="requests">سجل طلبات التقنين</button>
-        <button class="subtab-btn" data-sub="done">✅ ما تم إدخاله (الكل)</button>
-        <button class="subtab-btn" data-sub="employees">إدارة المستخدمين</button>
-      </div>
-      <div id="admin-content"></div>
-    </div>
-  `));
-  const c = content.querySelector('#admin-content');
-  content.querySelectorAll('#admin-subtabs .subtab-btn').forEach(b=>{
-    b.addEventListener('click', ()=>{
-      content.querySelectorAll('#admin-subtabs .subtab-btn').forEach(x=>x.classList.toggle('active', x===b));
-      adminSubtab = b.dataset.sub;
-      c.innerHTML='';
-      if(adminSubtab==='daily') renderAdminDailyReport(c);
-      else if(adminSubtab==='upload') renderAdminUpload(c);
-      else if(adminSubtab==='requests') renderAdminRequestsLog(c);
-      else if(adminSubtab==='done') renderDoneSection(c);
-      else if(adminSubtab==='employees') renderAdminEmployees(c);
-    });
-  });
-  renderAdminDailyReport(c);
-}
-
 function renderAdminDailyReport(container){
   if(!container) return;
   const today = todayCairoStr();
