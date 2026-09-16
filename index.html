@@ -113,7 +113,7 @@
   .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:70vh;}
   .table-wrap table{border:none;}
 
-  .col-action{position:sticky;right:0;z-index:3;min-width:132px;box-shadow:-6px 0 8px -6px rgba(20,30,60,.25);}
+  .col-action{position:sticky;right:0;z-index:3;min-width:210px;box-shadow:-6px 0 8px -6px rgba(20,30,60,.25);}
   thead .col-action{z-index:5;}
   tr.row-done td{background:var(--good-bg);}
   tr.row-done .col-action{background:var(--good-bg);}
@@ -211,6 +211,33 @@
   .center-chip .cc-name{font-weight:700;font-size:13.5px;}
   .center-chip .cc-count{font-size:11.5px;color:var(--sub);}
   .center-chip select{min-width:200px;}
+
+  /* ==== طلبات الاستيفاء ==== */
+  .btn-istifa{background:#f6b93b;color:#5b3d00;}
+  .btn-istifa:hover{background:#e8a71f;}
+  tr.row-istifa td{background:#fff8e6;}
+  tr.row-istifa .col-action{background:#fff8e6;}
+
+  /* ==== نوتة المهام اليومية ==== */
+  .notebook-card{border-top:4px solid var(--brand);}
+  .note-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;}
+  .note-row .n-text{flex:1;min-width:0;padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;background:#fbfcfe;}
+  .note-row .n-count{width:78px;flex:none;padding:10px 6px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;background:#fbfcfe;text-align:center;}
+  .note-row .n-text:focus,.note-row .n-count:focus{outline:none;border-color:var(--brand);background:#fff;}
+  .note-row .n-save{flex:none;}
+  .saved-task{display:flex;align-items:center;gap:8px;background:var(--good-bg);border:1px solid #cdeadd;border-radius:10px;padding:9px 12px;margin-bottom:7px;}
+  .saved-task .st-num{width:24px;height:24px;border-radius:50%;background:var(--good);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;flex:none;}
+  .saved-task .st-text{flex:1;font-size:13.5px;font-weight:700;color:#14664a;word-break:break-word;white-space:normal;}
+  .saved-task .st-count{background:#fff;border:1px solid #cdeadd;color:var(--good);border-radius:14px;padding:2px 10px;font-size:12px;font-weight:800;flex:none;}
+  .saved-task .st-time{font-size:11px;color:var(--sub);flex:none;}
+  .st-del{background:none;border:none;color:var(--bad);font-size:17px;font-weight:800;flex:none;line-height:1;}
+  .motiv-banner{display:flex;align-items:flex-start;gap:10px;background:linear-gradient(135deg,var(--brand-light),#eef4ff);border:1px solid #d9e7f7;border-radius:12px;padding:12px 14px;margin-bottom:14px;}
+  .motiv-banner .mb-emoji{font-size:26px;flex:none;line-height:1.2;}
+  .motiv-banner .mb-title{font-weight:800;font-size:14px;}
+  .motiv-banner .mb-sub{font-size:12px;color:var(--sub);margin-top:2px;}
+  .badge-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .ach-badge{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:3px 11px;font-size:11.5px;font-weight:700;color:#a9b2c0;}
+  .ach-badge.on{background:#fff8e6;border-color:#f0d089;color:#8a6200;}
 </style>
 </head>
 <body>
@@ -228,7 +255,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where,
-  onSnapshot, serverTimestamp, writeBatch, orderBy, Timestamp
+  onSnapshot, serverTimestamp, writeBatch, orderBy, Timestamp, arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject
@@ -355,18 +382,19 @@ function doneDateOf(r){
   }
   return '';
 }
-/* إحصائية "اليوم الحالي" التراكمية: المستهدف = المتبقي (غير المُدخَل) من كل الأيام السابقة + ما تم إدخاله اليوم بالفعل،
-   بحيث يتراكم المتبقي من أمس تلقائيًا على مستهدف اليوم الجديد */
+/* إحصائية "اليوم الحالي" التراكمية */
 function rolloverStats(rows){
+  rows = (rows||[]).filter(r=> !(r.istifa && !r.done));   // طلبات الاستيفاء خارج الإحصائيات
   const remainingNow = rows.filter(r=>!r.done).length;
   const doneToday = rows.filter(r=> r.done && doneDateOf(r)===todayCairoStr()).length;
   return {target: remainingNow+doneToday, done: doneToday};
 }
-/* إحصائية فترة محددة: المستهدف = عدد ما أُسنِد خلال الفترة، وما تم منه (بغض النظر عن تاريخ الإدخال) */
+/* إحصائية فترة محددة */
 function periodStats(rows){
+  rows = (rows||[]).filter(r=> !(r.istifa && !r.done));   // طلبات الاستيفاء خارج الإحصائيات
   return {target: rows.length, done: rows.filter(r=>r.done).length};
 }
-/* تجميع صفوف الطلبات حسب الموظف ثم حسب المركز، مع تطبيق دالة الإحصاء المطلوبة (تراكمية أو لفترة) على كل مجموعة */
+/* تجميع صفوف الطلبات حسب الموظف ثم حسب المركز */
 function groupStatsByUidAndCenter(rows, statFn){
   const buckets = {};
   rows.forEach(r=>{
@@ -403,8 +431,7 @@ function detectCenterColumn(cols){
   hit = cols.find(c=> String(c).trim().indexOf('مركز')!==-1 || String(c).toLowerCase().indexOf('center')!==-1);
   return hit || null;
 }
-/* الأعمدة المسموح بعرضها/استخدامها من بيانات الإكسيل (غير عمود المركز الذي يُكتشف تلقائيًا ويُخزَّن منفصلًا) —
-   يُطبَّق هذا الفلتر عند العرض في كل الجداول، فيغطي الملفات القديمة والجديدة معًا دون الحاجة لتعديل البيانات المخزَّنة */
+/* الأعمدة المسموح بعرضها/استخدامها من بيانات الإكسيل */
 const ALLOWED_DATA_COLUMNS = ['requestnumber','area','unitname','arabicfullname','regularizationrequestnumber'];
 function filterAllowedCols(keys){
   return keys.filter(k=> ALLOWED_DATA_COLUMNS.includes(String(k).trim().toLowerCase()));
@@ -425,7 +452,7 @@ function exportRowsToExcel(rows, colSet, filename, employeesMap){
   XLSX.utils.book_append_sheet(wb, ws, 'طلبات');
   XLSX.writeFile(wb, filename);
 }
-/* بطاقة إحصائيات موظف احترافية — تدعم أكثر من مركز مسند لنفس الموظف، وتظهر حتى لو الموظف لسه صفر */
+/* بطاقة إحصائيات موظف */
 function centerCardBodyHTML(centerStats){
   const totalTarget = centerStats.reduce((s,c)=>s+c.target,0);
   const totalDone = centerStats.reduce((s,c)=>s+c.done,0);
@@ -457,6 +484,171 @@ function authErrMsg(code){
   if(code.includes('weak-password')) return 'كلمة المرور قصيرة — 6 أحرف أو أرقام على الأقل';
   if(code.includes('network')) return 'تعذر الاتصال بالإنترنت';
   return 'حدث خطأ، حاول مرة أخرى';
+}
+
+/* ============ نوتة المهام اليومية (جديد) ============ */
+const DAILY_TASK_GOAL = 5;   // هدف عدد المهام اليومي (للتحفيز فقط)
+let _tasksSig = null;
+
+function taskLabel(t){
+  if(!t) return '';
+  const hasCount = (t.count!==undefined && t.count!==null && t.count!=='');
+  return (t.text||'') + (hasCount ? ` (عدد: ${t.count})` : '');
+}
+function tasksTotalCount(tasks){
+  return (tasks||[]).reduce((s,t)=> s + (Number(t && t.count)||0), 0);
+}
+function motivFor(n, total){
+  if(n===0) return {e:'🚀', t:'يلا نبدأ اليوم بأول إنجاز!', s:'اكتب أول مهمة واضغط «حفظ» — كل مهمة تتسجل باسمك فورًا'};
+  if(n===1) return {e:'👏', t:'أول مهمة اتسجلت — بداية موفقة!', s:`باقي ${DAILY_TASK_GOAL-n} مهام للوصول لهدف اليوم`};
+  if(n<DAILY_TASK_GOAL) return {e:'💪', t:`ماشي بخطى ثابتة — ${n} مهام خلصت!`, s:`باقي ${DAILY_TASK_GOAL-n} مهمة وتحقق هدف اليوم${total?` — إجمالي ما أنجزته: ${total}`:''}`};
+  if(n<DAILY_TASK_GOAL+3) return {e:'🏆', t:'حققت هدف اليوم — تحية ليك!', s:`${n} مهمة${total?` بإجمالي عدد ${total}`:''} — أي مهمة زيادة تُحسب لك نقطة إضافية`};
+  return {e:'🌟', t:'أداء متميز جدًا اليوم!', s:`${n} مهمة${total?` بإجمالي عدد ${total}`:''} — إنت من الأعلى إنجازًا، استمر`};
+}
+function achBadges(n, total){
+  return [
+    {on:n>=1, txt:'🥉 أول مهمة'},
+    {on:n>=3, txt:'🥈 3 مهام'},
+    {on:n>=DAILY_TASK_GOAL, txt:'🥇 هدف اليوم'},
+    {on:n>=8, txt:'🔥 8 مهام'},
+    {on:total>=50, txt:'🚀 50+ إنجاز'}
+  ].map(b=>`<span class="ach-badge ${b.on?'on':''}">${b.txt}</span>`).join('');
+}
+function noteRowHTML(){
+  return `<div class="note-row">
+    <input type="text" class="n-text" placeholder="اكتب المهمة التي أنجزتها...">
+    <input type="text" class="n-count" placeholder="العدد">
+    <button class="btn btn-sm btn-enter n-save">💾 حفظ</button>
+  </div>`;
+}
+/* حفظ مهمة واحدة فورًا أثناء اليوم */
+async function saveTaskFromRow(row, docId){
+  const textEl = row.querySelector('.n-text');
+  const cntEl  = row.querySelector('.n-count');
+  const btn    = row.querySelector('.n-save');
+  const text = textEl.value.trim();
+  const countRaw = normalizeDigits(cntEl.value).trim();
+  if(!text){ toast('اكتب اسم المهمة أولاً', 'err'); textEl.focus(); return; }
+  if(countRaw!=='' && (isNaN(Number(countRaw)) || Number(countRaw)<0)){ toast('العدد لازم يكون رقمًا صحيحًا', 'err'); cntEl.focus(); return; }
+  const t = {text, at: Timestamp.now()};
+  if(countRaw!=='') t.count = Number(countRaw);
+  btn.disabled = true; btn.textContent = '...';
+  textEl.value=''; cntEl.value='';
+  try{
+    await updateDoc(doc(db,'attendance',docId), {tasks: arrayUnion(t)});
+    toast('تم حفظ المهمة ✔ استمر كده', 'ok');
+  }catch(err){
+    console.error(err);
+    textEl.value = text; cntEl.value = countRaw;
+    toast('تعذر حفظ المهمة، حاول مرة أخرى', 'err');
+  }
+  btn.disabled = false; btn.textContent = '💾 حفظ';
+}
+async function deleteSavedTask(docId, saved, idx){
+  if(!confirm('حذف هذه المهمة من سجل اليوم؟')) return;
+  try{
+    await updateDoc(doc(db,'attendance',docId), {tasks: saved.filter((_,i)=> i!==idx)});
+    toast('تم حذف المهمة', 'ok');
+  }catch(err){ console.error(err); toast('تعذر الحذف، حاول مرة أخرى', 'err'); }
+}
+/* بطاقة النوتة — تتحدث لحظيًا وتحافظ على ما يكتبه الموظف قبل الحفظ */
+function renderTasksCard(data, docId){
+  const card = document.getElementById('tasks-card');
+  if(!card) return;
+  const saved = (data && Array.isArray(data.tasks)) ? data.tasks : [];
+  const checkedIn = !!(data && data.checkIn);
+  const closed = !!(data && data.checkOut);
+  const sig = JSON.stringify(saved)+'|'+checkedIn+'|'+closed;
+  if(card.dataset.ready==='1' && sig===_tasksSig) return;
+  _tasksSig = sig;
+
+  /* حفظ المسودات والتركيز قبل إعادة الرسم */
+  const prev = [...card.querySelectorAll('.note-row')].map(r=>({
+    text: r.querySelector('.n-text').value,
+    count: r.querySelector('.n-count').value
+  }));
+  const act = document.activeElement;
+  let fIdx=-1, fCls='n-text', fPos=0;
+  if(act && card.contains(act) && act.closest && act.closest('.note-row')){
+    const rws=[...card.querySelectorAll('.note-row')];
+    fIdx = rws.indexOf(act.closest('.note-row'));
+    fCls = act.classList.contains('n-count') ? 'n-count' : 'n-text';
+    fPos = act.selectionStart || 0;
+  }
+
+  if(!checkedIn){
+    card.innerHTML = `
+      <h3>📝 نوتة المهام اليومية</h3>
+      <div class="card-sub">سجّل حضورك أولاً، وبعدها تقدر تكتب كل مهمة تخلصها أول بأول طوال اليوم</div>
+      <div class="empty-state"><div class="emoji">🔒</div>النوتة تفتح بعد تسجيل الحضور</div>`;
+    card.dataset.ready='1';
+    return;
+  }
+
+  const n = saved.length;
+  const total = tasksTotalCount(saved);
+  const m = motivFor(n, total);
+  const pct = Math.min(100, Math.round(n/DAILY_TASK_GOAL*100));
+  const rowsNeeded = closed ? 0 : Math.max(DAILY_TASK_GOAL, prev.length);
+
+  card.innerHTML = `
+    <div class="flex-between" style="margin-bottom:10px;">
+      <h3 style="margin:0;">📝 نوتة المهام اليومية</h3>
+      <span class="status-pill ${n>=DAILY_TASK_GOAL?'pill-good':(n?'pill-warn':'pill-neutral')}">${n} مهمة${total?` • إجمالي عدد ${total}`:''}</span>
+    </div>
+    <div class="motiv-banner">
+      <div class="mb-emoji">${m.e}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="mb-title">${esc(m.t)}</div>
+        <div class="mb-sub">${esc(m.s)}</div>
+        <div class="progress-bar" style="margin-top:8px;"><div style="width:${pct}%;"></div></div>
+        <div class="badge-row">${achBadges(n, total)}</div>
+      </div>
+    </div>
+    <div id="saved-tasks-box">
+      ${n ? saved.map((t,i)=>`
+        <div class="saved-task">
+          <div class="st-num">${i+1}</div>
+          <div class="st-text">${esc(t.text||'')}</div>
+          ${(t.count!==undefined&&t.count!==null&&t.count!=='')?`<div class="st-count">عدد ${esc(t.count)}</div>`:''}
+          <div class="st-time">${t.at?fmtTime(t.at):''}</div>
+          ${closed?'':`<button class="st-del" data-idx="${i}" title="حذف المهمة">×</button>`}
+        </div>`).join('') : `<div class="small-note" style="margin-bottom:10px;">لم تسجل أي مهمة اليوم بعد — اكتب أول مهمة بالأسفل واضغط «حفظ»</div>`}
+    </div>
+    ${closed ? `<div class="small-note" style="margin-top:12px;">✅ تم تسجيل الانصراف اليوم — المهام أعلاه محفوظة في سجلك ولا يمكن تعديلها</div>` : `
+      <div class="card-sub" style="margin:14px 0 8px;">اكتب المهمة والعدد (العدد اختياري) واضغط «حفظ» — كل مهمة تُحفظ فورًا، ووقت الانصراف تُسجَّل كل مهام اليوم تلقائيًا</div>
+      <div id="note-rows">${Array.from({length:rowsNeeded}).map(()=>noteRowHTML()).join('')}</div>
+      <button class="btn btn-outline btn-sm" id="add-note-row">+ إضافة مهمة أخرى</button>
+    `}
+  `;
+
+  if(!closed){
+    const rowsBox = card.querySelector('#note-rows');
+    const bind = (row)=>{
+      row.querySelector('.n-save').addEventListener('click', ()=> saveTaskFromRow(row, docId));
+      row.querySelectorAll('input').forEach(i=> i.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); saveTaskFromRow(row, docId); } }));
+    };
+    [...rowsBox.querySelectorAll('.note-row')].forEach(bind);
+    card.querySelector('#add-note-row').addEventListener('click', ()=>{
+      const row = el(noteRowHTML());
+      rowsBox.appendChild(row); bind(row);
+      row.querySelector('.n-text').focus();
+    });
+    /* استعادة المسودات والتركيز */
+    const rws = [...rowsBox.querySelectorAll('.note-row')];
+    prev.forEach((p,i)=>{
+      if(rws[i]){ rws[i].querySelector('.n-text').value = p.text; rws[i].querySelector('.n-count').value = p.count; }
+    });
+    if(fIdx>=0 && rws[fIdx]){
+      const inp = rws[fIdx].querySelector('.'+fCls);
+      inp.focus();
+      try{ inp.setSelectionRange(fPos, fPos); }catch(e){}
+    }
+    card.querySelectorAll('.st-del').forEach(b=>{
+      b.addEventListener('click', ()=> deleteSavedTask(docId, saved, +b.dataset.idx));
+    });
+  }
+  card.dataset.ready='1';
 }
 
 /* ============ State ============ */
@@ -537,7 +729,6 @@ function renderLogin(){
       return;
     }catch(err){
       const code = (err && err.code) || '';
-      // تهيئة حساب المدير الأساسي في أول تشغيل فقط
       const isAdminBootstrap = normUser(username)===normUser(ADMIN_USERNAME) && password===ADMIN_PASSWORD;
       if(isAdminBootstrap && (code.includes('user-not-found') || code.includes('invalid-credential'))){
         try{
@@ -783,6 +974,7 @@ function renderHomeTab(content){
   const today = todayCairoStr();
   const docId = `${uid}_${today}`;
   const curMonth = today.slice(0,7);
+  _tasksSig = null;
 
   content.appendChild(el(`
    <div>
@@ -807,6 +999,10 @@ function renderHomeTab(content){
       </div>
     </div>
 
+    <div class="card notebook-card" id="tasks-card" data-ready="0" style="margin-top:18px;">
+      <div class="muted">جارِ التحميل...</div>
+    </div>
+
     <div class="card" style="margin-top:18px;">
       <h3>🕒 سجل الحضور والإنجاز — كل الأيام</h3>
       <div class="card-sub">يعرض كل أيام العمل (الجمعة والسبت لا تُحتسب غيابًا) مع الحالة وأوقات الحضور والانصراف والمهام</div>
@@ -829,13 +1025,15 @@ function renderHomeTab(content){
    </div>
   `));
 
-  /* بطاقة اليوم */
+  /* بطاقة اليوم + نوتة المهام */
   const unsub = onSnapshot(doc(db,'attendance',docId), (snap)=>{
-    renderTodayCard(document.getElementById('today-body'), snap.exists()?snap.data():null, docId, today);
+    const data = snap.exists()?snap.data():null;
+    renderTodayCard(document.getElementById('today-body'), data, docId, today);
+    renderTasksCard(data, docId);
   }, err=>console.error(err));
   unsubList.push(unsub);
 
-  /* سجل كل الأيام — بدون orderBy لتفادي الحاجة لفهرس مركّب في Firestore */
+  /* سجل كل الأيام */
   let records = {};
   const q = query(collection(db,'attendance'), where('uid','==',uid));
   const unsub2 = onSnapshot(q, (qs)=>{
@@ -903,7 +1101,7 @@ function renderHomeTab(content){
     const statusFilter = document.getElementById('att-status').value;
 
     let days = workDaysBetween(firstDateStr(), today);
-    Object.keys(records).forEach(ds=>{ if(ds<=today && !days.includes(ds)) days.push(ds); }); // أيام عمل استثنائية (جمعة/سبت بحضور)
+    Object.keys(records).forEach(ds=>{ if(ds<=today && !days.includes(ds)) days.push(ds); });
     days = [...new Set(days)].sort().reverse();
 
     let rows = days.map(ds=>({date:ds, rec:records[ds], status:statusOf(ds)}));
@@ -919,6 +1117,7 @@ function renderHomeTab(content){
     const pill = {present:'pill-good', late:'pill-warn', absent:'pill-bad', pending:'pill-neutral'};
     tbody.innerHTML = rows.map(r=>{
       const taskCount = r.rec && r.rec.tasks ? r.rec.tasks.length : 0;
+      const tot = tasksTotalCount(r.rec && r.rec.tasks);
       const notes = [];
       if(isEarlyLeave(r.rec)) notes.push(`<span class="status-pill pill-warn">انصراف مبكر</span>`);
       if(r.rec && r.rec.earlyLeaveReason) notes.push(esc(r.rec.earlyLeaveReason));
@@ -928,7 +1127,7 @@ function renderHomeTab(content){
         <td><span class="status-pill ${pill[r.status]}">${lbl[r.status]}</span></td>
         <td>${fmtTime(r.rec && r.rec.checkIn)}</td>
         <td>${fmtTime(r.rec && r.rec.checkOut)}</td>
-        <td>${taskCount ? `<button class="link-btn day-tasks-btn" data-date="${r.date}">${taskCount} مهمة</button>` : '<span class="muted">—</span>'}</td>
+        <td>${taskCount ? `<button class="link-btn day-tasks-btn" data-date="${r.date}">${taskCount} مهمة${tot?` • عدد ${tot}`:''}</button>` : '<span class="muted">—</span>'}</td>
         <td>${notes.length ? notes.join(' ') : '<span class="muted">—</span>'}</td>
       </tr>`;
     }).join('');
@@ -965,7 +1164,7 @@ function renderTodayCard(container, data, docId, today){
           uid: currentUser.uid, date: today, checkIn: serverTimestamp(),
           checkOut: null, earlyLeaveReason: null, tasks: []
         }, {merge:true});
-        toast('تم تسجيل الحضور بنجاح', 'ok');
+        toast('تم تسجيل الحضور بنجاح — نوتة المهام فتحت لك 📝', 'ok');
       }catch(err){ console.error(err); toast('حدث خطأ، حاول مرة أخرى', 'err'); e.target.disabled=false; e.target.textContent='تسجيل حضور الآن'; }
     });
     return;
@@ -975,7 +1174,7 @@ function renderTodayCard(container, data, docId, today){
       <div class="time-row"><div class="lbl">وقت الحضور</div><div class="val">${fmtTime(data.checkIn)}</div></div>
       <div class="time-row"><div class="lbl">وقت الانصراف</div><div class="val">${fmtTime(data.checkOut)}</div></div>
       ${data.earlyLeaveReason ? `<div class="small-note" style="margin-top:10px;"><b>سبب الانصراف المبكر:</b> ${esc(data.earlyLeaveReason)}</div>` : ''}
-      ${data.tasks && data.tasks.length ? `<div style="margin-top:12px;"><div class="lbl" style="font-size:13px;color:var(--sub);margin-bottom:6px;">المهام المنجزة اليوم:</div>${data.tasks.map(t=>`<span class="task-chip">✓ ${esc(t.text)}</span>`).join('')}</div>` : ''}
+      ${data.tasks && data.tasks.length ? `<div style="margin-top:12px;"><div class="lbl" style="font-size:13px;color:var(--sub);margin-bottom:6px;">المهام المنجزة اليوم (${data.tasks.length}):</div>${data.tasks.map(t=>`<span class="task-chip">✓ ${esc(taskLabel(t))}</span>`).join('')}</div>` : ''}
       <div style="margin-top:14px;"><span class="status-pill pill-good">تم تسجيل يوم العمل بالكامل</span></div>
     `;
     return;
@@ -983,26 +1182,44 @@ function renderTodayCard(container, data, docId, today){
   container.innerHTML = `
     <div class="time-row"><div class="lbl">وقت الحضور</div><div class="val">${fmtTime(data.checkIn)}</div></div>
     <div class="time-row"><div class="lbl">وقت الانصراف</div><div class="val muted">لم يسجل بعد</div></div>
+    <div class="small-note" style="margin-top:10px;">📝 سجّل مهامك أول بأول في «نوتة المهام اليومية» بالأسفل — هتتسجل تلقائيًا مع الانصراف</div>
     <button class="btn btn-danger btn-block" id="checkout-btn" style="margin-top:12px;">تسجيل الانصراف</button>
   `;
-  container.querySelector('#checkout-btn').addEventListener('click', ()=> openCheckoutModal(docId));
+  container.querySelector('#checkout-btn').addEventListener('click', ()=> openCheckoutModal(docId, (data && data.tasks) || []));
 }
 
-function openCheckoutModal(docId){
+/* ============ مودال الانصراف — يعتمد على مهام النوتة المحفوظة ============ */
+function openCheckoutModal(docId, savedTasks){
+  const saved = Array.isArray(savedTasks) ? savedTasks : [];
   const now = cairoNow();
   const isEarly = (now.hour < 16);
+  const total = tasksTotalCount(saved);
   const overlay = el(`
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>تسجيل الانصراف</h3>
         <div class="modal-sub">الوقت الآن (بتوقيت القاهرة): ${String(now.hour).padStart(2,'0')}:${String(now.minute).padStart(2,'0')}</div>
+        <div class="motiv-banner">
+          <div class="mb-emoji">${saved.length>=DAILY_TASK_GOAL?'🏆':(saved.length?'💪':'📝')}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="mb-title">${saved.length ? `أنجزت اليوم ${saved.length} مهمة${total?` بإجمالي عدد ${total}`:''}` : 'لم تسجل أي مهمة اليوم'}</div>
+            <div class="mb-sub">${saved.length ? 'كل المهام المحفوظة هتتسجل تلقائيًا مع انصرافك — شكرًا لمجهودك 🌟' : 'اكتب مهمة واحدة على الأقل قبل الانصراف'}</div>
+          </div>
+        </div>
+        ${saved.length ? `<div class="field"><label>مهام اليوم المحفوظة</label>${saved.map((t,i)=>`
+          <div class="saved-task">
+            <div class="st-num">${i+1}</div>
+            <div class="st-text">${esc(t.text||'')}</div>
+            ${(t.count!==undefined&&t.count!==null&&t.count!=='')?`<div class="st-count">عدد ${esc(t.count)}</div>`:''}
+            <div class="st-time">${t.at?fmtTime(t.at):''}</div>
+          </div>`).join('')}</div>` : ''}
         ${isEarly ? `
           <div class="field">
             <label>⚠️ أنت تنصرف قبل الساعة 4 عصرًا — من فضلك اكتب سبب الانصراف المبكر *</label>
             <textarea id="early-reason" placeholder="اكتب السبب هنا..."></textarea>
           </div>` : ``}
         <div class="field">
-          <label>المهام والإنجازات التي تمت اليوم * (يمكن إضافة أكثر من مهمة)</label>
+          <label>إضافة مهام أخيرة قبل الانصراف (اختياري)</label>
           <div id="tasks-list"></div>
           <button class="btn btn-outline btn-sm" id="add-task-btn" type="button">+ إضافة مهمة أخرى</button>
         </div>
@@ -1017,12 +1234,13 @@ function openCheckoutModal(docId){
   document.body.appendChild(overlay);
 
   const tasksList = overlay.querySelector('#tasks-list');
-  function addTaskRow(value=''){
+  function addTaskRow(){
     const row = el(`<div class="task-input-row">
-      <input type="text" class="task-input" placeholder="اكتب المهمة..." value="${esc(value)}">
+      <input type="text" class="task-input" placeholder="اكتب المهمة...">
+      <input type="text" class="task-count" placeholder="العدد" style="flex:none;width:80px;text-align:center;">
       <button type="button" class="remove-x">×</button>
     </div>`);
-    row.querySelector('.remove-x').addEventListener('click', ()=>{ if(tasksList.children.length>1) row.remove(); });
+    row.querySelector('.remove-x').addEventListener('click', ()=> row.remove());
     tasksList.appendChild(row);
   }
   addTaskRow();
@@ -1037,17 +1255,28 @@ function openCheckoutModal(docId){
     const reasonEl = overlay.querySelector('#early-reason');
     const reason = reasonEl ? reasonEl.value.trim() : '';
     if(isEarly && !reason){ errBox.textContent='من فضلك اكتب سبب الانصراف المبكر'; errBox.style.display='block'; return; }
-    const taskInputs = [...overlay.querySelectorAll('.task-input')].map(i=>i.value.trim()).filter(Boolean);
-    if(taskInputs.length===0){ errBox.textContent='من فضلك اكتب مهمة واحدة على الأقل'; errBox.style.display='block'; return; }
+    const extra = [...overlay.querySelectorAll('#tasks-list .task-input-row')].map(r=>{
+      const text = r.querySelector('.task-input').value.trim();
+      const cnt = normalizeDigits(r.querySelector('.task-count').value).trim();
+      if(!text) return null;
+      const o = {text, at: Timestamp.now()};
+      if(cnt!=='' && !isNaN(Number(cnt))) o.count = Number(cnt);
+      return o;
+    }).filter(Boolean);
+    if(saved.length===0 && extra.length===0){
+      errBox.textContent='من فضلك سجّل مهمة واحدة على الأقل قبل الانصراف';
+      errBox.style.display='block';
+      return;
+    }
     const btn = overlay.querySelector('#confirm-checkout-btn');
     btn.disabled=true; btn.textContent='جارِ الحفظ...';
     try{
       await updateDoc(doc(db,'attendance',docId), {
         checkOut: serverTimestamp(),
         earlyLeaveReason: isEarly ? reason : null,
-        tasks: taskInputs.map(t=>({text:t}))
+        tasks: [...saved, ...extra]
       });
-      toast('تم تسجيل الانصراف بنجاح', 'ok');
+      toast(`تم تسجيل الانصراف — تم حفظ ${saved.length+extra.length} مهمة لليوم 👏`, 'ok');
       overlay.remove();
     }catch(err){
       console.error(err);
@@ -1077,10 +1306,11 @@ function renderMyRequests(box){
     <div class="card">
       <h3>📊 إحصائياتي</h3>
       <div class="card-sub">المستهدف اليوم = كل ما تبقى غير مُدخَل من الأيام السابقة + ما تم إدخاله اليوم. لو خلّصت كل حاجة، يبقى مستهدفك صفر لحين إضافة طلبات جديدة لك</div>
-      <div class="stat-row">
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
         <div class="stat-box"><div class="num" id="stat-target">0</div><div class="lbl">المستهدف</div></div>
         <div class="stat-box"><div class="num" id="stat-done">0</div><div class="lbl">تم إدخاله</div></div>
         <div class="stat-box"><div class="num" id="stat-remain">0</div><div class="lbl">المتبقي</div></div>
+        <div class="stat-box" style="background:#fff8e6;"><div class="num" id="stat-istifa" style="color:#b07d0a;">0</div><div class="lbl">استيفاء (خارج الحساب)</div></div>
       </div>
       <div class="progress-bar"><div id="progress-fill" style="width:0%;"></div></div>
     </div>
@@ -1096,6 +1326,7 @@ function renderMyRequests(box){
         <select id="mine-center-filter"><option value="">كل المراكز</option></select>
         <select id="mine-filter">
           <option value="pending">لم يتم إدخاله</option>
+          <option value="istifa">⏳ استيفاء</option>
           <option value="all">الكل</option>
           <option value="done">تم إدخاله</option>
         </select>
@@ -1133,7 +1364,12 @@ function renderMyRequests(box){
     centerSel.value = centers.includes(prevCenterVal) ? prevCenterVal : '';
     const centerFilter = centerSel.value;
 
-    let rows = myRows.filter(r=> mode==='all' ? true : (mode==='done' ? r.done : !r.done));
+    let rows = myRows.filter(r=>{
+      if(mode==='all') return true;
+      if(mode==='done') return !!r.done;
+      if(mode==='istifa') return !r.done && !!r.istifa;
+      return !r.done && !r.istifa;   // الافتراضي: المتبقي فعليًا بدون طلبات الاستيفاء
+    });
     if(centerFilter) rows = rows.filter(r=> r.center===centerFilter);
     if(search){
       rows = rows.filter(r=> normalizeDigits(JSON.stringify(r.data||{}) + ' ' + (r.center||'')).toLowerCase().includes(search));
@@ -1148,8 +1384,9 @@ function renderMyRequests(box){
     lastRows = rows; lastColSet = colSet;
     rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar') || (a.done?1:0)-(b.done?1:0) || String(a.date).localeCompare(String(b.date)));
 
-    const stillPending = new Set(rows.filter(r=>!r.done).map(r=>r.id));
-    [...selectedIds].forEach(id=>{ if(!stillPending.has(id)) selectedIds.delete(id); });
+    /* التحديد لا يُلغى بسبب البحث/الفلترة — نحذف فقط ما لم يعد قابلًا للتحديد فعليًا (تم إدخاله أو أصبح استيفاء) */
+    const selectableIds = new Set(myRows.filter(r=> !r.done && !r.istifa).map(r=>r.id));
+    [...selectedIds].forEach(id=>{ if(!selectableIds.has(id)) selectedIds.delete(id); });
 
     wrap.innerHTML = `
       <table class="sticky-table">
@@ -1159,15 +1396,18 @@ function renderMyRequests(box){
         </tr></thead>
         <tbody>
           ${rows.map(r=>`
-            <tr class="${r.done?'row-done':''}">
-              <td>${r.done ? '' : `<input type="checkbox" class="row-chk" data-id="${r.id}" ${selectedIds.has(r.id)?'checked':''}>`}</td>
+            <tr class="${r.done?'row-done':(r.istifa?'row-istifa':'')}">
+              <td>${(r.done||r.istifa) ? '' : `<input type="checkbox" class="row-chk" data-id="${r.id}" ${selectedIds.has(r.id)?'checked':''}>`}</td>
               <td class="col-action">
                 ${r.done
                   ? `<div class="action-stack">
                        <span class="btn btn-sm btn-entered">✓ تم الإدخال</span>
                        <button class="btn btn-sm btn-outline undo-btn" data-id="${r.id}">إلغاء</button>
                      </div>`
-                  : `<button class="btn btn-sm btn-enter mark-btn" data-id="${r.id}">تم الإدخال</button>`}
+                  : `<div class="action-stack">
+                       <button class="btn btn-sm btn-enter mark-btn" data-id="${r.id}">تم الإدخال</button>
+                       <button class="btn btn-sm btn-istifa istifa-btn" data-id="${r.id}" data-val="${r.istifa?'0':'1'}" title="تأجيل الطلب لحين الاستيفاء — لا يُحتسب في الإحصائيات">${r.istifa?'↩ إلغاء الاستيفاء':'⏳ استيفاء'}</button>
+                     </div>`}
               </td>
               <td>${esc(r.center||'—')}</td>
               ${colSet.map(c=>`<td>${esc(r.data ? r.data[c] : '')}</td>`).join('')}
@@ -1178,6 +1418,7 @@ function renderMyRequests(box){
     `;
     wrap.querySelectorAll('.mark-btn').forEach(b=> b.addEventListener('click', ()=> setDone(b, b.dataset.id, true)));
     wrap.querySelectorAll('.undo-btn').forEach(b=> b.addEventListener('click', ()=> setDone(b, b.dataset.id, false)));
+    wrap.querySelectorAll('.istifa-btn').forEach(b=> b.addEventListener('click', ()=> setIstifa(b, b.dataset.id, b.dataset.val==='1')));
     wrap.querySelectorAll('.row-chk').forEach(chk=>{
       chk.addEventListener('change', ()=>{
         if(chk.checked) selectedIds.add(chk.dataset.id); else selectedIds.delete(chk.dataset.id);
@@ -1226,7 +1467,7 @@ function renderMyRequests(box){
         chunk.forEach(id=> batch.update(doc(db,'tokeenRequests',id), {done:true, doneAt: serverTimestamp(), doneDate: todayCairoStr()}));
         await batch.commit();
       }
-      toast(`تم تحديد ${ids.length} طلب كـ«تم الإدخال»`, 'ok');
+      toast(`تم تحديد ${ids.length} طلب كـ«تم الإدخال» — شغل ممتاز 👏`, 'ok');
       selectedIds.clear();
       updateBulkBar();
     }catch(err){
@@ -1252,6 +1493,21 @@ function renderMyRequests(box){
     }
   }
 
+  /* تعليم الطلب كـ«استيفاء» (مؤجل لحين الاستكمال) أو إلغاؤه */
+  async function setIstifa(btn, id, val){
+    btn.disabled = true;
+    const old = btn.textContent;
+    btn.textContent = '...';
+    try{
+      await updateDoc(doc(db,'tokeenRequests',id), {istifa: val, istifaAt: val ? serverTimestamp() : null});
+      toast(val ? 'تم وضع الطلب في الاستيفاء — مستبعد من الإحصائيات' : 'تم إرجاع الطلب لقائمة المتبقي', 'ok');
+    }catch(err){
+      console.error(err);
+      toast('حدث خطأ، حاول مرة أخرى', 'err');
+      btn.disabled=false; btn.textContent=old;
+    }
+  }
+
   box.querySelector('#mine-filter').addEventListener('change', draw);
   box.querySelector('#mine-search').addEventListener('input', draw);
   box.querySelector('#mine-center-filter').addEventListener('change', draw);
@@ -1264,7 +1520,9 @@ function renderMyRequests(box){
 function renderMyStats(rows){
   const t = document.getElementById('stat-target');
   if(!t) return;
-  const s = rolloverStats(rows); // المستهدف = المتبقي من كل الأيام السابقة + ما تم إدخاله اليوم فعليًا
+  const s = rolloverStats(rows);
+  const istifaEl = document.getElementById('stat-istifa');
+  if(istifaEl) istifaEl.textContent = rows.filter(r=> r.istifa && !r.done).length;
   t.textContent = s.target;
   document.getElementById('stat-done').textContent = s.done;
   document.getElementById('stat-remain').textContent = s.target - s.done;
@@ -1358,16 +1616,17 @@ function renderDoneSection(box){
     const from = box.querySelector('#done-from').value;
     const to = box.querySelector('#done-to').value;
     const byUid = (!from && !to)
-      ? groupStatsByUidAndCenter(allRows, rolloverStats)   // اليوم الحالي: تراكم المتبقي من قبل + ما تم اليوم
-      : groupStatsByUidAndCenter(allRows.filter(inAssignPeriod), periodStats); // فترة محددة: كما هو معتاد
+      ? groupStatsByUidAndCenter(allRows, rolloverStats)
+      : groupStatsByUidAndCenter(allRows.filter(inAssignPeriod), periodStats);
     const uids = Object.keys(byUid).filter(uid=> !employeesCache[uid] || employeesCache[uid].role!=='admin');
     if(uids.length===0){ board.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>لا توجد طلبات مسندة في هذه الفترة</div>`; return; }
     uids.sort((a,b)=> byUid[b].done - byUid[a].done || empName(a).localeCompare(empName(b),'ar'));
-    board.innerHTML = uids.map(uid=>{
+    board.innerHTML = uids.map((uid,i)=>{
       const s = byUid[uid];
       const centerStats = Object.keys(s.centers).sort((a,b)=>a.localeCompare(b,'ar')).map(c=>({center:c, target:s.centers[c].target, done:s.centers[c].done}));
+      const medal = s.done>0 ? (i===0?'🥇 ':(i===1?'🥈 ':(i===2?'🥉 ':''))) : '';
       return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
-        <div class="es-name">${esc(empName(uid))}</div>
+        <div class="es-name">${medal}${esc(empName(uid))}</div>
         <div class="es-dept">${esc(empDept(uid))}</div>
         ${centerCardBodyHTML(centerStats)}
       </div>`;
@@ -1527,12 +1786,10 @@ function renderAdminDailyReport(container){
     if(!tbl) return;
     const statusFilter = container.querySelector('#report-status-filter').value;
     const deptFilter = container.querySelector('#report-dept-filter').value;
-    // المدير لا يظهر في سجل الحضور والانصراف
     const uids = Object.keys(employees).filter(uid=> employees[uid].role!=='admin');
     if(uids.length===0){ tbl.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
     let allDeptRows = uids.map(uid=>({uid, e:employees[uid], a:attendance[uid], status: dayStatus(dateStr, attendance[uid])}));
     if(deptFilter) allDeptRows = allDeptRows.filter(r=> r.e.department===deptFilter);
-    // بطاقات إحصائية صغيرة (غير متأثرة بفلتر الحالة، فقط بفلتر القسم)
     const miniTotal = document.getElementById('mini-total');
     if(miniTotal){
       const presentCnt = allDeptRows.filter(r=> r.status==='present'||r.status==='late').length;
@@ -1546,7 +1803,6 @@ function renderAdminDailyReport(container){
     if(statusFilter==='absent') rows = rows.filter(r=> r.status==='absent'||r.status==='pending');
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; return; }
 
-    // ترتيب وتجميع حسب القسم عند عرض كل الأقسام معًا
     rows.sort((x,y)=> x.e.department.localeCompare(y.e.department,'ar') || x.e.name.localeCompare(y.e.name,'ar'));
 
     let bodyHtml = '';
@@ -1570,13 +1826,14 @@ function renderAdminDailyReport(container){
       else if(r.status==='late') pill = `<span class="status-pill pill-warn">● حاضر (متأخر)</span>`;
       else pill = `<span class="status-pill pill-good">● حاضر</span>`;
       const taskCount = r.a && r.a.tasks ? r.a.tasks.length : 0;
+      const tot = tasksTotalCount(r.a && r.a.tasks);
       bodyHtml += `<tr>
         <td>${esc(r.e.name)}</td>
         <td><span class="badge-dept">${esc(r.e.department)}</span></td>
         <td>${pill}</td>
         <td>${fmtTime(r.a && r.a.checkIn)}</td>
         <td>${fmtTime(r.a && r.a.checkOut)}</td>
-        <td>${taskCount ? `<button class="link-btn" data-uid="${r.uid}">${taskCount} مهمة</button>` : '<span class="muted">—</span>'}</td>
+        <td>${taskCount ? `<button class="link-btn" data-uid="${r.uid}">${taskCount} مهمة${tot?` • عدد ${tot}`:''}</button>` : '<span class="muted">—</span>'}</td>
         <td>${reasonCell}</td>
         <td>
           <div class="action-stack">
@@ -1665,26 +1922,28 @@ function renderAdminDailyReport(container){
       let uids = Object.keys(employees).filter(uid=> employees[uid].role!=='admin');
       if(empFilter) uids = uids.filter(uid=> uid===empFilter);
       const stats = uids.map(uid=>{
-        let late=0, absent=0, noWork=0;
+        let late=0, absent=0, noWork=0, totalTasks=0;
         const days = dates.map(ds=>{
           const rec = byUidDate[`${uid}_${ds}`];
           const st = dayStatus(ds, rec);
           if(st==='absent') absent++;
           else if(st==='late') late++;
           const hasWork = rec && rec.tasks && rec.tasks.length>0;
+          if(hasWork) totalTasks += rec.tasks.length;
           if((st==='present'||st==='late') && !hasWork) noWork++;
           return {date: ds, status: st, rec};
         });
-        return {uid, name: employees[uid].name, dept: employees[uid].department, late, absent, noWork, days};
+        return {uid, name: employees[uid].name, dept: employees[uid].department, late, absent, noWork, totalTasks, days};
       }).sort((a,b)=> (b.absent+b.late) - (a.absent+a.late));
 
       if(stats.length===0){ statsTbl.innerHTML = `<div class="empty-state">لا يوجد موظفون مطابقون</div>`; return; }
       statsTbl.innerHTML = `
         <table class="sticky-table">
-          <thead><tr><th>الموظف</th><th>القسم</th><th>أيام التأخير</th><th>أيام الغياب</th><th>أيام بدون إنجاز</th><th>التفاصيل</th></tr></thead>
+          <thead><tr><th>الموظف</th><th>القسم</th><th>إجمالي المهام</th><th>أيام التأخير</th><th>أيام الغياب</th><th>أيام بدون إنجاز</th><th>التفاصيل</th></tr></thead>
           <tbody>${stats.map((s,i)=>`<tr>
             <td>${esc(s.name)}</td>
             <td><span class="badge-dept">${esc(s.dept)}</span></td>
+            <td>${s.totalTasks ? `<span class="status-pill pill-good">${s.totalTasks}</span>` : '0'}</td>
             <td>${s.late ? `<span class="status-pill pill-warn">${s.late}</span>` : '0'}</td>
             <td>${s.absent ? `<span class="status-pill pill-bad">${s.absent}</span>` : '0'}</td>
             <td>${s.noWork ? `<span class="status-pill pill-neutral">${s.noWork}</span>` : '0'}</td>
@@ -1703,7 +1962,7 @@ function renderAdminDailyReport(container){
   });
 }
 
-/* عرض كل أيام موظف خلال فترة: الحضور والانصراف والمهام */
+/* عرض كل أيام موظف خلال فترة */
 function showEmployeePeriodModal(stat){
   const statusLabel = {present:'حاضر', late:'حاضر (متأخر)', absent:'غائب', pending:'لم يحضر بعد'};
   const statusPill = {present:'pill-good', late:'pill-warn', absent:'pill-bad', pending:'pill-neutral'};
@@ -1718,12 +1977,13 @@ function showEmployeePeriodModal(stat){
             <tbody>
               ${stat.days.map(d=>{
                 const taskCount = d.rec && d.rec.tasks ? d.rec.tasks.length : 0;
+                const tot = tasksTotalCount(d.rec && d.rec.tasks);
                 return `<tr>
                   <td>${fmtDate(d.date)}</td>
                   <td><span class="status-pill ${statusPill[d.status]}">${statusLabel[d.status]}</span></td>
                   <td>${fmtTime(d.rec && d.rec.checkIn)}</td>
                   <td>${fmtTime(d.rec && d.rec.checkOut)}</td>
-                  <td>${taskCount ? `<button class="link-btn day-task-btn" data-date="${d.date}">${taskCount} مهمة</button>` : '<span class="muted">—</span>'}</td>
+                  <td>${taskCount ? `<button class="link-btn day-task-btn" data-date="${d.date}">${taskCount} مهمة${tot?` • عدد ${tot}`:''}</button>` : '<span class="muted">—</span>'}</td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -1753,16 +2013,16 @@ function openEditAttendanceModal(uid, name, dateStr, rec){
     const o={}; parts.forEach(p=>o[p.type]=p.value);
     return `${o.hour}:${o.minute}`;
   }
-  const tasks = (rec && rec.tasks) ? rec.tasks.map(t=>t.text) : [];
+  const tasks = (rec && Array.isArray(rec.tasks)) ? rec.tasks.slice() : [];
   const overlay = el(`
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>تعديل سجل ${esc(name)}</h3>
-        <div class="modal-sub">${fmtDate(dateStr)} — تعديل وقت الحضور والانصراف والمهام يدويًا</div>
+        <div class="modal-sub">${fmtDate(dateStr)} — تعديل وقت الحضور والانصراف والمهام (والعدد) يدويًا</div>
         <div class="field"><label>وقت الحضور (HH:MM بتوقيت القاهرة)</label><input type="time" id="ea-checkin" value="${toLocalInputValue(rec&&rec.checkIn)}"></div>
         <div class="field"><label>وقت الانصراف (HH:MM بتوقيت القاهرة)</label><input type="time" id="ea-checkout" value="${toLocalInputValue(rec&&rec.checkOut)}"></div>
         <div class="field">
-          <label>المهام</label>
+          <label>المهام (المهمة + العدد الاختياري)</label>
           <div id="ea-tasks-list"></div>
           <button class="btn btn-outline btn-sm" id="ea-add-task" type="button">+ إضافة مهمة</button>
         </div>
@@ -1776,12 +2036,18 @@ function openEditAttendanceModal(uid, name, dateStr, rec){
   `);
   document.body.appendChild(overlay);
   const list = overlay.querySelector('#ea-tasks-list');
-  function addRow(v=''){
-    const row = el(`<div class="task-input-row"><input type="text" class="ea-task-input" value="${esc(v)}" placeholder="اكتب المهمة..."><button type="button" class="remove-x">×</button></div>`);
+  function addRow(t){
+    t = t || {};
+    const cntVal = (t.count!==undefined && t.count!==null) ? t.count : '';
+    const row = el(`<div class="task-input-row">
+      <input type="text" class="ea-task-input" value="${esc(t.text||'')}" placeholder="اكتب المهمة...">
+      <input type="text" class="ea-task-count" value="${esc(cntVal)}" placeholder="العدد" style="flex:none;width:80px;text-align:center;">
+      <button type="button" class="remove-x">×</button>
+    </div>`);
     row.querySelector('.remove-x').addEventListener('click', ()=> row.remove());
     list.appendChild(row);
   }
-  (tasks.length?tasks:['']).forEach(addRow);
+  (tasks.length?tasks:[{}]).forEach(addRow);
   overlay.querySelector('#ea-add-task').addEventListener('click', ()=> addRow());
   overlay.querySelector('#ea-cancel').addEventListener('click', ()=> overlay.remove());
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
@@ -1791,11 +2057,17 @@ function openEditAttendanceModal(uid, name, dateStr, rec){
     errBox.style.display='none';
     const ciVal = overlay.querySelector('#ea-checkin').value;
     const coVal = overlay.querySelector('#ea-checkout').value;
-    const newTasks = [...overlay.querySelectorAll('.ea-task-input')].map(i=>i.value.trim()).filter(Boolean).map(t=>({text:t}));
+    const newTasks = [...overlay.querySelectorAll('#ea-tasks-list .task-input-row')].map(r=>{
+      const text = r.querySelector('.ea-task-input').value.trim();
+      const cnt = normalizeDigits(r.querySelector('.ea-task-count').value).trim();
+      if(!text) return null;
+      const o = {text};
+      if(cnt!=='' && !isNaN(Number(cnt))) o.count = Number(cnt);
+      return o;
+    }).filter(Boolean);
     function toTimestamp(hhmm){
       if(!hhmm) return null;
       const [h,m] = hhmm.split(':').map(Number);
-      // نبني وقتًا بتوقيت القاهرة لليوم المحدد
       const iso = `${dateStr}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`;
       const d = new Date(iso+'+02:00');
       return Timestamp.fromDate(d);
@@ -1819,12 +2091,20 @@ function openEditAttendanceModal(uid, name, dateStr, rec){
 }
 
 function showTasksModal(name, tasks, earlyReason){
+  const total = tasksTotalCount(tasks);
   const overlay = el(`
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>مهام ${esc(name)}</h3>
+        <div class="modal-sub">${(tasks&&tasks.length)||0} مهمة${total?` — إجمالي العدد: ${total}`:''}</div>
         ${earlyReason ? `<div class="small-note" style="margin-bottom:12px;"><b>سبب الانصراف المبكر:</b> ${esc(earlyReason)}</div>` : ''}
-        <div>${tasks.map(t=>`<div class="task-chip" style="display:block;margin-bottom:6px;">✓ ${esc(t.text)}</div>`).join('') || '<span class="muted">لا توجد مهام</span>'}</div>
+        <div>${(tasks||[]).map((t,i)=>`
+          <div class="saved-task">
+            <div class="st-num">${i+1}</div>
+            <div class="st-text">${esc(t.text||'')}</div>
+            ${(t.count!==undefined&&t.count!==null&&t.count!=='')?`<div class="st-count">عدد ${esc(t.count)}</div>`:''}
+            <div class="st-time">${t.at?fmtTime(t.at):''}</div>
+          </div>`).join('') || '<span class="muted">لا توجد مهام</span>'}</div>
         <div class="modal-actions"><button class="btn btn-outline btn-block" id="close-modal-btn">إغلاق</button></div>
       </div>
     </div>
@@ -1863,7 +2143,6 @@ function renderAdminEmployees(container){
     if(search) rows = rows.filter(r=> normalizeDigits([r.name,r.username,r.phone].join(' ')).toLowerCase().includes(search));
     const tbl = container.querySelector('#emp-table');
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; return; }
-    // ترتيب وتجميع حسب القسم
     rows.sort((a,b)=> a.department.localeCompare(b.department,'ar') || a.name.localeCompare(b.name,'ar'));
     let body = '';
     let curDept = null;
@@ -1996,8 +2275,6 @@ function openEditEmployeeModal(emp){
     const btn = overlay.querySelector('#reset-pass-btn');
     btn.disabled=true; btn.textContent='جارِ الإرسال...';
     try{
-      /* لا يمكن لحساب المدير تغيير كلمة مرور مستخدم آخر مباشرة من المتصفح (قيود Firebase Auth).
-         لذلك يتم تسجيل طلب هنا، وتحتاج Cloud Function صغيرة (admin.auth().updateUser) لتنفيذه فعليًا. */
       await setDoc(doc(collection(db,'passwordResetRequests')), {
         uid: emp.id, name: emp.name, newPassword: '123123',
         requestedBy: currentUser.uid, requestedAt: serverTimestamp(), status: 'pending'
@@ -2036,7 +2313,7 @@ function renderAdminRequestsLog(container){
   container.innerHTML = `
     <div class="card">
       <h3>📊 إحصائيات عامة (تحديث تلقائي)</h3>
-      <div class="card-sub">إجمالي المستهدف وما تم والمتبقي لكل الموظفين — بدون تحديد فترة تُحسب تلقائيًا كإحصائية اليوم الحالي (المتبقي من الأيام السابقة + الجديد المسنَد اليوم)</div>
+      <div class="card-sub">إجمالي المستهدف وما تم والمتبقي لكل الموظفين — طلبات «الاستيفاء» مستبعدة من الحسابات وتظهر في خانة منفصلة</div>
       <div class="filter-bar filter-bar-oneline">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="cards-from">
@@ -2059,6 +2336,7 @@ function renderAdminRequestsLog(container){
           <option value="">كل الحالات</option>
           <option value="done">تم الإدخال</option>
           <option value="pending">لم يتم</option>
+          <option value="istifa">⏳ استيفاء</option>
         </select>
         <select id="log-sort">
           <option value="default">ترتيب تلقائي — المركز</option>
@@ -2081,8 +2359,8 @@ function renderAdminRequestsLog(container){
     if(!cardsBox) return;
     const from = container.querySelector('#cards-from').value;
     const to = container.querySelector('#cards-to').value;
-    // نستبعد صفوف المدير من الإحصائيات
     const baseRows = allRows.filter(r=> !employees[r.uid] || employees[r.uid].role!=='admin');
+    const istifaCount = baseRows.filter(r=> r.istifa && !r.done).length;
 
     let totalTarget, totalDone, totalRemain;
     if(!from && !to){
@@ -2090,6 +2368,7 @@ function renderAdminRequestsLog(container){
       totalTarget = s.target; totalDone = s.done; totalRemain = s.target - s.done;
     }else{
       const rows = baseRows.filter(r=>{
+        if(r.istifa && !r.done) return false;
         const d = String(r.date||'');
         if(from && d<from) return false;
         if(to && d>to) return false;
@@ -2099,12 +2378,13 @@ function renderAdminRequestsLog(container){
       totalDone = rows.filter(r=>r.done).length;
       totalRemain = totalTarget - totalDone;
     }
-    if(totalTarget===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات في هذه الفترة</div>`; return; }
+    if(totalTarget===0 && istifaCount===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات في هذه الفترة</div>`; return; }
     cardsBox.innerHTML = `
-      <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
         <div class="stat-box"><div class="num">${totalTarget}</div><div class="lbl">إجمالي المستهدف</div></div>
         <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${totalDone}</div><div class="lbl">إجمالي ما تم</div></div>
         <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${totalRemain}</div><div class="lbl">المتبقي</div></div>
+        <div class="stat-box" style="background:var(--warn-bg);"><div class="num" style="color:var(--warn);">${istifaCount}</div><div class="lbl">قيد الاستيفاء (خارج الحساب)</div></div>
       </div>`;
   }
 
@@ -2115,7 +2395,8 @@ function renderAdminRequestsLog(container){
     const search = normalizeDigits(container.querySelector('#log-search').value.trim().toLowerCase());
     let rows = allRows.filter(r=> !empFilter || r.uid===empFilter);
     if(statusFilter==='done') rows = rows.filter(r=>r.done);
-    if(statusFilter==='pending') rows = rows.filter(r=>!r.done);
+    if(statusFilter==='pending') rows = rows.filter(r=> !r.done && !r.istifa);
+    if(statusFilter==='istifa') rows = rows.filter(r=> !r.done && r.istifa);
     if(search){
       rows = rows.filter(r=>{
         const hay = [r.center||'', (employees[r.uid]&&employees[r.uid].name)||'', JSON.stringify(r.data||{})].join(' ');
@@ -2139,10 +2420,10 @@ function renderAdminRequestsLog(container){
       <table class="sticky-table">
         <thead><tr><th>الموظف</th><th>المركز</th><th>الحالة</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإسناد</th><th>تاريخ الإدخال</th></tr></thead>
         <tbody>${rows.map(r=>`
-          <tr class="${r.done?'row-done':''}">
+          <tr class="${r.done?'row-done':(r.istifa?'row-istifa':'')}">
             <td>${esc((employees[r.uid]&&employees[r.uid].name)||'—')}</td>
             <td>${esc(r.center||'—')}</td>
-            <td>${r.done ? '<span class="status-pill pill-good">تم</span>' : '<span class="status-pill pill-neutral">لم يتم</span>'}</td>
+            <td>${r.done ? '<span class="status-pill pill-good">تم</span>' : (r.istifa ? '<span class="status-pill pill-warn">⏳ استيفاء</span>' : '<span class="status-pill pill-neutral">لم يتم</span>')}</td>
             ${colSet.map(c=>`<td>${esc(r.data?r.data[c]:'')}</td>`).join('')}
             <td>${fmtDate(r.date)}</td>
             <td>${r.doneAt ? fmtDateTime(r.doneAt) : '—'}</td>
@@ -2270,7 +2551,7 @@ function renderAdminUpload(container){
   });
 
   let parsedRows = [];
-  let centersMap = {}; // center name -> rows
+  let centersMap = {};
   let currentFile = null;
   let detectedCenterCol = null;
 
@@ -2293,9 +2574,8 @@ function renderAdminUpload(container){
         const rawCols = Object.keys(json[0]);
         detectedCenterCol = detectCenterColumn(rawCols);
 
-        // نُبقي فقط على الأعمدة المسموح بها + عمود المركز المكتشف، ونتجاهل أي عمود آخر في الملف
         let cols = filterAllowedCols(rawCols).sort((a,b)=> ALLOWED_DATA_COLUMNS.indexOf(String(a).trim().toLowerCase()) - ALLOWED_DATA_COLUMNS.indexOf(String(b).trim().toLowerCase()));
-        if(cols.length===0) cols = rawCols; // احتياطًا إن لم يتطابق أي عمود مع الأسماء المتوقعة
+        if(cols.length===0) cols = rawCols;
         const keepCols = detectedCenterCol && !cols.includes(detectedCenterCol) ? [...cols, detectedCenterCol] : cols;
         parsedRows = json.map(row=>{
           const o = {};
@@ -2321,11 +2601,10 @@ function renderAdminUpload(container){
         const multiWrap = container.querySelector('#up-multi-wrap');
 
         if(centerNames.length>1){
-          // ملف مجمّع: أكثر من مركز — عرض توزيع
           noteBox.textContent = `تم العثور على ${json.length} صف بعمود المركز "${detectedCenterCol}" — عدد المراكز: ${centerNames.length}. وزّع كل مركز على الموظف المناسب (يمكن اختيار نفس الموظف لأكثر من مركز).`;
           singleWrap.style.display='none';
           multiWrap.style.display='block';
-          container.querySelector('#up-center-chips').innerHTML = centerNames.map((c,i)=>`
+          container.querySelector('#up-center-chips').innerHTML = centerNames.map((c)=>`
             <div class="center-chip">
               <div>
                 <div class="cc-name">${esc(c)}</div>
@@ -2335,7 +2614,6 @@ function renderAdminUpload(container){
             </div>
           `).join('');
         }else{
-          // مركز واحد فقط (أو لم يتم التعرف على عمود المركز)
           const autoCenter = centerNames.length===1 ? centerNames[0] : '';
           noteBox.textContent = detectedCenterCol
             ? `تم العثور على ${json.length} صف، بمركز واحد: "${autoCenter}"`
@@ -2398,7 +2676,7 @@ function renderAdminUpload(container){
         const ref2 = doc(collection(db,'tokeenRequests'));
         batch.set(ref2, {
           uid, center, date: today, batchId, reqField,
-          data: row, done:false, doneAt:null, doneDate:null, uploadedAt: serverTimestamp()
+          data: row, done:false, doneAt:null, doneDate:null, istifa:false, uploadedAt: serverTimestamp()
         });
       });
       await batch.commit();
@@ -2411,7 +2689,6 @@ function renderAdminUpload(container){
     return e ? e.name : 'غير معروف';
   }
 
-  /* الطلبات المتبقية (لم تُدخل بعد) الموجودة فعلًا لنفس الموظف ونفس المركز من رفعات سابقة */
   async function getPendingRequestsFor(uid, center){
     try{
       const qs = await getDocs(query(collection(db,'tokeenRequests'),
@@ -2430,8 +2707,6 @@ function renderAdminUpload(container){
     }
   }
 
-  /* تنبيه المدير بوجود متبقي قديم قبل الرفع، ويسأله: يضيف فوقه ولا يحذفه ويستبدله —
-     الطلبات المُدخَلة فعليًا لا تُعرض هنا ولا تتأثر أبدًا مهما كان الاختيار */
   function confirmAddOrReplace(items){
     return new Promise(resolve=>{
       const overlay = el(`
@@ -2622,7 +2897,7 @@ function renderAdminUpload(container){
   });
   unsubList.push(uf);
 
-  /* ---- إعادة توزيع ملف مرفوع بالفعل على موظفين مختلفين ---- */
+  /* ---- إعادة توزيع ملف مرفوع بالفعل ---- */
   async function openRedistributeModal(f){
     if(!f) return;
     const overlay = el(`
@@ -2664,7 +2939,6 @@ function renderAdminUpload(container){
       return;
     }
 
-    // تجميع حسب المركز (بالاعتماد على المركز المخزَّن فعليًا مع كل طلب)
     const centersMap2 = {};
     linkedRequests.forEach(r=>{
       const c = r.center || 'بدون مركز';
@@ -2733,7 +3007,6 @@ function renderAdminUpload(container){
         for(const sel of selects){
           const center = sel.dataset.center;
           const uid = sel.value;
-          // نحدّث فقط الطلبات المتبقية (لم تُدخل بعد) واللي هيتغير موظفها فعلًا — الطلبات المُدخَلة لا تُمس أبدًا
           const rows = centersMap2[center].filter(r=> !r.done && r.uid!==uid);
           const chunkSize = 450;
           for(let i=0;i<rows.length;i+=chunkSize){
