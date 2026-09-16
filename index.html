@@ -172,6 +172,9 @@
   .filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
   .filter-bar input[type=text], .filter-bar select, .filter-bar input[type=date]{padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;background:#fbfcfe;}
   .filter-bar input[type=text]{flex:1;min-width:190px;}
+  .filter-bar-oneline{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;}
+  .filter-bar-oneline select, .filter-bar-oneline input{flex-shrink:0;}
+  .filter-bar-oneline input[type=text]{flex-shrink:1;min-width:140px;}
 
   .sticky-table thead th{position:sticky;top:0;z-index:4;}
   .sticky-table td:first-child, .sticky-table th:first-child{position:sticky;right:0;z-index:3;box-shadow:-6px 0 8px -6px rgba(20,30,60,.15);}
@@ -190,6 +193,10 @@
   .emp-stat-card .es-dept{font-size:11.5px;color:var(--sub);margin-bottom:10px;}
   .emp-stat-card .es-centers{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;}
   .emp-stat-card .es-centers .badge-dept{font-size:10.5px;padding:2px 7px;}
+  .emp-stat-card .stat-row{margin-bottom:0;gap:6px;}
+  .emp-stat-card .stat-box{padding:8px 4px;border-radius:9px;}
+  .emp-stat-card .stat-box .num{font-size:18px;}
+  .emp-stat-card .stat-box .lbl{font-size:10px;}
   .emp-stat-card .es-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;}
   .emp-stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
 
@@ -1716,11 +1723,9 @@ function renderAdminRequestsLog(container){
   container.innerHTML = `
     <div class="card">
       <h3>📊 إحصائيات الموظفين (تحديث تلقائي)</h3>
-      <div class="card-sub">لكل موظف: المراكز المسندة إليه، وإجمالي الطلبات وما تم منها — فلترة بتاريخ محدد أو فترة</div>
-      <div class="filter-bar">
-        <label class="muted" style="font-size:12.5px;">تاريخ محدد</label>
-        <input type="date" id="cards-date">
-        <label class="muted" style="font-size:12.5px;">أو من</label>
+      <div class="card-sub">لكل موظف: المراكز المسندة إليه، وإجمالي الطلبات وما تم منها</div>
+      <div class="filter-bar filter-bar-oneline">
+        <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="cards-from">
         <label class="muted" style="font-size:12.5px;">إلى</label>
         <input type="date" id="cards-to">
@@ -1734,8 +1739,8 @@ function renderAdminRequestsLog(container){
         <h3 style="margin:0;">🔍 سجل كل طلبات التقنين</h3>
         <button class="btn btn-outline btn-sm btn-auto" id="log-export-btn">📤 تصدير إكسيل</button>
       </div>
-      <div class="card-sub">فلترة حسب الموظف والحالة، وبحث برقم الطلب أو أي جزء منه، وترتيب أبجدي</div>
-      <div class="filter-bar">
+      <div class="card-sub">فلترة حسب الموظف والحالة، وبحث برقم الطلب أو أي جزء منه، وترتيب أبجدي — التصدير يعتمد على الفلاتر المطبقة حاليًا</div>
+      <div class="filter-bar filter-bar-oneline">
         <select id="log-emp-filter"><option value="">كل الموظفين</option></select>
         <select id="log-status-filter">
           <option value="">كل الحالات</option>
@@ -1749,7 +1754,6 @@ function renderAdminRequestsLog(container){
         </select>
         <input type="text" id="log-search" placeholder="ابحث برقم الطلب أو أي بيانات...">
       </div>
-      <div id="log-summary" style="margin-bottom:14px;"></div>
       <div class="table-wrap" id="log-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
     </div>
   `;
@@ -1762,13 +1766,10 @@ function renderAdminRequestsLog(container){
   function drawCards(){
     const cardsBox = container.querySelector('#emp-stat-cards');
     if(!cardsBox) return;
-    const exact = container.querySelector('#cards-date').value;
     const from = container.querySelector('#cards-from').value;
     const to = container.querySelector('#cards-to').value;
     let rows = allRows;
-    if(exact){
-      rows = rows.filter(r=> String(r.date||'')===exact);
-    }else if(from || to){
+    if(from || to){
       rows = rows.filter(r=>{
         const d = String(r.date||'');
         if(from && d<from) return false;
@@ -1794,10 +1795,12 @@ function renderAdminRequestsLog(container){
         <div class="es-name">${esc(employees[uid]?.name || 'غير معروف')}</div>
         <div class="es-dept">${esc(employees[uid]?.department || '')}</div>
         ${centersArr.length ? `<div class="es-centers">${centersArr.map(c=>`<span class="badge-dept">${esc(c)}</span>`).join('')}</div>` : ''}
-        <div class="es-row"><span class="muted">المستهدف</span><b>${s.target}</b></div>
-        <div class="es-row"><span class="muted">تم إنجازه</span><b style="color:var(--good);">${s.done}</b></div>
-        <div class="es-row"><span class="muted">المتبقي</span><b style="color:var(--bad);">${remain}</b></div>
-        <div class="progress-bar" style="margin-top:8px;"><div style="width:${s.target?Math.round(s.done/s.target*100):0}%;"></div></div>
+        <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
+          <div class="stat-box"><div class="num">${s.target}</div><div class="lbl">المستهدف</div></div>
+          <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${s.done}</div><div class="lbl">تم إنجازه</div></div>
+          <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${remain}</div><div class="lbl">المتبقي</div></div>
+        </div>
+        <div class="progress-bar" style="margin-top:10px;"><div style="width:${s.target?Math.round(s.done/s.target*100):0}%;"></div></div>
       </div>`;
     }).join('');
   }
@@ -1816,16 +1819,6 @@ function renderAdminRequestsLog(container){
         return normalizeDigits(hay).toLowerCase().includes(search);
       });
     }
-    const summaryMap = {};
-    rows.forEach(r=>{
-      const name = (employees[r.uid]&&employees[r.uid].name) || 'غير معروف';
-      if(!summaryMap[name]) summaryMap[name] = {target:0, done:0};
-      summaryMap[name].target++;
-      if(r.done) summaryMap[name].done++;
-    });
-    const summaryEl = container.querySelector('#log-summary');
-    const names = Object.keys(summaryMap);
-    summaryEl.innerHTML = names.length ? names.map(n=>`<span class="badge-dept" style="margin-left:6px;">${esc(n)}: ${summaryMap[n].done}/${summaryMap[n].target}</span>`).join('') : '';
 
     const tbl = container.querySelector('#log-table');
     if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; lastColSet=[]; lastFilteredRows=[]; return; }
@@ -1876,23 +1869,9 @@ function renderAdminRequestsLog(container){
   container.querySelector('#log-status-filter').addEventListener('change', draw);
   container.querySelector('#log-sort').addEventListener('change', draw);
   container.querySelector('#log-search').addEventListener('input', draw);
-  container.querySelector('#cards-date').addEventListener('change', ()=>{
-    if(container.querySelector('#cards-date').value){
-      container.querySelector('#cards-from').value='';
-      container.querySelector('#cards-to').value='';
-    }
-    drawCards();
-  });
-  container.querySelector('#cards-from').addEventListener('change', ()=>{
-    if(container.querySelector('#cards-from').value) container.querySelector('#cards-date').value='';
-    drawCards();
-  });
-  container.querySelector('#cards-to').addEventListener('change', ()=>{
-    if(container.querySelector('#cards-to').value) container.querySelector('#cards-date').value='';
-    drawCards();
-  });
+  container.querySelector('#cards-from').addEventListener('change', drawCards);
+  container.querySelector('#cards-to').addEventListener('change', drawCards);
   container.querySelector('#cards-all-time').addEventListener('click', ()=>{
-    container.querySelector('#cards-date').value='';
     container.querySelector('#cards-from').value='';
     container.querySelector('#cards-to').value='';
     drawCards();
@@ -2063,18 +2042,32 @@ function renderAdminUpload(container){
 
   async function saveFileRecord(centersUsed, batchIds){
     if(!currentFile) return;
+    let storagePath = null, downloadURL = null, storageOk = true;
     try{
-      const path = `tokeenFiles/${Date.now()}_${currentFile.name}`;
-      const sref = storageRef(storage, path);
+      storagePath = `tokeenFiles/${Date.now()}_${currentFile.name}`;
+      const sref = storageRef(storage, storagePath);
       await uploadBytes(sref, currentFile);
-      const url = await getDownloadURL(sref);
+      downloadURL = await getDownloadURL(sref);
+    }catch(err){
+      console.error('storage upload error', err);
+      storageOk = false;
+      storagePath = null;
+      downloadURL = null;
+    }
+    try{
       await setDoc(doc(collection(db,'tokeenFiles')), {
-        fileName: currentFile.name, storagePath: path, downloadURL: url,
+        fileName: currentFile.name, storagePath, downloadURL,
         uploaderUid: currentUser.uid, uploaderName: currentEmployee.name,
         uploadedAt: serverTimestamp(), rowCount: parsedRows.length, centers: centersUsed,
         batchIds: batchIds
       });
-    }catch(err){ console.error('file record error', err); }
+      if(!storageOk){
+        toast('تم رفع الطلبات وتسجيل الملف في القائمة، لكن تعذر حفظ نسخة الملف نفسها للتنزيل (تحقق من إعدادات Firebase Storage)', 'err');
+      }
+    }catch(err){
+      console.error('file record save error', err);
+      toast('تم رفع الطلبات بنجاح، لكن حدث خطأ أثناء تسجيل الملف في قائمة الملفات المرفوعة', 'err');
+    }
   }
 
   async function uploadRowsFor(uid, center, rows, reqField){
@@ -2175,18 +2168,20 @@ function renderAdminUpload(container){
     if(!box) return;
     const files = []; qs.forEach(d=> files.push({id:d.id, ...d.data()}));
     if(files.length===0){ box.innerHTML = `<div class="empty-state">لا توجد ملفات مرفوعة بعد</div>`; return; }
-    box.innerHTML = files.map(f=>`
+    box.innerHTML = files.map(f=>{
+      const hasUrl = !!f.downloadURL;
+      return `
       <div class="file-row">
         <div class="f-info">
-          <div class="f-name" data-url="${esc(f.downloadURL||'')}" data-name="${esc(f.fileName||'ملف')}">📄 ${esc(f.fileName||'ملف')}</div>
-          <div class="f-meta">رفعه: ${esc(f.uploaderName||'—')} • ${f.uploadedAt?fmtDateTime(f.uploadedAt):'—'} • عدد الطلبات: ${f.rowCount||0}${f.centers&&f.centers.length?` • ${f.centers.map(esc).join('، ')}`:''}</div>
+          <div class="f-name" data-url="${esc(f.downloadURL||'')}" data-name="${esc(f.fileName||'ملف')}" ${hasUrl?'':'style="cursor:default;color:var(--sub);"'}>📄 ${esc(f.fileName||'ملف')}</div>
+          <div class="f-meta">رفعه: ${esc(f.uploaderName||'—')} • ${f.uploadedAt?fmtDateTime(f.uploadedAt):'—'} • عدد الطلبات: ${f.rowCount||0}${f.centers&&f.centers.length?` • ${f.centers.map(esc).join('، ')}`:''}${hasUrl?'':' • <span style="color:var(--bad);">نسخة التنزيل غير متاحة</span>'}</div>
         </div>
         <div class="action-stack">
-          <button class="btn btn-outline btn-sm dl-file-btn" data-url="${esc(f.downloadURL||'')}" data-name="${esc(f.fileName||'ملف')}">⬇ تحميل</button>
+          <button class="btn btn-outline btn-sm dl-file-btn" data-url="${esc(f.downloadURL||'')}" data-name="${esc(f.fileName||'ملف')}" ${hasUrl?'':'disabled'}>⬇ تحميل</button>
           <button class="btn btn-danger btn-sm del-file-btn" data-id="${f.id}">حذف</button>
         </div>
       </div>
-    `).join('');
+    `;}).join('');
     function downloadFile(url, name){
       if(!url){ toast('الرابط غير متاح', 'err'); return; }
       const a = document.createElement('a');
@@ -2198,7 +2193,11 @@ function renderAdminUpload(container){
     box.querySelectorAll('.del-file-btn').forEach(b=>{
       b.addEventListener('click', ()=> confirmDeleteFile(files.find(f=>f.id===b.dataset.id)));
     });
-  }, err=>console.error(err));
+  }, err=>{
+    console.error('tokeenFiles listener error', err);
+    const box = container.querySelector('#up-files-list');
+    if(box) box.innerHTML = `<div class="empty-state">تعذر تحميل قائمة الملفات (${esc(err && err.code || 'خطأ')}) — على الأغلب قواعد أمان Firestore/Storage لا تسمح بالوصول إلى مجموعة tokeenFiles، راجع إعدادات المشروع.</div>`;
+  });
   unsubList.push(uf);
 
   async function confirmDeleteFile(f){
