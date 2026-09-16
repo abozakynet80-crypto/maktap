@@ -865,8 +865,11 @@ function renderMyRequests(box){
     </div>
 
     <div class="card" style="margin-top:18px;">
-      <h3>📁 الطلبات المسندة إليّ</h3>
-      <div class="card-sub">اضغط «تم الإدخال» أمام الطلب لينتقل إلى قسم «ما تم إدخاله». الزر ثابت على اليمين أثناء تمرير الجدول.</div>
+      <div class="flex-between" style="margin-bottom:6px;">
+        <h3 style="margin:0;">📁 الطلبات المسندة إليّ</h3>
+        <button class="btn btn-outline btn-sm btn-auto" id="my-export-btn">📤 تصدير إكسيل</button>
+      </div>
+      <div class="card-sub">اضغط «تم الإدخال» أمام الطلب لينتقل إلى قسم «ما تم إدخاله». الزر ثابت على اليمين أثناء تمرير الجدول — التصدير يعتمد على الفلاتر المطبقة حاليًا.</div>
       <div class="filter-bar">
         <input type="text" id="mine-search" placeholder="ابحث برقم الطلب أو أي جزء منه...">
         <select id="mine-filter">
@@ -880,6 +883,8 @@ function renderMyRequests(box){
   `;
 
   let myRows = [];
+  let lastRows = [];
+  let lastColSet = [];
   const q = query(collection(db,'tokeenRequests'), where('uid','==',currentUser.uid));
   const unsub = onSnapshot(q, (qs)=>{
     myRows = [];
@@ -900,10 +905,12 @@ function renderMyRequests(box){
     }
     if(rows.length===0){
       wrap.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>${myRows.length ? 'لا توجد نتائج مطابقة' : 'لا توجد طلبات مسندة إليك حاليًا'}</div>`;
+      lastRows = []; lastColSet = [];
       return;
     }
     const colSet = [];
     myRows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
+    lastRows = rows; lastColSet = colSet;
     rows.sort((a,b)=> (a.done?1:0)-(b.done?1:0) || String(a.date).localeCompare(String(b.date)));
     wrap.innerHTML = `
       <table>
@@ -950,6 +957,10 @@ function renderMyRequests(box){
 
   box.querySelector('#mine-filter').addEventListener('change', draw);
   box.querySelector('#mine-search').addEventListener('input', draw);
+  box.querySelector('#my-export-btn').addEventListener('click', ()=>{
+    if(lastRows.length===0){ toast('لا توجد بيانات لتصديرها', 'err'); return; }
+    exportRowsToExcel(lastRows, lastColSet, `طلباتي_المسندة_${todayCairoStr()}.xlsx`);
+  });
 }
 
 function renderMyStats(rows){
