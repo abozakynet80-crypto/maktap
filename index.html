@@ -1172,11 +1172,11 @@ function renderDoneSection(box){
       byUid[r.uid].centers[c].target++;
       if(r.done) byUid[r.uid].centers[c].done++;
     });
-    const uids = Object.keys(employeesCache).filter(uid=> employeesCache[uid].role!=='admin');
-    if(uids.length===0){ board.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>لا يوجد موظفون مسجلون</div>`; return; }
-    uids.sort((a,b)=> (byUid[b]?.done||0) - (byUid[a]?.done||0) || empName(a).localeCompare(empName(b),'ar'));
+    const uids = Object.keys(byUid).filter(uid=> !employeesCache[uid] || employeesCache[uid].role!=='admin');
+    if(uids.length===0){ board.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>لا توجد طلبات مسندة في هذه الفترة</div>`; return; }
+    uids.sort((a,b)=> byUid[b].done - byUid[a].done || empName(a).localeCompare(empName(b),'ar'));
     board.innerHTML = uids.map(uid=>{
-      const s = byUid[uid] || {target:0, done:0, centers:{}};
+      const s = byUid[uid];
       const centerStats = Object.keys(s.centers).sort((a,b)=>a.localeCompare(b,'ar')).map(c=>({center:c, target:s.centers[c].target, done:s.centers[c].done}));
       return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
         <div class="es-name">${esc(empName(uid))}</div>
@@ -1940,11 +1940,11 @@ function renderAdminRequestsLog(container){
       byUid[r.uid].centers[c].target++;
       if(r.done) byUid[r.uid].centers[c].done++;
     });
-    const uids = Object.keys(employees).filter(uid=> employees[uid].role!=='admin');
-    if(uids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا يوجد موظفون مسجلون</div>`; return; }
+    const uids = Object.keys(byUid).filter(uid=> !employees[uid] || employees[uid].role!=='admin');
+    if(uids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات مسندة في هذه الفترة</div>`; return; }
     uids.sort((a,b)=> (employees[a]?.name||'').localeCompare(employees[b]?.name||'','ar'));
     cardsBox.innerHTML = uids.map(uid=>{
-      const s = byUid[uid] || {target:0, done:0, centers:{}};
+      const s = byUid[uid];
       const centerStats = Object.keys(s.centers).sort((a,b)=>a.localeCompare(b,'ar')).map(c=>({center:c, target:s.centers[c].target, done:s.centers[c].done}));
       return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
         <div class="flex-between" style="align-items:flex-start;">
