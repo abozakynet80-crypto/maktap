@@ -292,12 +292,12 @@ function cairoNow(){
 function fmtTime(ts){
   if(!ts) return '—';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return new Intl.DateTimeFormat('ar-EG', {timeZone:'Africa/Cairo', hour:'2-digit', minute:'2-digit', hour12:true}).format(d);
+  return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {timeZone:'Africa/Cairo', hour:'2-digit', minute:'2-digit', hour12:true}).format(d);
 }
 function fmtDateTime(ts){
   if(!ts) return '—';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return new Intl.DateTimeFormat('ar-EG', {timeZone:'Africa/Cairo', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true}).format(d);
+  return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {timeZone:'Africa/Cairo', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true}).format(d);
 }
 function fmtDate(str){
   if(!str) return '—';
@@ -308,7 +308,7 @@ function fmtDate(str){
 function fmtDateOnly(ts){
   if(!ts) return '—';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return new Intl.DateTimeFormat('ar-EG', {timeZone:'Africa/Cairo', day:'2-digit', month:'2-digit', year:'numeric'}).format(d);
+  return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {timeZone:'Africa/Cairo', day:'2-digit', month:'2-digit', year:'numeric'}).format(d);
 }
 /* الساعة والدقيقة بتوقيت القاهرة من Timestamp */
 function cairoHM(ts){
@@ -1076,6 +1076,7 @@ function renderMyRequests(box){
   box.innerHTML = `
     <div class="card">
       <h3>📊 إحصائياتي</h3>
+      <div class="card-sub">المستهدف اليوم = كل ما تبقى غير مُدخَل من الأيام السابقة + ما تم إدخاله اليوم. لو خلّصت كل حاجة، يبقى مستهدفك صفر لحين إضافة طلبات جديدة لك</div>
       <div class="stat-row">
         <div class="stat-box"><div class="num" id="stat-target">0</div><div class="lbl">المستهدف</div></div>
         <div class="stat-box"><div class="num" id="stat-done">0</div><div class="lbl">تم إدخاله</div></div>
@@ -1261,14 +1262,13 @@ function renderMyRequests(box){
 }
 
 function renderMyStats(rows){
-  const target = rows.length;
-  const done = rows.filter(r=>r.done).length;
   const t = document.getElementById('stat-target');
   if(!t) return;
-  t.textContent = target;
-  document.getElementById('stat-done').textContent = done;
-  document.getElementById('stat-remain').textContent = target - done;
-  document.getElementById('progress-fill').style.width = (target? Math.round(done/target*100):0) + '%';
+  const s = rolloverStats(rows); // المستهدف = المتبقي من كل الأيام السابقة + ما تم إدخاله اليوم فعليًا
+  t.textContent = s.target;
+  document.getElementById('stat-done').textContent = s.done;
+  document.getElementById('stat-remain').textContent = s.target - s.done;
+  document.getElementById('progress-fill').style.width = (s.target? Math.round(s.done/s.target*100):0) + '%';
 }
 
 function renderDoneSection(box){
@@ -2048,18 +2048,6 @@ function renderAdminRequestsLog(container){
     </div>
 
     <div class="card" style="margin-top:18px;">
-      <h3>🔁 نقل مركز إلى موظف آخر</h3>
-      <div class="card-sub">لسيناريو اعتذار موظف عن مركز معيّن أثناء الشغل: اختر الموظف الحالي ثم المركز ثم الموظف الجديد. بينتقل فقط عدد الطلبات المتبقية (لم تُدخل بعد)؛ أي طلب تم إدخاله بالفعل يبقى منسوبًا لمن أدخله فعليًا ولا يتأثر إطلاقًا.</div>
-      <div class="filter-bar filter-bar-oneline">
-        <select id="rs-from-emp"><option value="">-- من موظف --</option></select>
-        <select id="rs-center" disabled><option value="">-- اختر المركز --</option></select>
-        <select id="rs-to-emp"><option value="">-- إلى موظف --</option></select>
-        <button class="btn btn-primary btn-sm btn-auto" id="rs-submit-btn" disabled>نقل المتبقي</button>
-      </div>
-      <div class="small-note" id="rs-info">اختر الموظف ثم المركز لعرض عدد الطلبات المتبقية</div>
-    </div>
-
-    <div class="card" style="margin-top:18px;">
       <div class="flex-between" style="margin-bottom:6px;">
         <h3 style="margin:0;">🔍 سجل كل طلبات التقنين</h3>
         <button class="btn btn-outline btn-sm btn-auto" id="log-export-btn">📤 تصدير إكسيل</button>
@@ -2165,13 +2153,13 @@ function renderAdminRequestsLog(container){
 
   const u1 = onSnapshot(collection(db,'employees'), qs=>{
     employees={}; qs.forEach(d=> employees[d.id]=d.data());
-    draw(); drawCards(); refreshEmpFilter(); refreshReassignTool();
+    draw(); drawCards(); refreshEmpFilter();
   }, err=>console.error(err));
   unsubList.push(u1);
 
   const u2 = onSnapshot(collection(db,'tokeenRequests'), qs=>{
     allRows = []; qs.forEach(d=> allRows.push({id:d.id, ...d.data()}));
-    draw(); drawCards(); refreshEmpFilter(); refreshReassignTool();
+    draw(); drawCards(); refreshEmpFilter();
   }, err=>console.error(err));
   unsubList.push(u2);
 
@@ -2184,104 +2172,6 @@ function renderAdminRequestsLog(container){
     sel.innerHTML = `<option value="">كل الموظفين</option>` + assignedUids.map(uid=>`<option value="${uid}">${esc(employees[uid]?.name || 'غير معروف')}</option>`).join('');
     sel.value = assignedUids.includes(cur) ? cur : '';
   }
-
-  /* ---- أداة: نقل مركز إلى موظف آخر (تنقل فقط المتبقي، لا تمس المُدخَل) ---- */
-  function refreshReassignTool(){
-    const fromSel = container.querySelector('#rs-from-emp');
-    if(!fromSel) return;
-    const curFrom = fromSel.value;
-    const uidsWithRows = [...new Set(allRows.map(r=>r.uid))].filter(uid=> !employees[uid] || employees[uid].role!=='admin');
-    uidsWithRows.sort((a,b)=> (employees[a]?.name||'').localeCompare(employees[b]?.name||'','ar'));
-    fromSel.innerHTML = `<option value="">-- من موظف --</option>` + uidsWithRows.map(uid=>`<option value="${uid}">${esc(employees[uid]?.name||'غير معروف')}</option>`).join('');
-    fromSel.value = uidsWithRows.includes(curFrom) ? curFrom : '';
-    updateReassignCenterSelect();
-    updateReassignToSelect();
-    updateReassignInfo();
-  }
-
-  function updateReassignCenterSelect(){
-    const centerSel = container.querySelector('#rs-center');
-    if(!centerSel) return;
-    const fromUid = container.querySelector('#rs-from-emp').value;
-    const curCenter = centerSel.value;
-    if(!fromUid){
-      centerSel.innerHTML = `<option value="">-- اختر المركز --</option>`;
-      centerSel.disabled = true;
-      return;
-    }
-    centerSel.disabled = false;
-    const rowsForEmp = allRows.filter(r=> r.uid===fromUid);
-    const centers = [...new Set(rowsForEmp.map(r=> r.center || 'بدون مركز'))].sort((a,b)=>a.localeCompare(b,'ar'));
-    centerSel.innerHTML = `<option value="">-- اختر المركز --</option>` + centers.map(c=>{
-      const rows = rowsForEmp.filter(r=> (r.center||'بدون مركز')===c);
-      const pending = rows.filter(r=>!r.done).length;
-      return `<option value="${esc(c)}">${esc(c)} (متبقي ${pending} من ${rows.length})</option>`;
-    }).join('');
-    centerSel.value = centers.includes(curCenter) ? curCenter : '';
-  }
-
-  function updateReassignToSelect(){
-    const toSel = container.querySelector('#rs-to-emp');
-    if(!toSel) return;
-    const fromUid = container.querySelector('#rs-from-emp').value;
-    const curTo = toSel.value;
-    const allEmpUids = Object.keys(employees).filter(uid=> employees[uid].role!=='admin' && uid!==fromUid);
-    allEmpUids.sort((a,b)=> employees[a].name.localeCompare(employees[b].name,'ar'));
-    toSel.innerHTML = `<option value="">-- إلى موظف --</option>` + allEmpUids.map(uid=>`<option value="${uid}">${esc(employees[uid].name)}</option>`).join('');
-    toSel.value = allEmpUids.includes(curTo) ? curTo : '';
-  }
-
-  function updateReassignInfo(){
-    const infoBox = container.querySelector('#rs-info');
-    const btn = container.querySelector('#rs-submit-btn');
-    if(!infoBox || !btn) return;
-    const fromUid = container.querySelector('#rs-from-emp').value;
-    const center = container.querySelector('#rs-center').value;
-    const toUid = container.querySelector('#rs-to-emp').value;
-    if(!fromUid || !center){
-      infoBox.textContent = 'اختر الموظف ثم المركز لعرض عدد الطلبات المتبقية';
-      btn.disabled = true;
-      return;
-    }
-    const rows = allRows.filter(r=> r.uid===fromUid && (r.center||'بدون مركز')===center);
-    const pending = rows.filter(r=>!r.done).length;
-    const doneCount = rows.length - pending;
-    infoBox.textContent = `إجمالي طلبات "${center}" عند ${esc(employees[fromUid]?.name||'—')}: ${rows.length}${doneCount?` — تم إدخال ${doneCount} (تبقى منسوبة له ولن تتأثر)`:''} — المتبقي وسيُنقل: ${pending}`;
-    btn.disabled = !(pending>0 && toUid);
-  }
-
-  container.querySelector('#rs-from-emp').addEventListener('change', ()=>{
-    updateReassignCenterSelect(); updateReassignToSelect(); updateReassignInfo();
-  });
-  container.querySelector('#rs-center').addEventListener('change', updateReassignInfo);
-  container.querySelector('#rs-to-emp').addEventListener('change', updateReassignInfo);
-  container.querySelector('#rs-submit-btn').addEventListener('click', async ()=>{
-    const fromUid = container.querySelector('#rs-from-emp').value;
-    const center = container.querySelector('#rs-center').value;
-    const toUid = container.querySelector('#rs-to-emp').value;
-    if(!fromUid || !center || !toUid) return;
-    const rows = allRows.filter(r=> r.uid===fromUid && (r.center||'بدون مركز')===center && !r.done);
-    if(rows.length===0){ toast('لا توجد طلبات متبقية لنقلها', 'err'); return; }
-    const fromName = employees[fromUid]?.name || '—';
-    const toName = employees[toUid]?.name || '—';
-    if(!confirm(`سيتم نقل ${rows.length} طلب متبقٍ من "${fromName}" إلى "${toName}" في مركز "${center}". الطلبات المُدخَلة بالفعل لن تتأثر. متابعة؟`)) return;
-    const btn = container.querySelector('#rs-submit-btn');
-    btn.disabled=true; btn.textContent='جارِ النقل...';
-    try{
-      const chunkSize = 450;
-      for(let i=0;i<rows.length;i+=chunkSize){
-        const chunk = rows.slice(i,i+chunkSize);
-        const batch = writeBatch(db);
-        chunk.forEach(r=> batch.update(doc(db,'tokeenRequests', r.id), {uid: toUid}));
-        await batch.commit();
-      }
-      toast(`تم نقل ${rows.length} طلب بنجاح إلى ${toName}`, 'ok');
-    }catch(err){
-      console.error(err);
-      toast('حدث خطأ أثناء النقل، حاول مرة أخرى', 'err');
-    }
-    btn.disabled=false; btn.textContent='نقل المتبقي';
-  });
 
   container.querySelector('#log-emp-filter').addEventListener('change', draw);
   container.querySelector('#log-status-filter').addEventListener('change', draw);
@@ -2305,7 +2195,7 @@ function renderAdminUpload(container){
     <div class="card">
       <h3>📤 رفع ملف إكسيل لطلبات التقنين</h3>
       <div class="card-sub">ارفع ملف إكسيل لمركز واحد أو ملف مجمّع لعدة مراكز — سيتم التعرف على عمود «المركز» تلقائيًا، ثم توزيع كل مركز على الموظف المناسب (يمكن إسناد أكثر من مركز لنفس الموظف)</div>
-      <div class="small-note" style="margin-bottom:14px;">ℹ️ كل ملف يتم رفعه يُضاف إلى الطلبات الموجودة بالفعل، ولا يحذف أو يستبدل أي بيانات سابقة.</div>
+      <div class="small-note" style="margin-bottom:14px;">ℹ️ لو الموظف/المركز عنده متبقي (لم يُدخل بعد) من رفعة سابقة، هيظهرلك تنبيه وقت الرفع تختار فيه: تضيف الجديد فوق المتبقي، أو تحذف المتبقي القديم وتستبدله. أي طلب تم إدخاله بالفعل لا يظهر في هذا التنبيه ولا يتأثر أبدًا.</div>
       <div class="field">
         <label>ملف الإكسيل *</label>
         <input type="file" id="up-file" accept=".xlsx,.xls,.csv">
@@ -2516,6 +2406,60 @@ function renderAdminUpload(container){
     return batchId;
   }
 
+  function nameOf(uid){
+    const e = employeesList.find(x=>x.id===uid);
+    return e ? e.name : 'غير معروف';
+  }
+
+  /* الطلبات المتبقية (لم تُدخل بعد) الموجودة فعلًا لنفس الموظف ونفس المركز من رفعات سابقة */
+  async function getPendingRequestsFor(uid, center){
+    try{
+      const qs = await getDocs(query(collection(db,'tokeenRequests'),
+        where('uid','==',uid), where('center','==',center), where('done','==',false)));
+      return qs.docs.map(d=>({id:d.id, ...d.data()}));
+    }catch(err){ console.error(err); return []; }
+  }
+
+  async function deleteRequestsBulk(ids){
+    const chunkSize = 450;
+    for(let i=0;i<ids.length;i+=chunkSize){
+      const chunk = ids.slice(i,i+chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach(id=> batch.delete(doc(db,'tokeenRequests', id)));
+      await batch.commit();
+    }
+  }
+
+  /* تنبيه المدير بوجود متبقي قديم قبل الرفع، ويسأله: يضيف فوقه ولا يحذفه ويستبدله —
+     الطلبات المُدخَلة فعليًا لا تُعرض هنا ولا تتأثر أبدًا مهما كان الاختيار */
+  function confirmAddOrReplace(items){
+    return new Promise(resolve=>{
+      const overlay = el(`
+        <div class="modal-overlay">
+          <div class="modal-box" style="max-width:480px;">
+            <h3>⚠️ يوجد طلبات متبقية من قبل</h3>
+            <div class="modal-sub">الطلبات التالية لم تُدخل بعد من رفعة سابقة لنفس الموظف/المركز:</div>
+            <div style="margin-bottom:14px;">
+              ${items.map(it=>`<div class="small-note" style="margin-bottom:6px;">${esc(it.center)} — ${esc(nameOf(it.uid))}: <b>${it.count}</b> طلب متبقٍ</div>`).join('')}
+            </div>
+            <div class="modal-sub">هل تريد إضافة الطلبات الجديدة فوق المتبقي، أم حذف المتبقي القديم أولًا واستبداله بالجديد؟ (الطلبات المُدخَلة فعليًا لن تتأثر مطلقًا في الحالتين)</div>
+            <div class="modal-actions" style="flex-direction:column;gap:8px;">
+              <button class="btn btn-primary btn-block" id="aor-add">➕ إضافة فوق المتبقي</button>
+              <button class="btn btn-danger btn-block" id="aor-replace">🗑 حذف المتبقي القديم واستبداله</button>
+              <button class="btn btn-outline btn-block" id="aor-cancel">إلغاء الرفع</button>
+            </div>
+          </div>
+        </div>
+      `);
+      document.body.appendChild(overlay);
+      function finish(v){ overlay.remove(); resolve(v); }
+      overlay.querySelector('#aor-add').addEventListener('click', ()=> finish('add'));
+      overlay.querySelector('#aor-replace').addEventListener('click', ()=> finish('replace'));
+      overlay.querySelector('#aor-cancel').addEventListener('click', ()=> finish('cancel'));
+      overlay.addEventListener('click', e=>{ if(e.target===overlay) finish('cancel'); });
+    });
+  }
+
   container.querySelector('#up-submit-single-btn').addEventListener('click', async ()=>{
     const errBox = container.querySelector('#up-err');
     errBox.style.display='none';
@@ -2529,11 +2473,23 @@ function renderAdminUpload(container){
       return;
     }
     const btn = container.querySelector('#up-submit-single-btn');
-    btn.disabled=true; btn.textContent='جارِ الرفع...';
+    btn.disabled=true; btn.textContent='جارِ التحقق...';
     try{
+      const existingPending = await getPendingRequestsFor(uid, center);
+      let deletedCount = 0;
+      if(existingPending.length>0){
+        const choice = await confirmAddOrReplace([{center, uid, count: existingPending.length}]);
+        if(choice==='cancel' || !choice){ btn.disabled=false; btn.textContent='رفع الطلبات للموظف'; return; }
+        if(choice==='replace'){
+          btn.textContent='جارِ حذف المتبقي القديم...';
+          await deleteRequestsBulk(existingPending.map(r=>r.id));
+          deletedCount = existingPending.length;
+        }
+      }
+      btn.textContent='جارِ الرفع...';
       const batchId = await uploadRowsFor(uid, center, parsedRows, reqField);
       await saveFileRecord([center], [batchId]);
-      toast(`تم رفع ${parsedRows.length} طلب بنجاح`, 'ok');
+      toast(`تم رفع ${parsedRows.length} طلب بنجاح${deletedCount?` (بعد حذف ${deletedCount} طلب متبقٍ قديم)`:''}`, 'ok');
       resetForm();
     }catch(err){
       console.error(err);
@@ -2554,8 +2510,27 @@ function renderAdminUpload(container){
       return;
     }
     const btn = container.querySelector('#up-submit-multi-btn');
-    btn.disabled=true; btn.textContent='جارِ التوزيع والرفع...';
+    btn.disabled=true; btn.textContent='جارِ التحقق...';
     try{
+      const pendingChecks = [];
+      for(const sel of selects){
+        const center = sel.dataset.center;
+        const uid = sel.value;
+        const existing = await getPendingRequestsFor(uid, center);
+        if(existing.length>0) pendingChecks.push({center, uid, count: existing.length, ids: existing.map(r=>r.id)});
+      }
+      let deletedCount = 0;
+      if(pendingChecks.length>0){
+        const choice = await confirmAddOrReplace(pendingChecks);
+        if(choice==='cancel' || !choice){ btn.disabled=false; btn.textContent='توزيع الطلبات على الموظفين'; return; }
+        if(choice==='replace'){
+          btn.textContent='جارِ حذف المتبقي القديم...';
+          const allIds = pendingChecks.flatMap(p=>p.ids);
+          await deleteRequestsBulk(allIds);
+          deletedCount = allIds.length;
+        }
+      }
+      btn.textContent='جارِ التوزيع والرفع...';
       const centersUsed = [];
       const batchIds = [];
       for(const sel of selects){
@@ -2566,7 +2541,7 @@ function renderAdminUpload(container){
         batchIds.push(bId);
       }
       await saveFileRecord(centersUsed, batchIds);
-      toast(`تم توزيع ${parsedRows.length} طلب على ${selects.length} مركز بنجاح`, 'ok');
+      toast(`تم توزيع ${parsedRows.length} طلب على ${selects.length} مركز بنجاح${deletedCount?` (بعد حذف ${deletedCount} طلب متبقٍ قديم)`:''}`, 'ok');
       resetForm();
     }catch(err){
       console.error(err);
