@@ -179,7 +179,7 @@
   .sticky-table thead th{position:sticky;top:0;z-index:4;}
   .sticky-table td:first-child, .sticky-table th:first-child{position:sticky;right:0;z-index:3;box-shadow:-6px 0 8px -6px rgba(20,30,60,.15);}
   .sticky-table thead th:first-child{z-index:6;}
-  .dept-group-row td{background:var(--brand-light)!important;color:var(--brand-dark);font-weight:800;font-size:12.5px;padding:8px 10px;position:sticky;right:0;}
+  .dept-group-row td{background:var(--brand-light)!important;color:var(--brand-dark);font-weight:800;font-size:12.5px;padding:8px 10px;position:sticky;right:0;top:37px;z-index:2;}
 
   .file-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border);}
   .file-row:last-child{border-bottom:none;}
@@ -311,6 +311,36 @@ function doneDateOf(r){
     return new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
   }
   return '';
+}
+/* إحصائية "اليوم الحالي" التراكمية: المستهدف = المتبقي (غير المُدخَل) من كل الأيام السابقة + ما تم إدخاله اليوم بالفعل،
+   بحيث يتراكم المتبقي من أمس تلقائيًا على مستهدف اليوم الجديد */
+function rolloverStats(rows){
+  const remainingNow = rows.filter(r=>!r.done).length;
+  const doneToday = rows.filter(r=> r.done && doneDateOf(r)===todayCairoStr()).length;
+  return {target: remainingNow+doneToday, done: doneToday};
+}
+/* إحصائية فترة محددة: المستهدف = عدد ما أُسنِد خلال الفترة، وما تم منه (بغض النظر عن تاريخ الإدخال) */
+function periodStats(rows){
+  return {target: rows.length, done: rows.filter(r=>r.done).length};
+}
+/* تجميع صفوف الطلبات حسب الموظف ثم حسب المركز، مع تطبيق دالة الإحصاء المطلوبة (تراكمية أو لفترة) على كل مجموعة */
+function groupStatsByUidAndCenter(rows, statFn){
+  const buckets = {};
+  rows.forEach(r=>{
+    if(!buckets[r.uid]) buckets[r.uid] = {rows:[], centers:{}};
+    buckets[r.uid].rows.push(r);
+    const c = r.center || 'بدون مركز';
+    if(!buckets[r.uid].centers[c]) buckets[r.uid].centers[c] = [];
+    buckets[r.uid].centers[c].push(r);
+  });
+  const result = {};
+  Object.keys(buckets).forEach(uid=>{
+    const s = statFn(buckets[uid].rows);
+    const centers = {};
+    Object.keys(buckets[uid].centers).forEach(c=> centers[c] = statFn(buckets[uid].centers[c]));
+    result[uid] = {target:s.target, done:s.done, centers};
+  });
+  return result;
 }
 function toast(msg, type=''){
   document.querySelectorAll('.toast').forEach(t=>t.remove());
@@ -967,7 +997,7 @@ function renderMyRequests(box){
     [...selectedIds].forEach(id=>{ if(!stillPending.has(id)) selectedIds.delete(id); });
 
     wrap.innerHTML = `
-      <table>
+      <table class="sticky-table">
         <thead><tr>
           <th style="width:32px;"><input type="checkbox" id="sel-all-chk"></th>
           <th class="col-action">الإدخال</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإسناد</th>
@@ -1091,13 +1121,13 @@ function renderDoneSection(box){
   box.innerHTML = `
     <div class="card">
       <h3>🏆 إحصائيات الإدخال لكل موظف</h3>
-      <div class="card-sub">لكل موظف: المراكز المسندة إليه (وتفصيل كل مركز إن كان لديه أكثر من مركز)، والمستهدف وما تم وما تبقى — اختر فترة زمنية أو اترك الفترة فارغة لعرض كل الوقت</div>
+      <div class="card-sub">لكل موظف: المراكز المسندة إليه (وتفصيل كل مركز إن كان لديه أكثر من مركز)، والمستهدف وما تم وما تبقى — بدون تحديد فترة تُعرض إحصائية اليوم الحالي (المتبقي من قبل + ما استُجد اليوم)، أو اختر فترة لعرض إجمالي المُسنَد خلالها</div>
       <div class="filter-bar">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="done-from">
         <label class="muted" style="font-size:12.5px;">إلى</label>
         <input type="date" id="done-to">
-        <button class="btn btn-outline btn-sm" id="done-all-time">كل الوقت</button>
+        <button class="btn btn-outline btn-sm" id="done-all-time">اليوم الحالي</button>
       </div>
       <div class="emp-stat-grid" id="done-leaderboard"><div class="muted">جارِ التحميل...</div></div>
     </div>
@@ -1171,17 +1201,11 @@ function renderDoneSection(box){
   function drawLeaderboard(){
     const board = box.querySelector('#done-leaderboard');
     if(!board) return;
-    const rows = allRows.filter(inAssignPeriod);
-    const byUid = {};
-    rows.forEach(r=>{
-      if(!byUid[r.uid]) byUid[r.uid] = {target:0, done:0, centers:{}};
-      byUid[r.uid].target++;
-      if(r.done) byUid[r.uid].done++;
-      const c = r.center || 'بدون مركز';
-      if(!byUid[r.uid].centers[c]) byUid[r.uid].centers[c] = {target:0, done:0};
-      byUid[r.uid].centers[c].target++;
-      if(r.done) byUid[r.uid].centers[c].done++;
-    });
+    const from = box.querySelector('#done-from').value;
+    const to = box.querySelector('#done-to').value;
+    const byUid = (!from && !to)
+      ? groupStatsByUidAndCenter(allRows, rolloverStats)   // اليوم الحالي: تراكم المتبقي من قبل + ما تم اليوم
+      : groupStatsByUidAndCenter(allRows.filter(inAssignPeriod), periodStats); // فترة محددة: كما هو معتاد
     const uids = Object.keys(byUid).filter(uid=> !employeesCache[uid] || employeesCache[uid].role!=='admin');
     if(uids.length===0){ board.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>لا توجد طلبات مسندة في هذه الفترة</div>`; return; }
     uids.sort((a,b)=> byUid[b].done - byUid[a].done || empName(a).localeCompare(empName(b),'ar'));
@@ -1218,7 +1242,7 @@ function renderDoneSection(box){
       rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar') || String(doneDateOf(b)).localeCompare(String(doneDateOf(a))));
     }
     tbl.innerHTML = `
-      <table>
+      <table class="sticky-table">
         <thead><tr><th>الموظف</th><th>المركز</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإدخال</th></tr></thead>
         <tbody>${rows.map(r=>`
           <tr>
@@ -1892,14 +1916,13 @@ function renderAdminRequestsLog(container){
   container.innerHTML = `
     <div class="card">
       <h3>📊 إحصائيات عامة (تحديث تلقائي)</h3>
-      <div class="card-sub">إجمالي المستهدف وما تم والمتبقي لكل الموظفين — أو ابحث باسم موظف لعرض إحصائياته وحده</div>
+      <div class="card-sub">إجمالي المستهدف وما تم والمتبقي لكل الموظفين — بدون تحديد فترة تُحسب تلقائيًا كإحصائية اليوم الحالي (المتبقي من الأيام السابقة + الجديد المسنَد اليوم)</div>
       <div class="filter-bar filter-bar-oneline">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="cards-from">
         <label class="muted" style="font-size:12.5px;">إلى</label>
         <input type="date" id="cards-to">
-        <button class="btn btn-outline btn-sm" id="cards-all-time">كل الوقت</button>
-        <input type="text" id="emp-stat-search" placeholder="🔍 ابحث باسم الموظف..." style="margin-inline-start:auto;min-width:200px;">
+        <button class="btn btn-outline btn-sm" id="cards-all-time">اليوم الحالي</button>
       </div>
       <div id="emp-stat-cards"><div class="muted">جارِ التحميل...</div></div>
     </div>
@@ -1938,73 +1961,33 @@ function renderAdminRequestsLog(container){
     if(!cardsBox) return;
     const from = container.querySelector('#cards-from').value;
     const to = container.querySelector('#cards-to').value;
-    const searchTerm = (container.querySelector('#emp-stat-search').value||'').trim();
-    let rows = allRows;
-    if(from || to){
-      rows = rows.filter(r=>{
+    // نستبعد صفوف المدير من الإحصائيات
+    const baseRows = allRows.filter(r=> !employees[r.uid] || employees[r.uid].role!=='admin');
+
+    let totalTarget, totalDone, totalRemain;
+    if(!from && !to){
+      // بدون تحديد فترة = إحصائية اليوم الحالي: المستهدف = المتبقي من الأيام السابقة + ما تم إسناده وإدخاله اليوم
+      const s = rolloverStats(baseRows);
+      totalTarget = s.target; totalDone = s.done; totalRemain = s.target - s.done;
+    }else{
+      // فترة محددة: إجمالي ما تم إسناده خلال الفترة، وما تم إدخاله منه، والمتبقي عليه
+      const rows = baseRows.filter(r=>{
         const d = String(r.date||'');
         if(from && d<from) return false;
         if(to && d>to) return false;
         return true;
       });
+      totalTarget = rows.length;
+      totalDone = rows.filter(r=>r.done).length;
+      totalRemain = totalTarget - totalDone;
     }
-    const byUid = {};
-    rows.forEach(r=>{
-      if(!byUid[r.uid]) byUid[r.uid] = {target:0, done:0, centers:{}};
-      byUid[r.uid].target++;
-      if(r.done) byUid[r.uid].done++;
-      const c = r.center || 'بدون مركز';
-      if(!byUid[r.uid].centers[c]) byUid[r.uid].centers[c] = {target:0, done:0};
-      byUid[r.uid].centers[c].target++;
-      if(r.done) byUid[r.uid].centers[c].done++;
-    });
-    const uids = Object.keys(byUid).filter(uid=> !employees[uid] || employees[uid].role!=='admin');
-    if(uids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات مسندة في هذه الفترة</div>`; return; }
-
-    if(searchTerm){
-      // وضع البحث: بطاقة تفصيلية لكل موظف يطابق اسمه البحث
-      const matchUids = uids.filter(uid=> String(employees[uid]?.name||'').toLowerCase().includes(searchTerm.toLowerCase()));
-      if(matchUids.length===0){ cardsBox.innerHTML = `<div class="empty-state">لا يوجد موظف بهذا الاسم</div>`; return; }
-      matchUids.sort((a,b)=> (employees[a]?.name||'').localeCompare(employees[b]?.name||'','ar'));
-      cardsBox.className = 'emp-stat-grid';
-      cardsBox.innerHTML = matchUids.map(uid=>{
-        const s = byUid[uid];
-        const centerStats = Object.keys(s.centers).sort((a,b)=>a.localeCompare(b,'ar')).map(c=>({center:c, target:s.centers[c].target, done:s.centers[c].done}));
-        return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
-          <div class="flex-between" style="align-items:flex-start;">
-            <div>
-              <div class="es-name">${esc(employees[uid]?.name || 'غير معروف')}</div>
-              <div class="es-dept">${esc(employees[uid]?.department || '')}</div>
-            </div>
-            <button class="btn btn-outline btn-sm btn-auto emp-export-btn" data-uid="${esc(uid)}" title="تصدير طلبات هذا الموظف إلى إكسيل">📤 تصدير</button>
-          </div>
-          ${centerCardBodyHTML(centerStats)}
-        </div>`;
-      }).join('');
-    }else{
-      // بدون بحث: إحصائية إجمالية واحدة فقط لكل الموظفين، في خط واحد
-      const totalTarget = uids.reduce((s,uid)=> s+byUid[uid].target, 0);
-      const totalDone = uids.reduce((s,uid)=> s+byUid[uid].done, 0);
-      const totalRemain = totalTarget - totalDone;
-      cardsBox.className = '';
-      cardsBox.innerHTML = `
-        <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
-          <div class="stat-box"><div class="num">${totalTarget}</div><div class="lbl">إجمالي المستهدف</div></div>
-          <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${totalDone}</div><div class="lbl">إجمالي ما تم</div></div>
-          <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${totalRemain}</div><div class="lbl">المتبقي</div></div>
-        </div>`;
-    }
-    cardsBox.querySelectorAll('.emp-export-btn').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        const uid = b.dataset.uid;
-        const empRows = rows.filter(r=> r.uid===uid);
-        if(empRows.length===0){ toast('لا توجد بيانات لتصديرها لهذا الموظف', 'err'); return; }
-        const colSet = [];
-        empRows.forEach(r=> filterAllowedCols(Object.keys(r.data||{})).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
-        const empName = employees[uid]?.name || uid;
-        exportRowsToExcel(empRows, colSet, `طلبات_${empName}_${todayCairoStr()}.xlsx`, employees);
-      });
-    });
+    if(totalTarget===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات في هذه الفترة</div>`; return; }
+    cardsBox.innerHTML = `
+      <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-box"><div class="num">${totalTarget}</div><div class="lbl">إجمالي المستهدف</div></div>
+        <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${totalDone}</div><div class="lbl">إجمالي ما تم</div></div>
+        <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${totalRemain}</div><div class="lbl">المتبقي</div></div>
+      </div>`;
   }
 
   function draw(){
@@ -2078,7 +2061,6 @@ function renderAdminRequestsLog(container){
   container.querySelector('#log-search').addEventListener('input', draw);
   container.querySelector('#cards-from').addEventListener('change', drawCards);
   container.querySelector('#cards-to').addEventListener('change', drawCards);
-  container.querySelector('#emp-stat-search').addEventListener('input', drawCards);
   container.querySelector('#cards-all-time').addEventListener('click', ()=>{
     container.querySelector('#cards-from').value='';
     container.querySelector('#cards-to').value='';
