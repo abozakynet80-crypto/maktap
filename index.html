@@ -220,11 +220,18 @@
 
   /* ==== نوتة المهام اليومية ==== */
   .notebook-card{border-top:4px solid var(--brand);}
-  .note-row{display:flex;gap:6px;align-items:center;margin-bottom:8px;}
-  .note-row .n-text{flex:1;min-width:0;padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;background:#fbfcfe;}
-  .note-row .n-count{width:78px;flex:none;padding:10px 6px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;background:#fbfcfe;text-align:center;}
-  .note-row .n-text:focus,.note-row .n-count:focus{outline:none;border-color:var(--brand);background:#fff;}
-  .note-row .n-save{flex:none;}
+  .note-rows{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:8px;}
+  @media(min-width:760px){.note-rows{grid-template-columns:1fr 1fr;}}
+  .note-row{background:#fbfcfe;border:1.5px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;}
+  .note-row .n-text{width:100%;min-height:36px;max-height:140px;padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13.5px;background:#fff;resize:none;overflow:hidden;line-height:1.45;font-family:inherit;}
+  .note-row .n-bottom{display:flex;gap:6px;align-items:center;}
+  .note-row .n-count-wrap{display:flex;align-items:center;gap:5px;flex:none;background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:0 8px;}
+  .note-row .n-count-wrap .n-count-lbl{font-size:11.5px;color:var(--sub);flex:none;}
+  .note-row .n-count{width:44px;flex:none;padding:8px 2px;border:none;font-size:13.5px;background:transparent;text-align:center;}
+  .note-row .n-count:focus{outline:none;}
+  .note-row .n-text:focus{outline:none;border-color:var(--brand);}
+  .note-row .n-count-wrap:focus-within{border-color:var(--brand);}
+  .note-row .n-save{flex:1;}
   .saved-task{display:flex;align-items:center;gap:8px;background:var(--good-bg);border:1px solid #cdeadd;border-radius:10px;padding:9px 12px;margin-bottom:7px;}
   .saved-task .st-num{width:24px;height:24px;border-radius:50%;background:var(--good);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;flex:none;}
   .saved-task .st-text{flex:1;font-size:13.5px;font-weight:700;color:#14664a;word-break:break-word;white-space:normal;}
@@ -254,7 +261,7 @@ import {
   signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where,
+  getFirestore, doc, getDoc, getDocs, getDocFromServer, setDoc, updateDoc, deleteDoc, collection, query, where,
   onSnapshot, serverTimestamp, writeBatch, orderBy, Timestamp, arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
@@ -295,6 +302,40 @@ const secondaryAuth = getAuth(secondaryApp);
 
 const root = document.getElementById('app-root');
 
+/* ============ توقيت موثوق من السيرفر (بغض النظر عن ضبط ساعة جهاز الموظف) ============ */
+let serverTimeOffsetMs = 0;
+let serverTimeSynced = false;
+let serverTimeSyncTimer = null;
+function nowMs(){ return Date.now() + serverTimeOffsetMs; }
+async function syncServerTime(){
+  if(!currentUser) return;
+  try{
+    const ref = doc(db, '_serverTime', currentUser.uid);
+    const t0 = Date.now();
+    await setDoc(ref, { t: serverTimestamp() });
+    const snap = await getDocFromServer(ref);
+    const t1 = Date.now();
+    const tsVal = snap.data() && snap.data().t;
+    if(tsVal){
+      const serverMs = tsVal.toMillis();
+      const rtt = t1 - t0;
+      serverTimeOffsetMs = serverMs - (t0 + rtt/2);
+      serverTimeSynced = true;
+    }
+  }catch(err){
+    console.warn('تعذرت مزامنة توقيت السيرفر، سيتم استخدام توقيت الجهاز مؤقتًا', err);
+  }
+}
+function startServerTimeSync(){
+  syncServerTime();
+  if(serverTimeSyncTimer) clearInterval(serverTimeSyncTimer);
+  serverTimeSyncTimer = setInterval(syncServerTime, 5*60*1000);
+}
+function stopServerTimeSync(){
+  if(serverTimeSyncTimer){ clearInterval(serverTimeSyncTimer); serverTimeSyncTimer=null; }
+  serverTimeSynced = false; serverTimeOffsetMs = 0;
+}
+
 /* ============ Helpers ============ */
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
 function esc(s){ return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -306,13 +347,13 @@ function userToEmail(username){
   return `u${hex}@${LOGIN_DOMAIN}`;
 }
 function todayCairoStr(){
-  return new Intl.DateTimeFormat('en-CA', {timeZone:'Africa/Cairo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+  return new Intl.DateTimeFormat('en-CA', {timeZone:'Africa/Cairo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date(nowMs()));
 }
 function cairoNow(){
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone:'Africa/Cairo', hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit',
     year:'numeric', month:'2-digit', day:'2-digit'
-  }).formatToParts(new Date());
+  }).formatToParts(new Date(nowMs()));
   const o={}; parts.forEach(p=>o[p.type]=p.value);
   return { hour:+o.hour, minute:+o.minute, second:+o.second, dateStr:`${o.year}-${o.month}-${o.day}` };
 }
@@ -487,7 +528,7 @@ function authErrMsg(code){
 }
 
 /* ============ نوتة المهام اليومية (جديد) ============ */
-const DAILY_TASK_GOAL = 5;   // هدف عدد المهام اليومي (للتحفيز فقط)
+const DAILY_TASK_GOAL = 3;   // هدف عدد المهام اليومي (للتحفيز فقط)
 let _tasksSig = null;
 
 function taskLabel(t){
@@ -508,18 +549,24 @@ function motivFor(n, total){
 function achBadges(n, total){
   return [
     {on:n>=1, txt:'🥉 أول مهمة'},
-    {on:n>=3, txt:'🥈 3 مهام'},
     {on:n>=DAILY_TASK_GOAL, txt:'🥇 هدف اليوم'},
+    {on:n>=5, txt:'🥈 5 مهام'},
     {on:n>=8, txt:'🔥 8 مهام'},
     {on:total>=50, txt:'🚀 50+ إنجاز'}
   ].map(b=>`<span class="ach-badge ${b.on?'on':''}">${b.txt}</span>`).join('');
 }
 function noteRowHTML(){
   return `<div class="note-row">
-    <input type="text" class="n-text" placeholder="اكتب المهمة التي أنجزتها...">
-    <input type="text" class="n-count" placeholder="العدد">
-    <button class="btn btn-sm btn-enter n-save">💾 حفظ</button>
+    <textarea class="n-text" placeholder="اكتب المهمة التي أنجزتها..." rows="1"></textarea>
+    <div class="n-bottom">
+      <div class="n-count-wrap"><span class="n-count-lbl">العدد</span><input type="text" class="n-count" placeholder="—"></div>
+      <button class="btn btn-sm btn-enter n-save">💾 حفظ</button>
+    </div>
   </div>`;
+}
+function autoGrowTextarea(t){
+  t.style.height='auto';
+  t.style.height = Math.min(140, Math.max(36, t.scrollHeight)) + 'px';
 }
 /* حفظ مهمة واحدة فورًا أثناء اليوم */
 async function saveTaskFromRow(row, docId){
@@ -530,16 +577,16 @@ async function saveTaskFromRow(row, docId){
   const countRaw = normalizeDigits(cntEl.value).trim();
   if(!text){ toast('اكتب اسم المهمة أولاً', 'err'); textEl.focus(); return; }
   if(countRaw!=='' && (isNaN(Number(countRaw)) || Number(countRaw)<0)){ toast('العدد لازم يكون رقمًا صحيحًا', 'err'); cntEl.focus(); return; }
-  const t = {text, at: Timestamp.now()};
+  const t = {text, at: Timestamp.fromMillis(nowMs())};
   if(countRaw!=='') t.count = Number(countRaw);
   btn.disabled = true; btn.textContent = '...';
-  textEl.value=''; cntEl.value='';
+  textEl.value=''; cntEl.value=''; autoGrowTextarea(textEl);
   try{
     await updateDoc(doc(db,'attendance',docId), {tasks: arrayUnion(t)});
     toast('تم حفظ المهمة ✔ استمر كده', 'ok');
   }catch(err){
     console.error(err);
-    textEl.value = text; cntEl.value = countRaw;
+    textEl.value = text; cntEl.value = countRaw; autoGrowTextarea(textEl);
     toast('تعذر حفظ المهمة، حاول مرة أخرى', 'err');
   }
   btn.disabled = false; btn.textContent = '💾 حفظ';
@@ -616,8 +663,8 @@ function renderTasksCard(data, docId){
         </div>`).join('') : `<div class="small-note" style="margin-bottom:10px;">لم تسجل أي مهمة اليوم بعد — اكتب أول مهمة بالأسفل واضغط «حفظ»</div>`}
     </div>
     ${closed ? `<div class="small-note" style="margin-top:12px;">✅ تم تسجيل الانصراف اليوم — المهام أعلاه محفوظة في سجلك ولا يمكن تعديلها</div>` : `
-      <div class="card-sub" style="margin:14px 0 8px;">اكتب المهمة والعدد (العدد اختياري) واضغط «حفظ» — كل مهمة تُحفظ فورًا، ووقت الانصراف تُسجَّل كل مهام اليوم تلقائيًا</div>
-      <div id="note-rows">${Array.from({length:rowsNeeded}).map(()=>noteRowHTML()).join('')}</div>
+      <div class="card-sub" style="margin:14px 0 8px;">اكتب المهمة والعدد (العدد اختياري) واضغط «حفظ» أو Ctrl+Enter — كل مهمة تُحفظ فورًا، ووقت الانصراف تُسجَّل كل مهام اليوم تلقائيًا</div>
+      <div id="note-rows" class="note-rows">${Array.from({length:rowsNeeded}).map(()=>noteRowHTML()).join('')}</div>
       <button class="btn btn-outline btn-sm" id="add-note-row">+ إضافة مهمة أخرى</button>
     `}
   `;
@@ -625,8 +672,12 @@ function renderTasksCard(data, docId){
   if(!closed){
     const rowsBox = card.querySelector('#note-rows');
     const bind = (row)=>{
+      const ta = row.querySelector('.n-text');
       row.querySelector('.n-save').addEventListener('click', ()=> saveTaskFromRow(row, docId));
-      row.querySelectorAll('input').forEach(i=> i.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); saveTaskFromRow(row, docId); } }));
+      ta.addEventListener('input', ()=> autoGrowTextarea(ta));
+      ta.addEventListener('keydown', e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); saveTaskFromRow(row, docId); } });
+      row.querySelector('.n-count').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); saveTaskFromRow(row, docId); } });
+      autoGrowTextarea(ta);
     };
     [...rowsBox.querySelectorAll('.note-row')].forEach(bind);
     card.querySelector('#add-note-row').addEventListener('click', ()=>{
@@ -662,8 +713,10 @@ function clearSubs(){ unsubList.forEach(u=>{ try{u();}catch(e){} }); unsubList=[
 onAuthStateChanged(auth, async (user)=>{
   clearSubs();
   currentUser = user;
-  if(!user){ renderLogin(); return; }
+  if(!user){ stopServerTimeSync(); renderLogin(); return; }
   renderLoading('جارِ التحقق من بيانات الحساب...');
+  startServerTimeSync();
+  await syncServerTime();
   try{
     const snap = await getDoc(doc(db,'employees',user.uid));
     if(!snap.exists()){
@@ -1259,7 +1312,7 @@ function openCheckoutModal(docId, savedTasks){
       const text = r.querySelector('.task-input').value.trim();
       const cnt = normalizeDigits(r.querySelector('.task-count').value).trim();
       if(!text) return null;
-      const o = {text, at: Timestamp.now()};
+      const o = {text, at: Timestamp.fromMillis(nowMs())};
       if(cnt!=='' && !isNaN(Number(cnt))) o.count = Number(cnt);
       return o;
     }).filter(Boolean);
