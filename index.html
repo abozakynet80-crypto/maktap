@@ -1792,8 +1792,13 @@ function renderAdminRequestsLog(container){
       const remain = s.target - s.done;
       const centersArr = [...s.centers].sort((a,b)=>a.localeCompare(b,'ar'));
       return `<div class="emp-stat-card">
-        <div class="es-name">${esc(employees[uid]?.name || 'غير معروف')}</div>
-        <div class="es-dept">${esc(employees[uid]?.department || '')}</div>
+        <div class="flex-between" style="align-items:flex-start;">
+          <div>
+            <div class="es-name">${esc(employees[uid]?.name || 'غير معروف')}</div>
+            <div class="es-dept">${esc(employees[uid]?.department || '')}</div>
+          </div>
+          <button class="btn btn-outline btn-sm btn-auto emp-export-btn" data-uid="${esc(uid)}" title="تصدير طلبات هذا الموظف إلى إكسيل">📤 تصدير</button>
+        </div>
         ${centersArr.length ? `<div class="es-centers">${centersArr.map(c=>`<span class="badge-dept">${esc(c)}</span>`).join('')}</div>` : ''}
         <div class="stat-row" style="grid-template-columns:repeat(3,1fr);">
           <div class="stat-box"><div class="num">${s.target}</div><div class="lbl">المستهدف</div></div>
@@ -1803,6 +1808,17 @@ function renderAdminRequestsLog(container){
         <div class="progress-bar" style="margin-top:10px;"><div style="width:${s.target?Math.round(s.done/s.target*100):0}%;"></div></div>
       </div>`;
     }).join('');
+    cardsBox.querySelectorAll('.emp-export-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const uid = b.dataset.uid;
+        const empRows = rows.filter(r=> r.uid===uid);
+        if(empRows.length===0){ toast('لا توجد بيانات لتصديرها لهذا الموظف', 'err'); return; }
+        const colSet = [];
+        empRows.forEach(r=> Object.keys(r.data||{}).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
+        const empName = employees[uid]?.name || uid;
+        exportRowsToExcel(empRows, colSet, `طلبات_${empName}_${todayCairoStr()}.xlsx`, employees);
+      });
+    });
   }
 
   function draw(){
