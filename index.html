@@ -626,7 +626,6 @@ function renderTasksCard(data, docId){
   if(!checkedIn){
     card.innerHTML = `
       <h3>📝 نوتة المهام اليومية</h3>
-      <div class="card-sub">سجّل حضورك أولاً، وبعدها تقدر تكتب كل مهمة تخلصها أول بأول طوال اليوم</div>
       <div class="empty-state"><div class="emoji">🔒</div>النوتة تفتح بعد تسجيل الحضور</div>`;
     card.dataset.ready='1';
     return;
@@ -663,7 +662,6 @@ function renderTasksCard(data, docId){
         </div>`).join('') : `<div class="small-note" style="margin-bottom:10px;">لم تسجل أي مهمة اليوم بعد — اكتب أول مهمة بالأسفل واضغط «حفظ»</div>`}
     </div>
     ${closed ? `<div class="small-note" style="margin-top:12px;">✅ تم تسجيل الانصراف اليوم — المهام أعلاه محفوظة في سجلك ولا يمكن تعديلها</div>` : `
-      <div class="card-sub" style="margin:14px 0 8px;">اكتب المهمة والعدد (العدد اختياري) واضغط «حفظ» أو Ctrl+Enter — كل مهمة تُحفظ فورًا، ووقت الانصراف تُسجَّل كل مهام اليوم تلقائيًا</div>
       <div id="note-rows" class="note-rows">${Array.from({length:rowsNeeded}).map(()=>noteRowHTML()).join('')}</div>
       <button class="btn btn-outline btn-sm" id="add-note-row">+ إضافة مهمة أخرى</button>
     `}
@@ -820,7 +818,6 @@ function renderCompleteProfile(user){
       </div>
       <div class="form-card">
         <h2>مرحباً بك 👋</h2>
-        <div class="hint">أكمل بياناتك للدخول للمنظومة</div>
         <div class="field"><label>الاسم بالكامل *</label><input type="text" id="reg-name" placeholder="اكتب اسمك بالكامل"></div>
         <div class="field"><label>رقم الهاتف *</label><input type="tel" id="reg-phone" placeholder="01xxxxxxxxx"></div>
         <div class="field">
@@ -912,6 +909,91 @@ function renderApp(){
   shell.querySelector('#account-btn').addEventListener('click', openAccountModal);
   shell.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
   switchTab(isAdmin ? 'admin-daily' : 'home');
+  if(!isAdmin) showMorningGreetingModal();
+}
+
+/* ============ مودال تحية الصباح — يظهر أول ما يفتح الموظف التطبيق ولسه محددش حالة يومه ============ */
+function greetingText(name){
+  const opts = [`صباح الفل يا ${name} 👋`, `صباح الخير يا ${name} ☀️`];
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+async function showMorningGreetingModal(){
+  const uid = currentUser.uid;
+  const today = todayCairoStr();
+  const docId = `${uid}_${today}`;
+  let data = null;
+  try{
+    const snap = await getDoc(doc(db,'attendance',docId));
+    data = snap.exists() ? snap.data() : null;
+  }catch(err){ console.error(err); return; }
+  if(data && (data.checkIn || data.absenceReason)) return; // اليوم اتحدد بالفعل
+
+  const overlay = el(`
+    <div class="modal-overlay">
+      <div class="modal-box" style="max-width:400px;text-align:center;">
+        <div style="font-size:38px;margin-bottom:6px;">☀️</div>
+        <h3 style="margin-bottom:6px;">${esc(greetingText(currentEmployee.name||''))}</h3>
+        <div class="modal-sub">سجّل حضورك دلوقتي، أو أخطر بالغياب مع ذكر السبب</div>
+        <div id="mg-absence-box" style="display:none;text-align:right;margin-top:8px;">
+          <div class="field"><label>سبب الغياب *</label><textarea id="mg-reason" placeholder="اكتب السبب هنا..."></textarea></div>
+          <div class="error-text" id="mg-err" style="display:none;"></div>
+        </div>
+        <div class="modal-actions" id="mg-actions-main">
+          <button class="btn btn-outline" id="mg-absent-btn">🚫 إخطار غياب</button>
+          <button class="btn btn-primary" id="mg-checkin-btn">✅ تسجيل حضور</button>
+        </div>
+        <div class="modal-actions" id="mg-actions-absence" style="display:none;">
+          <button class="btn btn-outline" id="mg-cancel-absence-btn">رجوع</button>
+          <button class="btn btn-danger" id="mg-confirm-absence-btn">تأكيد الغياب</button>
+        </div>
+      </div>
+    </div>
+  `);
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#mg-checkin-btn').addEventListener('click', async (e)=>{
+    e.target.disabled=true; e.target.textContent='جارِ التسجيل...';
+    try{
+      await setDoc(doc(db,'attendance',docId), {
+        uid, date: today, checkIn: serverTimestamp(), checkOut: null, earlyLeaveReason: null, tasks: []
+      }, {merge:true});
+      toast('تم تسجيل الحضور بنجاح — يوم موفق 🌟', 'ok');
+      overlay.remove();
+    }catch(err){
+      console.error(err);
+      toast('حدث خطأ، حاول مرة أخرى', 'err');
+      e.target.disabled=false; e.target.textContent='✅ تسجيل حضور';
+    }
+  });
+
+  overlay.querySelector('#mg-absent-btn').addEventListener('click', ()=>{
+    overlay.querySelector('#mg-absence-box').style.display='block';
+    overlay.querySelector('#mg-actions-main').style.display='none';
+    overlay.querySelector('#mg-actions-absence').style.display='flex';
+  });
+  overlay.querySelector('#mg-cancel-absence-btn').addEventListener('click', ()=>{
+    overlay.querySelector('#mg-absence-box').style.display='none';
+    overlay.querySelector('#mg-actions-main').style.display='flex';
+    overlay.querySelector('#mg-actions-absence').style.display='none';
+  });
+  overlay.querySelector('#mg-confirm-absence-btn').addEventListener('click', async (e)=>{
+    const reasonEl = overlay.querySelector('#mg-reason');
+    const reason = reasonEl.value.trim();
+    const errBox = overlay.querySelector('#mg-err');
+    if(!reason){ errBox.textContent='من فضلك اكتب سبب الغياب'; errBox.style.display='block'; return; }
+    errBox.style.display='none';
+    e.target.disabled=true; e.target.textContent='جارِ الحفظ...';
+    try{
+      await setDoc(doc(db,'attendance',docId), { uid, date: today, absenceReason: reason }, {merge:true});
+      toast('تم إخطار الغياب — نتمنى لك السلامة 🤍', 'ok');
+      overlay.remove();
+    }catch(err){
+      console.error(err);
+      errBox.textContent='حدث خطأ أثناء الحفظ، حاول مرة أخرى';
+      errBox.style.display='block';
+      e.target.disabled=false; e.target.textContent='تأكيد الغياب';
+    }
+  });
 }
 
 function switchTab(tab){
@@ -1058,7 +1140,6 @@ function renderHomeTab(content){
 
     <div class="card" style="margin-top:18px;">
       <h3>🕒 سجل الحضور والإنجاز — كل الأيام</h3>
-      <div class="card-sub">يعرض كل أيام العمل (الجمعة والسبت لا تُحتسب غيابًا) مع الحالة وأوقات الحضور والانصراف والمهام</div>
       <div class="filter-bar">
         <input type="date" id="att-date" max="${today}">
         <select id="att-status">
@@ -1358,7 +1439,6 @@ function renderMyRequests(box){
   box.innerHTML = `
     <div class="card">
       <h3>📊 إحصائياتي</h3>
-      <div class="card-sub">المستهدف اليوم = كل ما تبقى غير مُدخَل من الأيام السابقة + ما تم إدخاله اليوم. لو خلّصت كل حاجة، يبقى مستهدفك صفر لحين إضافة طلبات جديدة لك</div>
       <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
         <div class="stat-box"><div class="num" id="stat-target">0</div><div class="lbl">المستهدف</div></div>
         <div class="stat-box"><div class="num" id="stat-done">0</div><div class="lbl">تم إدخاله</div></div>
@@ -1373,7 +1453,6 @@ function renderMyRequests(box){
         <h3 style="margin:0;">📁 الطلبات المسندة إليّ</h3>
         <button class="btn btn-outline btn-sm btn-auto" id="my-export-btn">📤 تصدير إكسيل</button>
       </div>
-      <div class="card-sub">اضغط «تم الإدخال» أمام الطلب لينتقل إلى قسم «ما تم إدخاله»، أو حدد أكثر من طلب بالمربعات واضغط «تم إدخال المحدد». الجدول مرتب تلقائيًا حسب المركز. التصدير يعتمد على الفلاتر المطبقة حاليًا.</div>
       <div class="filter-bar">
         <input type="text" id="mine-search" placeholder="ابحث برقم الطلب أو أي جزء منه...">
         <select id="mine-center-filter"><option value="">كل المراكز</option></select>
@@ -1586,7 +1665,6 @@ function renderDoneSection(box){
   box.innerHTML = `
     <div class="card">
       <h3>🏆 إحصائيات الإدخال لكل موظف</h3>
-      <div class="card-sub">لكل موظف: المراكز المسندة إليه (وتفصيل كل مركز إن كان لديه أكثر من مركز)، والمستهدف وما تم وما تبقى — بدون تحديد فترة تُعرض إحصائية اليوم الحالي (المتبقي من قبل + ما استُجد اليوم)، أو اختر فترة لعرض إجمالي المُسنَد خلالها</div>
       <div class="filter-bar">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="done-from">
@@ -1599,7 +1677,6 @@ function renderDoneSection(box){
 
     <div class="card" style="margin-top:18px;">
       <h3>✅ سجل الطلبات التي تم إدخالها</h3>
-      <div class="card-sub">للعرض فقط — غير قابل للتعديل</div>
       <div class="filter-bar">
         <select id="done-emp"><option value="">كل الموظفين</option></select>
         <select id="done-sort">
@@ -1767,7 +1844,6 @@ function renderAdminDailyReport(container){
 
     <div class="card" style="margin-top:18px;">
       <h3>📈 إحصائيات فترة</h3>
-      <div class="card-sub">اختر موظفًا محددًا أو اترك «كل الموظفين» — يظهر لكل موظف عدد أيام التأخير والغياب والأيام بدون إنجاز، مع إمكانية عرض تفاصيل كل يوم بالفترة (بدون الجمعة والسبت)</div>
       <div class="flex-between" style="margin-bottom:14px;flex-wrap:wrap;gap:10px;">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <label class="muted" style="font-size:12.5px;">من</label>
@@ -1975,30 +2051,32 @@ function renderAdminDailyReport(container){
       let uids = Object.keys(employees).filter(uid=> employees[uid].role!=='admin');
       if(empFilter) uids = uids.filter(uid=> uid===empFilter);
       const stats = uids.map(uid=>{
-        let late=0, absent=0, noWork=0, totalTasks=0;
+        let late=0, absent=0, noWork=0, totalTasks=0, early=0;
         const days = dates.map(ds=>{
           const rec = byUidDate[`${uid}_${ds}`];
           const st = dayStatus(ds, rec);
           if(st==='absent') absent++;
           else if(st==='late') late++;
+          if(isEarlyLeave(rec)) early++;
           const hasWork = rec && rec.tasks && rec.tasks.length>0;
           if(hasWork) totalTasks += rec.tasks.length;
           if((st==='present'||st==='late') && !hasWork) noWork++;
           return {date: ds, status: st, rec};
         });
-        return {uid, name: employees[uid].name, dept: employees[uid].department, late, absent, noWork, totalTasks, days};
+        return {uid, name: employees[uid].name, dept: employees[uid].department, late, absent, early, noWork, totalTasks, days};
       }).sort((a,b)=> (b.absent+b.late) - (a.absent+a.late));
 
       if(stats.length===0){ statsTbl.innerHTML = `<div class="empty-state">لا يوجد موظفون مطابقون</div>`; return; }
       statsTbl.innerHTML = `
         <table class="sticky-table">
-          <thead><tr><th>الموظف</th><th>القسم</th><th>إجمالي المهام</th><th>أيام التأخير</th><th>أيام الغياب</th><th>أيام بدون إنجاز</th><th>التفاصيل</th></tr></thead>
+          <thead><tr><th>الموظف</th><th>القسم</th><th>إجمالي المهام</th><th>أيام التأخير</th><th>أيام الغياب</th><th>أيام الانصراف المبكر</th><th>أيام بدون إنجاز</th><th>التفاصيل</th></tr></thead>
           <tbody>${stats.map((s,i)=>`<tr>
             <td>${esc(s.name)}</td>
             <td><span class="badge-dept">${esc(s.dept)}</span></td>
             <td>${s.totalTasks ? `<span class="status-pill pill-good">${s.totalTasks}</span>` : '0'}</td>
             <td>${s.late ? `<span class="status-pill pill-warn">${s.late}</span>` : '0'}</td>
             <td>${s.absent ? `<span class="status-pill pill-bad">${s.absent}</span>` : '0'}</td>
+            <td>${s.early ? `<span class="status-pill pill-warn">${s.early}</span>` : '0'}</td>
             <td>${s.noWork ? `<span class="status-pill pill-neutral">${s.noWork}</span>` : '0'}</td>
             <td><button class="link-btn detail-stat-btn" data-idx="${i}">عرض كل الأيام</button></td>
           </tr>`).join('')}</tbody>
@@ -2026,7 +2104,7 @@ function showEmployeePeriodModal(stat){
         <div class="modal-sub">${esc(stat.dept)} — ${stat.days.length} يوم عمل بالفترة المختارة</div>
         <div class="table-wrap" style="max-height:60vh;">
           <table>
-            <thead><tr><th>التاريخ</th><th>الحالة</th><th>الحضور</th><th>الانصراف</th><th>المهام</th></tr></thead>
+            <thead><tr><th>التاريخ</th><th>الحالة</th><th>الحضور</th><th>الانصراف</th><th>المهام</th><th>ملاحظات</th></tr></thead>
             <tbody>
               ${stat.days.map(d=>{
                 const taskCount = d.rec && d.rec.tasks ? d.rec.tasks.length : 0;
@@ -2037,6 +2115,7 @@ function showEmployeePeriodModal(stat){
                   <td>${fmtTime(d.rec && d.rec.checkIn)}</td>
                   <td>${fmtTime(d.rec && d.rec.checkOut)}</td>
                   <td>${taskCount ? `<button class="link-btn day-task-btn" data-date="${d.date}">${taskCount} مهمة${tot?` • عدد ${tot}`:''}</button>` : '<span class="muted">—</span>'}</td>
+                  <td>${isEarlyLeave(d.rec) ? `<span class="status-pill pill-warn">انصراف مبكر</span>` : '<span class="muted">—</span>'}</td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -2366,7 +2445,6 @@ function renderAdminRequestsLog(container){
   container.innerHTML = `
     <div class="card">
       <h3>📊 إحصائيات عامة (تحديث تلقائي)</h3>
-      <div class="card-sub">إجمالي المستهدف وما تم والمتبقي لكل الموظفين — طلبات «الاستيفاء» مستبعدة من الحسابات وتظهر في خانة منفصلة</div>
       <div class="filter-bar filter-bar-oneline">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="cards-from">
@@ -2382,7 +2460,6 @@ function renderAdminRequestsLog(container){
         <h3 style="margin:0;">🔍 سجل كل طلبات التقنين</h3>
         <button class="btn btn-outline btn-sm btn-auto" id="log-export-btn">📤 تصدير إكسيل</button>
       </div>
-      <div class="card-sub">فلترة حسب الموظف والحالة، وبحث برقم الطلب أو أي جزء منه، وترتيب أبجدي — التصدير يعتمد على الفلاتر المطبقة حاليًا</div>
       <div class="filter-bar filter-bar-oneline">
         <select id="log-emp-filter"><option value="">كل الموظفين</option></select>
         <select id="log-status-filter">
@@ -2528,7 +2605,6 @@ function renderAdminUpload(container){
   container.innerHTML = `
     <div class="card">
       <h3>📤 رفع ملف إكسيل لطلبات التقنين</h3>
-      <div class="card-sub">ارفع ملف إكسيل لمركز واحد أو ملف مجمّع لعدة مراكز — سيتم التعرف على عمود «المركز» تلقائيًا، ثم توزيع كل مركز على الموظف المناسب (يمكن إسناد أكثر من مركز لنفس الموظف)</div>
       <div class="small-note" style="margin-bottom:14px;">ℹ️ لو الموظف/المركز عنده متبقي (لم يُدخل بعد) من رفعة سابقة، هيظهرلك تنبيه وقت الرفع تختار فيه: تضيف الجديد فوق المتبقي، أو تحذف المتبقي القديم وتستبدله. أي طلب تم إدخاله بالفعل لا يظهر في هذا التنبيه ولا يتأثر أبدًا.</div>
       <div class="field">
         <label>ملف الإكسيل *</label>
@@ -2573,7 +2649,6 @@ function renderAdminUpload(container){
 
     <div class="card" style="margin-top:18px;">
       <h3>📁 الملفات المرفوعة</h3>
-      <div class="card-sub">اضغط على اسم الملف لتحميله — الحذف يحذف الملف وكل الطلبات المرتبطة به بعد تأكيد</div>
       <div class="table-wrap" id="up-files-list"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
     </div>
   `;
