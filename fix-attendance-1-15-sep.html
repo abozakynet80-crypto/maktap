@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أداة تصحيح حضور 1 - 15 سبتمبر 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f3f6fb;--card:#fff;--border:#e3e8f0;--ink:#1b2635;--sub:#6b7688;--brand:#0d6e6e;--brand-dark:#095656;
+        --good:#1e9e6b;--good-bg:#e8f8f1;--warn:#c9852b;--warn-bg:#fdf2e2;--bad:#d6483f;--bad-bg:#fceceb;}
+  *{box-sizing:border-box;}
+  body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--ink);margin:0;padding:20px;}
+  .wrap{max-width:760px;margin:0 auto;}
+  h1{font-size:19px;margin:0 0 4px;}
+  .sub{color:var(--sub);font-size:13.5px;margin-bottom:20px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 2px 10px rgba(20,30,60,.06);padding:22px;margin-bottom:18px;}
+  .card h3{margin:0 0 14px;font-size:15px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  input[type=text],input[type=password],input[type=date],input[type=time]{
+    width:100%;padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;background:#fbfcfe;color:var(--ink);
+  }
+  input:focus{outline:none;border-color:var(--brand);background:#fff;}
+  label.chk{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin-bottom:10px;cursor:pointer;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:9px;border:none;font-weight:700;font-size:14px;cursor:pointer;width:100%;}
+  .btn-primary{background:var(--brand);color:#fff;}
+  .btn-primary:hover{background:var(--brand-dark);}
+  .btn-primary:disabled{background:#a9c3c3;cursor:not-allowed;}
+  .btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--ink);}
+  .msg{font-size:13.5px;margin-top:10px;padding:10px 12px;border-radius:8px;display:none;}
+  .msg.err{background:var(--bad-bg);color:var(--bad);display:block;}
+  .msg.ok{background:var(--good-bg);color:var(--good);display:block;}
+  .msg.info{background:#eef1f6;color:var(--sub);display:block;}
+  .hidden{display:none;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px;}
+  th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--border);}
+  th{color:var(--sub);font-weight:700;background:#fafbfd;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:700;}
+  .pill-good{background:var(--good-bg);color:var(--good);}
+  .pill-warn{background:var(--warn-bg);color:var(--warn);}
+  .stat{font-size:13px;margin:4px 0;}
+  .stat b{font-size:15px;}
+  #progress{height:8px;background:var(--border);border-radius:6px;overflow:hidden;margin-top:12px;display:none;}
+  #progress-bar{height:100%;background:var(--brand);width:0%;transition:.2s;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛠️ أداة تصحيح حضور الفترة قبل بدء العمل بالمنظومة</h1>
+  <div class="sub">تسجّل هذه الأداة "حضور" لكل الموظفين عن الأيام التي كانت تظهر "غياب" لعدم وجود بيانات، بنفس قاعدة بيانات نظام مركز شبكات المرافق. لا تُعدّل أي يوم له سجل حضور موجود بالفعل.</div>
+
+  <!-- تسجيل الدخول -->
+  <div class="card" id="login-card">
+    <h3>1) تسجيل دخول المدير</h3>
+    <div class="field">
+      <label>اسم المستخدم</label>
+      <input type="text" id="li-user" placeholder="اسم مستخدم المدير">
+    </div>
+    <div class="field">
+      <label>كلمة المرور</label>
+      <input type="password" id="li-pass" placeholder="كلمة المرور">
+    </div>
+    <button class="btn btn-primary" id="li-btn">دخول</button>
+    <div class="msg" id="li-msg"></div>
+  </div>
+
+  <!-- الإعدادات والتنفيذ -->
+  <div class="card hidden" id="run-card">
+    <h3>2) بيانات الفترة المطلوب تحضيرها</h3>
+    <div class="row2">
+      <div class="field"><label>من تاريخ</label><input type="date" id="rg-from" value="2026-09-01"></div>
+      <div class="field"><label>إلى تاريخ</label><input type="date" id="rg-to" value="2026-09-15"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>وقت الحضور المسجَّل</label><input type="time" id="rg-checkin" value="09:00"></div>
+      <div class="field"><label>وقت الانصراف المسجَّل</label><input type="time" id="rg-checkout" value="17:00"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="rg-set-checkout" checked> تسجيل وقت انصراف أيضًا (وليس حضور فقط)</label>
+    <label class="chk"><input type="checkbox" id="rg-skip-admin" checked> استبعاد حسابات المديرين من التحضير</label>
+    <button class="btn btn-outline" id="preview-btn">📋 معاينة قبل التنفيذ</button>
+    <div class="msg" id="run-msg"></div>
+    <div id="preview-box" class="hidden">
+      <div class="stat">عدد الموظفين المشمولين: <b id="pv-emp">0</b></div>
+      <div class="stat">أيام العمل في الفترة (بدون جمعة/سبت): <b id="pv-days">0</b></div>
+      <div class="stat">سجلات سيتم <span style="color:var(--good);">إنشاؤها كحضور</span>: <b id="pv-new">0</b></div>
+      <div class="stat">سجلات موجودة بالفعل <span style="color:var(--sub);">(لن تُمس)</span>: <b id="pv-skip">0</b></div>
+      <div class="table-wrap" style="max-height:260px;overflow:auto;">
+        <table id="pv-table"><thead><tr><th>الموظف</th><th>القسم</th><th>أيام ستُسجَّل حضورًا</th><th>أيام موجودة سلفًا</th></tr></thead><tbody></tbody></table>
+      </div>
+      <button class="btn btn-primary" id="confirm-btn" style="margin-top:14px;">✅ تنفيذ التحضير الآن</button>
+      <div id="progress"><div id="progress-bar"></div></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDocs, setDoc, collection, query, where, writeBatch, Timestamp
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+/* نفس إعدادات فيربيس المستخدمة في المنظومة الأصلية */
+const firebaseConfig = {
+  apiKey: "AIzaSyDb0dlyt1NxIUKWY1ZJr7Q57oJHF3L2wMU",
+  authDomain: "maktap-5e392.firebaseapp.com",
+  projectId: "maktap-5e392",
+  storageBucket: "maktap-5e392.firebasestorage.app",
+  messagingSenderId: "924906001862",
+  appId: "1:924906001862:web:677e567c0918136bba4ec7",
+  measurementId: "G-Q0YKHQTK0Y"
+};
+const LOGIN_DOMAIN = "maktap.local";
+const WEEKEND_DAYS = [5,6]; // الجمعة والسبت
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+function normUser(u){ return String(u||'').trim().replace(/\s+/g,' ').toLowerCase(); }
+function userToEmail(username){
+  const bytes = new TextEncoder().encode(normUser(username));
+  let hex=''; bytes.forEach(b=> hex += b.toString(16).padStart(2,'0'));
+  return `u${hex}@${LOGIN_DOMAIN}`;
+}
+function esc(s){ return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function workDaysBetween(fromStr, toStr){
+  const out=[];
+  if(!fromStr || !toStr || fromStr>toStr) return out;
+  let cur = new Date(fromStr+'T12:00:00');
+  const end = new Date(toStr+'T12:00:00');
+  while(cur<=end){
+    const ds = cur.toISOString().slice(0,10);
+    if(!WEEKEND_DAYS.includes(cur.getDay())) out.push(ds);
+    cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+/* يبني تاريخ Firestore Timestamp لساعة معيّنة بتوقيت القاهرة (UTC+3 في سبتمبر بسبب التوقيت الصيفي) */
+function cairoTimestamp(dateStr, hhmm){
+  const [hh,mm] = hhmm.split(':');
+  return Timestamp.fromDate(new Date(`${dateStr}T${hh}:${mm}:00+03:00`));
+}
+
+const liUser = document.getElementById('li-user');
+const liPass = document.getElementById('li-pass');
+const liBtn = document.getElementById('li-btn');
+const liMsg = document.getElementById('li-msg');
+const loginCard = document.getElementById('login-card');
+const runCard = document.getElementById('run-card');
+const runMsg = document.getElementById('run-msg');
+const previewBtn = document.getElementById('preview-btn');
+const previewBox = document.getElementById('preview-box');
+const confirmBtn = document.getElementById('confirm-btn');
+
+liBtn.addEventListener('click', async ()=>{
+  liMsg.className='msg'; liMsg.style.display='none';
+  const username = liUser.value.trim();
+  const password = liPass.value;
+  if(!username || !password){ liMsg.textContent='من فضلك أدخل اسم المستخدم وكلمة المرور'; liMsg.className='msg err'; return; }
+  liBtn.disabled = true; liBtn.textContent='جارِ الدخول...';
+  try{
+    await signInWithEmailAndPassword(auth, userToEmail(username), password);
+    loginCard.classList.add('hidden');
+    runCard.classList.remove('hidden');
+  }catch(err){
+    console.error(err);
+    liMsg.textContent = 'تعذر تسجيل الدخول — تأكد من اسم المستخدم وكلمة المرور';
+    liMsg.className = 'msg err';
+  }
+  liBtn.disabled=false; liBtn.textContent='دخول';
+});
+
+let planData = null; // {employees, workDays, toCreate:[{uid,name,dept,date}], existingCount}
+
+previewBtn.addEventListener('click', async ()=>{
+  runMsg.style.display='none';
+  previewBox.classList.add('hidden');
+  const from = document.getElementById('rg-from').value;
+  const to = document.getElementById('rg-to').value;
+  if(!from || !to || from>to){ runMsg.textContent='اختر فترة تواريخ صحيحة'; runMsg.className='msg err'; return; }
+  const skipAdmin = document.getElementById('rg-skip-admin').checked;
+  previewBtn.disabled = true; previewBtn.textContent='جارِ الجلب...';
+  try{
+    const empSnap = await getDocs(collection(db,'employees'));
+    let employees = [];
+    empSnap.forEach(d=> employees.push({id:d.id, ...d.data()}));
+    if(skipAdmin) employees = employees.filter(e=> e.role!=='admin');
+
+    const workDays = workDaysBetween(from, to);
+
+    const existing = new Set();
+    if(workDays.length){
+      const attQs = await getDocs(query(collection(db,'attendance'), where('date','>=',from), where('date','<=',to)));
+      attQs.forEach(d=>{ const r=d.data(); if(r.checkIn) existing.add(`${r.uid}_${r.date}`); });
+    }
+
+    const perEmp = employees.map(e=>{
+      const toCreate = workDays.filter(ds=> !existing.has(`${e.id}_${ds}`));
+      const already = workDays.length - toCreate.length;
+      return {emp:e, toCreate, already};
+    });
+
+    const totalNew = perEmp.reduce((s,r)=> s+r.toCreate.length, 0);
+    const totalSkip = perEmp.reduce((s,r)=> s+r.already, 0);
+
+    document.getElementById('pv-emp').textContent = employees.length;
+    document.getElementById('pv-days').textContent = workDays.length;
+    document.getElementById('pv-new').textContent = totalNew;
+    document.getElementById('pv-skip').textContent = totalSkip;
+    document.querySelector('#pv-table tbody').innerHTML = perEmp.map(r=>`
+      <tr>
+        <td>${esc(r.emp.name||'')}</td>
+        <td>${esc(r.emp.department||'')}</td>
+        <td><span class="pill pill-good">${r.toCreate.length}</span></td>
+        <td><span class="pill pill-warn">${r.already}</span></td>
+      </tr>`).join('');
+
+    planData = {from, to, workDays, perEmp, totalNew};
+    previewBox.classList.remove('hidden');
+    if(totalNew===0){
+      runMsg.textContent = 'لا توجد أيام غياب متبقية لتصحيحها في هذه الفترة — كل السجلات موجودة بالفعل.';
+      runMsg.className = 'msg info'; runMsg.style.display='block';
+      confirmBtn.style.display = 'none';
+    } else {
+      confirmBtn.style.display = 'block';
+    }
+  }catch(err){
+    console.error(err);
+    runMsg.textContent = 'تعذر جلب البيانات — تأكد من الاتصال وصلاحيات الحساب';
+    runMsg.className = 'msg err'; runMsg.style.display='block';
+  }
+  previewBtn.disabled=false; previewBtn.textContent='📋 معاينة قبل التنفيذ';
+});
+
+confirmBtn.addEventListener('click', async ()=>{
+  if(!planData || !planData.totalNew) return;
+  if(!confirm(`سيتم تسجيل حضور ${planData.totalNew} يوم/موظف عن الفترة من ${planData.from} إلى ${planData.to}. متابعة؟`)) return;
+  confirmBtn.disabled = true; confirmBtn.textContent='جارِ التنفيذ...';
+  const progress = document.getElementById('progress');
+  const progressBar = document.getElementById('progress-bar');
+  progress.style.display='block';
+
+  const setCheckout = document.getElementById('rg-set-checkout').checked;
+  const ciTime = document.getElementById('rg-checkin').value || '09:00';
+  const coTime = document.getElementById('rg-checkout').value || '17:00';
+
+  const ops = [];
+  planData.perEmp.forEach(r=>{
+    r.toCreate.forEach(ds=>{
+      const payload = { uid: r.emp.id, date: ds, checkIn: cairoTimestamp(ds, ciTime) };
+      if(setCheckout) payload.checkOut = cairoTimestamp(ds, coTime);
+      ops.push({ id: `${r.emp.id}_${ds}`, payload });
+    });
+  });
+
+  try{
+    const chunkSize = 450;
+    let done = 0;
+    for(let i=0;i<ops.length;i+=chunkSize){
+      const chunk = ops.slice(i, i+chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach(o=> batch.set(doc(db,'attendance', o.id), o.payload, {merge:true}));
+      await batch.commit();
+      done += chunk.length;
+      progressBar.style.width = Math.round(done/ops.length*100)+'%';
+    }
+    runMsg.textContent = `تم تسجيل الحضور بنجاح لعدد ${ops.length} سجل ✅ — يمكنك الآن مراجعة النتيجة من المنظومة الأصلية.`;
+    runMsg.className = 'msg ok'; runMsg.style.display='block';
+    confirmBtn.textContent = 'تم ✅'; 
+  }catch(err){
+    console.error(err);
+    runMsg.textContent = 'حدث خطأ أثناء التنفيذ — راجع الكونسول وحاول مرة أخرى (لن يتكرر تسجيل ما تم إدخاله بالفعل)';
+    runMsg.className = 'msg err'; runMsg.style.display='block';
+    confirmBtn.disabled = false; confirmBtn.textContent='✅ تنفيذ التحضير الآن';
+  }
+});
+</script>
+</body>
+</html>
