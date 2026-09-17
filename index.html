@@ -930,7 +930,8 @@ async function showMorningGreetingModal(){
 
   const overlay = el(`
     <div class="modal-overlay">
-      <div class="modal-box" style="max-width:400px;text-align:center;">
+      <div class="modal-box" style="max-width:400px;text-align:center;position:relative;">
+        <button id="mg-close-btn" title="إغلاق" style="position:absolute;top:10px;left:10px;width:30px;height:30px;border:none;background:#eef1f6;color:var(--sub);border-radius:50%;font-size:16px;font-weight:800;cursor:pointer;line-height:1;">×</button>
         <div style="font-size:38px;margin-bottom:6px;">☀️</div>
         <h3 style="margin-bottom:6px;">${esc(greetingText(currentEmployee.name||''))}</h3>
         <div class="modal-sub">سجّل حضورك دلوقتي، أو أخطر بالغياب مع ذكر السبب</div>
@@ -950,6 +951,9 @@ async function showMorningGreetingModal(){
     </div>
   `);
   document.body.appendChild(overlay);
+
+  overlay.querySelector('#mg-close-btn').addEventListener('click', ()=> overlay.remove());
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
 
   overlay.querySelector('#mg-checkin-btn').addEventListener('click', async (e)=>{
     e.target.disabled=true; e.target.textContent='جارِ التسجيل...';
@@ -1664,7 +1668,10 @@ function renderMyStats(rows){
 function renderDoneSection(box){
   box.innerHTML = `
     <div class="card">
-      <h3>🏆 إحصائيات الإدخال لكل موظف</h3>
+      <div class="flex-between" style="margin-bottom:14px;">
+        <h3 style="margin:0;">🏆 إحصائيات الإدخال لكل موظف</h3>
+        <button class="btn btn-outline btn-sm" id="done-refresh-btn">🔄 تحديث</button>
+      </div>
       <div class="filter-bar">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="done-from">
@@ -1692,21 +1699,30 @@ function renderDoneSection(box){
   let allDone = [];
   let allRows = [];
 
-  const q1 = query(collection(db,'tokeenRequests'), where('done','==',true));
-  const unsub1 = onSnapshot(q1, (qs)=>{
-    allDone = [];
-    qs.forEach(d=> allDone.push({id:d.id, ...d.data()}));
-    fillEmpSelect(); draw();
-  }, err=>{ console.error(err); const t=box.querySelector('#done-table'); if(t) t.innerHTML=`<div class="empty-state">تعذر تحميل البيانات</div>`; });
-  unsubList.push(unsub1);
-
-  const q2 = query(collection(db,'tokeenRequests'));
-  const unsub2 = onSnapshot(q2, (qs)=>{
-    allRows = [];
-    qs.forEach(d=> allRows.push({id:d.id, ...d.data()}));
-    drawLeaderboard();
-  }, err=>{ console.error(err); const b=box.querySelector('#done-leaderboard'); if(b) b.innerHTML=`<div class="empty-state">تعذر تحميل البيانات</div>`; });
-  unsubList.push(unsub2);
+  /* تحميل الطلبات مرة واحدة (وليس استماعًا حيًا) لتقليل استهلاك قراءات فيربيس —
+     اضغط «تحديث» لو عايز أحدث بيانات */
+  async function loadRequests(){
+    const tBox = box.querySelector('#done-table');
+    const lBox = box.querySelector('#done-leaderboard');
+    try{
+      const qs = await getDocs(collection(db,'tokeenRequests'));
+      allRows = [];
+      qs.forEach(d=> allRows.push({id:d.id, ...d.data()}));
+      allDone = allRows.filter(r=> r.done);
+      fillEmpSelect(); draw(); drawLeaderboard();
+    }catch(err){
+      console.error(err);
+      if(tBox) tBox.innerHTML = `<div class="empty-state">تعذر تحميل البيانات</div>`;
+      if(lBox) lBox.innerHTML = `<div class="empty-state">تعذر تحميل البيانات</div>`;
+    }
+  }
+  loadRequests();
+  const refreshBtn = box.querySelector('#done-refresh-btn');
+  refreshBtn.addEventListener('click', async ()=>{
+    refreshBtn.disabled=true; refreshBtn.textContent='جارِ التحديث...';
+    await loadRequests();
+    refreshBtn.disabled=false; refreshBtn.textContent='🔄 تحديث';
+  });
 
   watchEmployeesCache(()=>{ fillEmpSelect(); draw(); drawLeaderboard(); });
 
@@ -1947,10 +1963,7 @@ function renderAdminDailyReport(container){
       else if(r.status==='absent'){
         pill = `<span class="status-pill pill-bad">● غائب</span>`;
         const cur = (r.a && r.a.absenceReason) || '';
-        reasonCell = `<div style="display:flex;gap:6px;">
-          <input type="text" class="absence-reason-input" data-uid="${r.uid}" value="${esc(cur)}" placeholder="اكتب السبب..." style="width:150px;padding:6px 8px;border-radius:7px;border:1.5px solid var(--border);font-size:12.5px;">
-          <button class="btn btn-outline btn-sm save-reason-btn" data-uid="${r.uid}">حفظ</button>
-        </div>`;
+        reasonCell = cur ? esc(cur) : '<span class="muted">لم يكتب الموظف سببًا</span>';
       }
       else if(r.status==='late') pill = `<span class="status-pill pill-warn">● حاضر (متأخر)</span>`;
       else pill = `<span class="status-pill pill-good">● حاضر</span>`;
@@ -1983,19 +1996,6 @@ function renderAdminDailyReport(container){
       b.addEventListener('click', ()=>{
         const r = rows.find(x=>x.uid===b.dataset.uid);
         showTasksModal(r.e.name + ' — ' + fmtDate(dateStr), (r.a && r.a.tasks)||[], r.a && r.a.earlyLeaveReason);
-      });
-    });
-    tbl.querySelectorAll('.save-reason-btn').forEach(b=>{
-      b.addEventListener('click', async ()=>{
-        const uid = b.dataset.uid;
-        const input = tbl.querySelector(`.absence-reason-input[data-uid="${uid}"]`);
-        const val = input.value.trim();
-        b.disabled=true; b.textContent='...';
-        try{
-          await setDoc(doc(db,'attendance',`${uid}_${dateStr}`), { uid, date: dateStr, absenceReason: val }, {merge:true});
-          toast('تم حفظ سبب الغياب', 'ok');
-        }catch(err){ console.error(err); toast('حدث خطأ أثناء الحفظ', 'err'); }
-        b.disabled=false; b.textContent='حفظ';
       });
     });
     tbl.querySelectorAll('.edit-att-btn').forEach(b=>{
@@ -2153,6 +2153,7 @@ function openEditAttendanceModal(uid, name, dateStr, rec){
         <div class="modal-sub">${fmtDate(dateStr)} — تعديل وقت الحضور والانصراف والمهام (والعدد) يدويًا</div>
         <div class="field"><label>وقت الحضور (HH:MM بتوقيت القاهرة)</label><input type="time" id="ea-checkin" value="${toLocalInputValue(rec&&rec.checkIn)}"></div>
         <div class="field"><label>وقت الانصراف (HH:MM بتوقيت القاهرة)</label><input type="time" id="ea-checkout" value="${toLocalInputValue(rec&&rec.checkOut)}"></div>
+        <div class="field"><label>سبب الغياب (يكتبه الموظف عادة، ويمكن للمدير تعديله هنا)</label><textarea id="ea-absence-reason" placeholder="اكتب السبب هنا...">${esc((rec&&rec.absenceReason)||'')}</textarea></div>
         <div class="field">
           <label>المهام (المهمة + العدد الاختياري)</label>
           <div id="ea-tasks-list"></div>
@@ -2210,6 +2211,7 @@ function openEditAttendanceModal(uid, name, dateStr, rec){
       const payload = { uid, date: dateStr, tasks: newTasks };
       payload.checkIn = ciVal ? toTimestamp(ciVal) : null;
       payload.checkOut = coVal ? toTimestamp(coVal) : null;
+      payload.absenceReason = overlay.querySelector('#ea-absence-reason').value.trim() || null;
       await setDoc(doc(db,'attendance',`${uid}_${dateStr}`), payload, {merge:true});
       toast('تم حفظ التعديلات', 'ok');
       overlay.remove();
@@ -2444,7 +2446,10 @@ function openEditEmployeeModal(emp){
 function renderAdminRequestsLog(container){
   container.innerHTML = `
     <div class="card">
-      <h3>📊 إحصائيات عامة (تحديث تلقائي)</h3>
+      <div class="flex-between" style="margin-bottom:6px;">
+        <h3 style="margin:0;">📊 إحصائيات عامة</h3>
+        <button class="btn btn-outline btn-sm" id="log-refresh-btn">🔄 تحديث</button>
+      </div>
       <div class="filter-bar filter-bar-oneline">
         <label class="muted" style="font-size:12.5px;">من</label>
         <input type="date" id="cards-from">
@@ -2562,17 +2567,30 @@ function renderAdminRequestsLog(container){
     `;
   }
 
-  const u1 = onSnapshot(collection(db,'employees'), qs=>{
-    employees={}; qs.forEach(d=> employees[d.id]=d.data());
-    draw(); drawCards(); refreshEmpFilter();
-  }, err=>console.error(err));
-  unsubList.push(u1);
-
-  const u2 = onSnapshot(collection(db,'tokeenRequests'), qs=>{
-    allRows = []; qs.forEach(d=> allRows.push({id:d.id, ...d.data()}));
-    draw(); drawCards(); refreshEmpFilter();
-  }, err=>console.error(err));
-  unsubList.push(u2);
+  let dataLoaded = false;
+  async function loadData(){
+    const refreshBtn = container.querySelector('#log-refresh-btn');
+    if(refreshBtn){ refreshBtn.disabled=true; refreshBtn.textContent='جارِ التحديث...'; }
+    try{
+      const [empSnap, reqSnap] = await Promise.all([
+        getDocs(collection(db,'employees')),
+        getDocs(collection(db,'tokeenRequests'))
+      ]);
+      employees={}; empSnap.forEach(d=> employees[d.id]=d.data());
+      allRows=[]; reqSnap.forEach(d=> allRows.push({id:d.id, ...d.data()}));
+      dataLoaded = true;
+      draw(); drawCards(); refreshEmpFilter();
+    }catch(err){
+      console.error(err);
+      if(!dataLoaded){
+        const tbl = container.querySelector('#log-table');
+        if(tbl) tbl.innerHTML = `<div class="empty-state">تعذر تحميل البيانات</div>`;
+      }
+    }
+    if(refreshBtn){ refreshBtn.disabled=false; refreshBtn.textContent='🔄 تحديث'; }
+  }
+  loadData();
+  container.querySelector('#log-refresh-btn').addEventListener('click', loadData);
 
   function refreshEmpFilter(){
     const sel = container.querySelector('#log-emp-filter');
