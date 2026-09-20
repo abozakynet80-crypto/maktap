@@ -208,6 +208,7 @@
   .task-mini-row .tm-text{font-weight:600;}
   .task-mini-row .tm-count{background:var(--good-bg);color:var(--good);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;}
   .task-mini-row .tm-time{color:var(--sub);font-size:11px;}
+  tr.row-no-ach{opacity:.6;}
   .emp-stat-card.perf-good{border-top-color:var(--good);}
   .emp-stat-card.perf-warn{border-top-color:var(--warn);}
   .emp-stat-card.perf-bad{border-top-color:var(--bad);}
@@ -899,7 +900,6 @@ function renderApp(){
         ${isAdmin ? `
           <button class="tab-btn" data-tab="admin-daily">التقرير اليومي</button>
           <button class="tab-btn" data-tab="admin-upload">رفع بيانات التقنين</button>
-          <button class="tab-btn" data-tab="admin-requests">سجل طلبات التقنين</button>
           <button class="tab-btn" data-tab="admin-done">✅ ما تم إدخاله (الكل)</button>
           <button class="tab-btn" data-tab="admin-achievements">🌟 إنجازات الموظفين</button>
           <button class="tab-btn" data-tab="admin-employees">إدارة المستخدمين</button>
@@ -1022,7 +1022,6 @@ function switchTab(tab){
   else if(tab==='done') renderDoneSection(content);
   else if(tab==='admin-daily') renderAdminDailyReport(content);
   else if(tab==='admin-upload') renderAdminUpload(content);
-  else if(tab==='admin-requests') renderAdminRequestsLog(content);
   else if(tab==='admin-done') renderDoneSection(content);
   else if(tab==='admin-achievements') renderAdminAchievements(content);
   else if(tab==='admin-employees') renderAdminEmployees(content);
@@ -2297,6 +2296,21 @@ function renderAdminAchievements(container){
   const today = todayCairoStr();
   container.innerHTML = `
     <div class="card">
+      <div class="flex-between" style="margin-bottom:6px;">
+        <h3 style="margin:0;">📊 إحصائيات التقنين الإجمالية</h3>
+        <button class="btn btn-outline btn-sm" id="stats-refresh-btn">🔄 تحديث</button>
+      </div>
+      <div class="filter-bar filter-bar-oneline">
+        <label class="muted" style="font-size:12.5px;">من</label>
+        <input type="date" id="cards-from">
+        <label class="muted" style="font-size:12.5px;">إلى</label>
+        <input type="date" id="cards-to">
+        <button class="btn btn-outline btn-sm" id="cards-all-time">اليوم الحالي</button>
+      </div>
+      <div id="emp-stat-cards"><div class="muted">جارِ التحميل...</div></div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
       <h3 style="margin:0;">🌟 إنجازات الموظفين</h3>
       <div class="card-sub">تتحدث لحظيًا عند إضافة أي إنجاز جديد — اختر يومًا لعرض إنجازات كل الموظفين فيه، أو موظفًا لعرض كل إنجازاته عبر الأيام</div>
       <div class="filter-bar filter-bar-oneline">
@@ -2311,6 +2325,61 @@ function renderAdminAchievements(container){
   let employees = {};
   let liveUnsub = null;
 
+  /* ---- كروت الإحصائيات الإجمالية (تحميل مرة واحدة + زر تحديث لتقليل قراءات فيربيس) ---- */
+  let allReqRows = [];
+  async function loadStatsCards(){
+    const btn = container.querySelector('#stats-refresh-btn');
+    if(btn){ btn.disabled=true; btn.textContent='جارِ التحديث...'; }
+    try{
+      const reqSnap = await getDocs(collection(db,'tokeenRequests'));
+      allReqRows = []; reqSnap.forEach(d=> allReqRows.push({id:d.id, ...d.data()}));
+      drawCards();
+    }catch(err){ console.error(err); }
+    if(btn){ btn.disabled=false; btn.textContent='🔄 تحديث'; }
+  }
+  function drawCards(){
+    const cardsBox = container.querySelector('#emp-stat-cards');
+    if(!cardsBox) return;
+    const from = container.querySelector('#cards-from').value;
+    const to = container.querySelector('#cards-to').value;
+    const baseRows = allReqRows.filter(r=> !employees[r.uid] || employees[r.uid].role!=='admin');
+    const istifaCount = baseRows.filter(r=> r.istifa && !r.done).length;
+
+    let totalTarget, totalDone, totalRemain;
+    if(!from && !to){
+      const s = rolloverStats(baseRows);
+      totalTarget = s.target; totalDone = s.done; totalRemain = s.target - s.done;
+    }else{
+      const rows = baseRows.filter(r=>{
+        if(r.istifa && !r.done) return false;
+        const d = String(r.date||'');
+        if(from && d<from) return false;
+        if(to && d>to) return false;
+        return true;
+      });
+      totalTarget = rows.length;
+      totalDone = rows.filter(r=>r.done).length;
+      totalRemain = totalTarget - totalDone;
+    }
+    if(totalTarget===0 && istifaCount===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات في هذه الفترة</div>`; return; }
+    cardsBox.innerHTML = `
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat-box"><div class="num">${totalTarget}</div><div class="lbl">إجمالي المستهدف</div></div>
+        <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${totalDone}</div><div class="lbl">إجمالي ما تم</div></div>
+        <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${totalRemain}</div><div class="lbl">المتبقي</div></div>
+        <div class="stat-box" style="background:var(--warn-bg);"><div class="num" style="color:var(--warn);">${istifaCount}</div><div class="lbl">قيد الاستيفاء (خارج الحساب)</div></div>
+      </div>`;
+  }
+  container.querySelector('#stats-refresh-btn').addEventListener('click', loadStatsCards);
+  container.querySelector('#cards-from').addEventListener('change', drawCards);
+  container.querySelector('#cards-to').addEventListener('change', drawCards);
+  container.querySelector('#cards-all-time').addEventListener('click', ()=>{
+    container.querySelector('#cards-from').value='';
+    container.querySelector('#cards-to').value='';
+    drawCards();
+  });
+
+  /* ---- إنجازات الموظفين (مباشر Live) ---- */
   function taskListHTML(tasks){
     if(!tasks || tasks.length===0) return '<span class="muted">—</span>';
     return `<div class="task-mini-list">${tasks.map((t,i)=>`
@@ -2337,18 +2406,29 @@ function renderAdminAchievements(container){
     }catch(err){ console.error(err); }
   }
 
-  function renderDayOverview(box, dateVal, rows){
-    if(rows.length===0){ box.innerHTML = `<div class="empty-state">لا توجد إنجازات مسجلة في ${fmtDate(dateVal)}</div>`; return; }
+  function renderDayOverview(box, dateVal, taskRows){
+    const empUids = Object.keys(employees).filter(uid=>employees[uid].role!=='admin');
+    if(empUids.length===0){ box.innerHTML = `<div class="empty-state">لا يوجد موظفون بعد</div>`; return; }
+    const byUid = {};
+    taskRows.forEach(r=> byUid[r.uid]=r);
+    const withTasks = [], withoutTasks = [];
+    empUids.forEach(uid=>{
+      const r = byUid[uid];
+      if(r && r.tasks && r.tasks.length>0) withTasks.push(uid); else withoutTasks.push(uid);
+    });
+    withTasks.sort((a,b)=> employees[a].name.localeCompare(employees[b].name,'ar'));
+    withoutTasks.sort((a,b)=> employees[a].name.localeCompare(employees[b].name,'ar'));
+    const ordered = [...withTasks, ...withoutTasks];
     box.innerHTML = `
       <table class="sticky-table">
         <thead><tr><th>الموظف</th><th>القسم</th><th>المهام المنجزة</th></tr></thead>
-        <tbody>${rows.map(r=>{
-          const name = (employees[r.uid]&&employees[r.uid].name) || 'غير معروف';
-          const dept = (employees[r.uid]&&employees[r.uid].department) || '';
-          return `<tr>
-            <td><b>${esc(name)}</b></td>
-            <td><span class="badge-dept">${esc(dept)}</span></td>
-            <td>${taskListHTML(r.tasks)}</td>
+        <tbody>${ordered.map(uid=>{
+          const r = byUid[uid];
+          const hasTasks = r && r.tasks && r.tasks.length>0;
+          return `<tr${hasTasks?'':' class="row-no-ach"'}>
+            <td><b>${esc(employees[uid].name)}</b></td>
+            <td><span class="badge-dept">${esc(employees[uid].department||'')}</span></td>
+            <td>${hasTasks ? taskListHTML(r.tasks) : '<span class="muted">لم يتم تسجيل أي إنجاز</span>'}</td>
           </tr>`;
         }).join('')}</tbody>
       </table>`;
@@ -2389,8 +2469,7 @@ function renderAdminAchievements(container){
     }else{
       liveUnsub = onSnapshot(query(collection(db,'attendance'), where('date','==',dateVal)), qs=>{
         let rows = []; qs.forEach(d=> rows.push(d.data()));
-        rows = rows.filter(r=> r.tasks && r.tasks.length>0 && (!employees[r.uid] || employees[r.uid].role!=='admin'));
-        rows.sort((a,b)=> ((employees[a.uid]&&employees[a.uid].name)||'').localeCompare((employees[b.uid]&&employees[b.uid].name)||'','ar'));
+        rows = rows.filter(r=> !employees[r.uid] || employees[r.uid].role!=='admin');
         renderDayOverview(listBox, dateVal, rows);
       }, err=>{ console.error(err); listBox.innerHTML = `<div class="empty-state">تعذر تحميل البيانات</div>`; });
     }
@@ -2399,7 +2478,7 @@ function renderAdminAchievements(container){
 
   container.querySelector('#ach-date').addEventListener('change', subscribe);
   container.querySelector('#ach-emp-filter').addEventListener('change', subscribe);
-  loadEmployeesOnce().then(subscribe);
+  loadEmployeesOnce().then(()=>{ subscribe(); loadStatsCards(); });
 }
 
 
@@ -2598,182 +2677,6 @@ function openEditEmployeeModal(emp){
 }
 
 /* ---- Admin: سجل كل الطلبات ---- */
-function renderAdminRequestsLog(container){
-  container.innerHTML = `
-    <div class="card">
-      <div class="flex-between" style="margin-bottom:6px;">
-        <h3 style="margin:0;">📊 إحصائيات عامة</h3>
-        <button class="btn btn-outline btn-sm" id="log-refresh-btn">🔄 تحديث</button>
-      </div>
-      <div class="filter-bar filter-bar-oneline">
-        <label class="muted" style="font-size:12.5px;">من</label>
-        <input type="date" id="cards-from">
-        <label class="muted" style="font-size:12.5px;">إلى</label>
-        <input type="date" id="cards-to">
-        <button class="btn btn-outline btn-sm" id="cards-all-time">اليوم الحالي</button>
-      </div>
-      <div id="emp-stat-cards"><div class="muted">جارِ التحميل...</div></div>
-    </div>
-
-    <div class="card" style="margin-top:18px;">
-      <div class="flex-between" style="margin-bottom:6px;">
-        <h3 style="margin:0;">🔍 سجل كل طلبات التقنين</h3>
-        <button class="btn btn-outline btn-sm btn-auto" id="log-export-btn">📤 تصدير إكسيل</button>
-      </div>
-      <div class="filter-bar filter-bar-oneline">
-        <select id="log-emp-filter"><option value="">كل الموظفين</option></select>
-        <select id="log-status-filter">
-          <option value="">كل الحالات</option>
-          <option value="done">تم الإدخال</option>
-          <option value="pending">لم يتم</option>
-          <option value="istifa">⏳ استيفاء</option>
-        </select>
-        <select id="log-sort">
-          <option value="default">ترتيب تلقائي — المركز</option>
-          <option value="emp">ترتيب أبجدي — الموظف</option>
-          <option value="status">ترتيب — الحالة</option>
-        </select>
-        <input type="text" id="log-search" placeholder="ابحث برقم الطلب أو أي بيانات...">
-      </div>
-      <div class="table-wrap" id="log-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
-    </div>
-  `;
-
-  let allRows = [];
-  let employees = {};
-  let lastColSet = [];
-  let lastFilteredRows = [];
-
-  function drawCards(){
-    const cardsBox = container.querySelector('#emp-stat-cards');
-    if(!cardsBox) return;
-    const from = container.querySelector('#cards-from').value;
-    const to = container.querySelector('#cards-to').value;
-    const baseRows = allRows.filter(r=> !employees[r.uid] || employees[r.uid].role!=='admin');
-    const istifaCount = baseRows.filter(r=> r.istifa && !r.done).length;
-
-    let totalTarget, totalDone, totalRemain;
-    if(!from && !to){
-      const s = rolloverStats(baseRows);
-      totalTarget = s.target; totalDone = s.done; totalRemain = s.target - s.done;
-    }else{
-      const rows = baseRows.filter(r=>{
-        if(r.istifa && !r.done) return false;
-        const d = String(r.date||'');
-        if(from && d<from) return false;
-        if(to && d>to) return false;
-        return true;
-      });
-      totalTarget = rows.length;
-      totalDone = rows.filter(r=>r.done).length;
-      totalRemain = totalTarget - totalDone;
-    }
-    if(totalTarget===0 && istifaCount===0){ cardsBox.innerHTML = `<div class="empty-state">لا توجد طلبات في هذه الفترة</div>`; return; }
-    cardsBox.innerHTML = `
-      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);">
-        <div class="stat-box"><div class="num">${totalTarget}</div><div class="lbl">إجمالي المستهدف</div></div>
-        <div class="stat-box" style="background:var(--good-bg);"><div class="num" style="color:var(--good);">${totalDone}</div><div class="lbl">إجمالي ما تم</div></div>
-        <div class="stat-box" style="background:var(--bad-bg);"><div class="num" style="color:var(--bad);">${totalRemain}</div><div class="lbl">المتبقي</div></div>
-        <div class="stat-box" style="background:var(--warn-bg);"><div class="num" style="color:var(--warn);">${istifaCount}</div><div class="lbl">قيد الاستيفاء (خارج الحساب)</div></div>
-      </div>`;
-  }
-
-  function draw(){
-    const empFilter = container.querySelector('#log-emp-filter').value;
-    const statusFilter = container.querySelector('#log-status-filter').value;
-    const sortMode = container.querySelector('#log-sort').value;
-    const search = normalizeDigits(container.querySelector('#log-search').value.trim().toLowerCase());
-    let rows = allRows.filter(r=> !empFilter || r.uid===empFilter);
-    if(statusFilter==='done') rows = rows.filter(r=>r.done);
-    if(statusFilter==='pending') rows = rows.filter(r=> !r.done && !r.istifa);
-    if(statusFilter==='istifa') rows = rows.filter(r=> !r.done && r.istifa);
-    if(search){
-      rows = rows.filter(r=>{
-        const hay = [r.center||'', (employees[r.uid]&&employees[r.uid].name)||'', JSON.stringify(r.data||{})].join(' ');
-        return normalizeDigits(hay).toLowerCase().includes(search);
-      });
-    }
-
-    const tbl = container.querySelector('#log-table');
-    if(rows.length===0){ tbl.innerHTML = `<div class="empty-state">لا توجد نتائج مطابقة</div>`; lastColSet=[]; lastFilteredRows=[]; return; }
-    const colSet = [];
-    rows.forEach(r=> filterAllowedCols(Object.keys(r.data||{})).forEach(k=>{ if(!colSet.includes(k)) colSet.push(k); }));
-    if(sortMode==='emp'){
-      rows.sort((a,b)=> ((employees[a.uid]&&employees[a.uid].name)||'').localeCompare((employees[b.uid]&&employees[b.uid].name)||'','ar'));
-    }else if(sortMode==='status'){
-      rows.sort((a,b)=> (b.done?1:0) - (a.done?1:0));
-    }else{
-      rows.sort((a,b)=> String(a.center||'').localeCompare(String(b.center||''),'ar'));
-    }
-    lastColSet = colSet; lastFilteredRows = rows;
-    tbl.innerHTML = `
-      <table class="sticky-table">
-        <thead><tr><th>الموظف</th><th>المركز</th><th>الحالة</th>${colSet.map(c=>`<th>${esc(c)}</th>`).join('')}<th>تاريخ الإسناد</th><th>تاريخ الإدخال</th></tr></thead>
-        <tbody>${rows.map(r=>`
-          <tr class="${r.done?'row-done':(r.istifa?'row-istifa':'')}">
-            <td>${esc((employees[r.uid]&&employees[r.uid].name)||'—')}</td>
-            <td>${esc(r.center||'—')}</td>
-            <td>${r.done ? '<span class="status-pill pill-good">تم</span>' : (r.istifa ? '<span class="status-pill pill-warn">⏳ استيفاء</span>' : '<span class="status-pill pill-neutral">لم يتم</span>')}</td>
-            ${colSet.map(c=>`<td>${esc(r.data?r.data[c]:'')}</td>`).join('')}
-            <td>${fmtDate(r.date)}</td>
-            <td>${r.doneAt ? fmtDateTime(r.doneAt) : '—'}</td>
-          </tr>`).join('')}</tbody>
-      </table>
-    `;
-  }
-
-  let dataLoaded = false;
-  async function loadData(){
-    const refreshBtn = container.querySelector('#log-refresh-btn');
-    if(refreshBtn){ refreshBtn.disabled=true; refreshBtn.textContent='جارِ التحديث...'; }
-    try{
-      const [empSnap, reqSnap] = await Promise.all([
-        getDocs(collection(db,'employees')),
-        getDocs(collection(db,'tokeenRequests'))
-      ]);
-      employees={}; empSnap.forEach(d=> employees[d.id]=d.data());
-      allRows=[]; reqSnap.forEach(d=> allRows.push({id:d.id, ...d.data()}));
-      dataLoaded = true;
-      draw(); drawCards(); refreshEmpFilter();
-    }catch(err){
-      console.error(err);
-      if(!dataLoaded){
-        const tbl = container.querySelector('#log-table');
-        if(tbl) tbl.innerHTML = `<div class="empty-state">تعذر تحميل البيانات</div>`;
-      }
-    }
-    if(refreshBtn){ refreshBtn.disabled=false; refreshBtn.textContent='🔄 تحديث'; }
-  }
-  loadData();
-  container.querySelector('#log-refresh-btn').addEventListener('click', loadData);
-
-  function refreshEmpFilter(){
-    const sel = container.querySelector('#log-emp-filter');
-    if(!sel) return;
-    const cur = sel.value;
-    const assignedUids = [...new Set(allRows.map(r=>r.uid))].filter(uid=> !employees[uid] || employees[uid].role!=='admin');
-    assignedUids.sort((a,b)=> (employees[a]?.name||'').localeCompare(employees[b]?.name||'','ar'));
-    sel.innerHTML = `<option value="">كل الموظفين</option>` + assignedUids.map(uid=>`<option value="${uid}">${esc(employees[uid]?.name || 'غير معروف')}</option>`).join('');
-    sel.value = assignedUids.includes(cur) ? cur : '';
-  }
-
-  container.querySelector('#log-emp-filter').addEventListener('change', draw);
-  container.querySelector('#log-status-filter').addEventListener('change', draw);
-  container.querySelector('#log-sort').addEventListener('change', draw);
-  container.querySelector('#log-search').addEventListener('input', draw);
-  container.querySelector('#cards-from').addEventListener('change', drawCards);
-  container.querySelector('#cards-to').addEventListener('change', drawCards);
-  container.querySelector('#cards-all-time').addEventListener('click', ()=>{
-    container.querySelector('#cards-from').value='';
-    container.querySelector('#cards-to').value='';
-    drawCards();
-  });
-  container.querySelector('#log-export-btn').addEventListener('click', ()=>{
-    if(lastFilteredRows.length===0){ toast('لا توجد بيانات لتصديرها', 'err'); return; }
-    exportRowsToExcel(lastFilteredRows, lastColSet, `سجل_طلبات_التقنين_${todayCairoStr()}.xlsx`, employees);
-  });
-}
-
 function renderAdminUpload(container){
   container.innerHTML = `
     <div class="card">
