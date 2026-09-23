@@ -425,18 +425,20 @@
   .conv-item:hover, .conv-item.active{background:var(--brand-light);}
   .conv-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex:none;}
   .conv-info{flex:1;min-width:0;}
-  .conv-name{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .conv-preview{font-size:11.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+  .conv-name{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;}
+  .conv-preview{font-size:11.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;text-align:right;}
   .conv-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none;}
   .conv-time{font-size:10px;color:var(--sub);}
   .conv-unread-badge{color:var(--brand);font-size:16px;line-height:1;}
+  .conv-unread-count{background:var(--good);color:#fff;border-radius:50%;min-width:20px;height:20px;padding:0 5px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .messages-tab-badge{display:none;align-items:center;justify-content:center;background:var(--bad);color:#fff;font-size:10.5px;font-weight:800;min-width:18px;height:18px;border-radius:50%;padding:0 4px;margin-right:6px;vertical-align:middle;}
   .msg-bubble-row{display:flex;}
   .msg-bubble-row.mine{justify-content:flex-end;}
   .msg-bubble-row.theirs{justify-content:flex-start;}
-  .msg-bubble{max-width:72%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.55;}
+  .msg-bubble{max-width:72%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.55;text-align:right;}
   .msg-bubble.mine{background:var(--brand);color:#fff;border-bottom-left-radius:4px;}
   .msg-bubble.theirs{background:var(--card);border:1px solid var(--border);border-bottom-right-radius:4px;}
-  .msg-sender{font-size:11px;font-weight:800;margin-bottom:3px;opacity:.8;color:var(--brand-dark);}
+  .msg-sender{font-size:11px;font-weight:800;margin-bottom:3px;opacity:.8;color:var(--brand-dark);text-align:right;}
   .msg-time{font-size:10px;opacity:.75;margin-top:4px;text-align:left;}
   .msg-attach{display:block;margin-top:6px;font-size:12px;text-decoration:underline;}
   @media(max-width:760px){
@@ -474,7 +476,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, getDocs, getDocFromServer, setDoc, updateDoc, deleteDoc, collection, query, where,
-  onSnapshot, serverTimestamp, writeBatch, orderBy, Timestamp, arrayUnion, limit
+  onSnapshot, serverTimestamp, writeBatch, orderBy, Timestamp, arrayUnion, limit, increment
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject
@@ -680,6 +682,41 @@ function toast(msg, type=''){
   const t = el(`<div class="toast ${type}">${esc(msg)}</div>`);
   document.body.appendChild(t);
   setTimeout(()=>t.remove(), 3200);
+}
+
+/* ============ صوت التنبيهات ============ */
+let _audioCtx = null;
+let _audioUnlocked = false;
+function unlockAudioContext(){
+  if(_audioUnlocked) return;
+  try{
+    _audioCtx = _audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    if(_audioCtx.state==='suspended') _audioCtx.resume();
+    _audioUnlocked = true;
+  }catch(e){}
+}
+document.addEventListener('click', unlockAudioContext, {once:true});
+document.addEventListener('touchstart', unlockAudioContext, {once:true});
+document.addEventListener('keydown', unlockAudioContext, {once:true});
+/* نغمة تنبيه قصيرة (بدون أي ملف خارجي) لرسالة أو إشعار جديد */
+function playNotifSound(){
+  try{
+    if(!_audioCtx) _audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(_audioCtx.state==='suspended') _audioCtx.resume();
+    const ctx = _audioCtx;
+    const t0 = ctx.currentTime;
+    [[0,880],[0.12,1174.66]].forEach(([delay,freq])=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t0+delay);
+      gain.gain.setValueAtTime(0.0001, t0+delay);
+      gain.gain.exponentialRampToValueAtTime(0.2, t0+delay+0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+delay+0.16);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t0+delay); osc.stop(t0+delay+0.17);
+    });
+  }catch(e){ console.warn('notif sound error', e); }
 }
 function normalizeDigits(s){
   return String(s||'').replace(/[٠-٩]/g, d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))
@@ -927,13 +964,20 @@ let currentEmployee = null;
 let isAdmin = false;
 let pendingReportFilter = null;
 let unsubList = [];
-function clearSubs(){ unsubList.forEach(u=>{ try{u();}catch(e){} }); unsubList=[]; }
+function clearSubs(){ msgConvListRenderCb = null; unsubList.forEach(u=>{ try{u();}catch(e){} }); unsubList=[]; }
 
 /* ============ Auth flow ============ */
 onAuthStateChanged(auth, async (user)=>{
   clearSubs();
   currentUser = user;
-  if(!user){ stopServerTimeSync(); renderLogin(); return; }
+  if(!user){
+    stopServerTimeSync();
+    msgWatcherUnsubs.forEach(u=>{ try{u();}catch(e){} });
+    msgWatcherUnsubs = [];
+    msgConvList = []; msgConvCache = {}; msgActiveConvId = null; msgConvListRenderCb = null;
+    renderLogin();
+    return;
+  }
   renderLoading('جارِ التحقق من بيانات الحساب...');
   startServerTimeSync();
   await syncServerTime();
@@ -1106,8 +1150,11 @@ function startDigitalClock(elm){
 /* ============ الإشعارات ============ */
 let notifUnsub = null;
 let notifCache = [];
+let _notifFirstLoad = true;
+let _notifPrevUnread = 0;
 function initNotifications(bellWrap){
   if(notifUnsub){ notifUnsub(); notifUnsub=null; }
+  _notifFirstLoad = true; _notifPrevUnread = 0;
   const uid = currentUser.uid;
   const badge = bellWrap.querySelector('.notif-badge');
   const audiences = isAdmin ? ['all', uid, 'admins'] : ['all', uid];
@@ -1120,6 +1167,9 @@ function initNotifications(bellWrap){
       if(unread>0){ badge.style.display='flex'; badge.textContent = unread>9?'9+':unread; }
       else badge.style.display='none';
     }
+    if(!_notifFirstLoad && unread>_notifPrevUnread) playNotifSound();
+    _notifFirstLoad = false;
+    _notifPrevUnread = unread;
     renderNotifList(bellWrap);
   }, err=> console.error(err));
 }
@@ -1219,13 +1269,13 @@ function renderApp(){
             <button class="tab-btn" data-tab="admin-tasks">📌 توزيع المهام</button>
             <button class="tab-btn" data-tab="admin-achievements">🌟 إنجازات الموظفين</button>
             <button class="tab-btn" data-tab="admin-employees">👥 إدارة المستخدمين</button>
-            <button class="tab-btn" data-tab="messages">💬 المراسلات</button>
+            <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
           ` : `
             <button class="tab-btn" data-tab="home">🏠 قسم الحضور والانصراف</button>
             <button class="tab-btn" data-tab="mine">📁 قسم طلباتي المسندة</button>
             <button class="tab-btn" data-tab="my-tasks">📌 مهامي</button>
             <button class="tab-btn" data-tab="done">✅ قسم ما تم إدخاله للكل</button>
-            <button class="tab-btn" data-tab="messages">💬 المراسلات</button>
+            <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
           `}
         </div>
         <div class="container" id="tab-content"></div>
@@ -1244,6 +1294,7 @@ function renderApp(){
   const notifWrap = shell.querySelector('#notif-wrap');
   shell.querySelector('#notif-btn').addEventListener('click', (e)=>{ e.stopPropagation(); toggleNotifDropdown(notifWrap); });
   initNotifications(notifWrap);
+  startMessagesWatcher();
 
   const tabsRow = shell.querySelector('#tabs-row');
   const sidebarToggleBtn = shell.querySelector('#sidebar-toggle-btn');
@@ -4204,6 +4255,55 @@ let msgConvUnsub = null;
 let msgThreadUnsub = null;
 let msgConvCache = {};
 let msgConvList = [];
+let msgConvListRenderCb = null;
+let msgWatcherUnsubs = [];
+let msgWatcherFirstLoad = true;
+
+/* إجمالي عدد الرسائل غير المقروءة لكل محادثة/عبر كل المحادثات (لعرض شارة الأرقام مثل واتساب) */
+function convUnreadCount(conv){
+  const uid = currentUser.uid;
+  const uc = conv.unreadCounts && conv.unreadCounts[uid];
+  if(typeof uc === 'number' && uc>=0) return uc;
+  return convUnreadFlag(conv) ? 1 : 0; // احتياط للمحادثات القديمة قبل إضافة العداد
+}
+function totalUnreadMessages(){
+  return msgConvList.reduce((s,c)=> s + convUnreadCount(c), 0);
+}
+function updateMessagesTabBadge(){
+  const n = totalUnreadMessages();
+  document.querySelectorAll('.messages-tab-badge').forEach(b=>{
+    if(n>0){ b.style.display='inline-flex'; b.textContent = n>99?'99+':String(n); }
+    else b.style.display='none';
+  });
+}
+/* مراقبة دائمة لكل المحادثات طول الجلسة (وليس فقط أثناء فتح تبويب المراسلات) —
+   عشان شارة عدد الرسائل تفضل محدثة وعشان صوت التنبيه يشتغل حتى لو المستخدم في تبويب تاني */
+function startMessagesWatcher(){
+  msgWatcherUnsubs.forEach(u=>{ try{u();}catch(e){} });
+  msgWatcherUnsubs = [];
+  msgWatcherFirstLoad = true;
+  const uid = currentUser.uid;
+  let rows1 = [], rows2 = [];
+  function merge(){
+    const map = {};
+    [...rows1, ...rows2].forEach(r=> map[r.id]=r);
+    msgConvCache = map;
+    const oldTotal = totalUnreadMessages();
+    msgConvList = Object.values(map).sort((a,b)=>
+      (b.lastMessageAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0) -
+      (a.lastMessageAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0)
+    );
+    const newTotal = totalUnreadMessages();
+    updateMessagesTabBadge();
+    if(msgConvListRenderCb) msgConvListRenderCb();
+    if(!msgWatcherFirstLoad && newTotal>oldTotal) playNotifSound();
+    msgWatcherFirstLoad = false;
+  }
+  const q1 = query(collection(db,'conversations'), where('members','array-contains', uid));
+  const q2 = query(collection(db,'conversations'), where('type','==','broadcast'));
+  msgWatcherUnsubs.push(onSnapshot(q1, qs=>{ rows1 = qs.docs.map(d=>({id:d.id,...d.data()})); merge(); }, err=>console.error(err)));
+  msgWatcherUnsubs.push(onSnapshot(q2, qs=>{ rows2 = qs.docs.map(d=>({id:d.id,...d.data()})); merge(); }, err=>console.error(err)));
+}
 
 function convOtherName(conv){
   if(conv.type==='broadcast') return '📢 رسالة جماعية للجميع';
@@ -4226,7 +4326,7 @@ function convUnreadFlag(conv){
   return lastMsgMs > lastReadMs;
 }
 async function markConversationRead(convId){
-  try{ await updateDoc(doc(db,'conversations',convId), { [`lastReadAt.${currentUser.uid}`]: serverTimestamp() }); }
+  try{ await updateDoc(doc(db,'conversations',convId), { [`lastReadAt.${currentUser.uid}`]: serverTimestamp(), [`unreadCounts.${currentUser.uid}`]: 0 }); }
   catch(err){ console.error(err); }
 }
 async function sendConversationMessage(conv, text, file){
@@ -4236,12 +4336,16 @@ async function sendConversationMessage(conv, text, file){
     text, attachmentUrl: att.url, attachmentName: att.name, attachmentPath: att.path,
     createdAt: serverTimestamp()
   });
-  await updateDoc(doc(db,'conversations',conv.id), {
+  const recipients = conv.type==='broadcast'
+    ? Object.keys(employeesCache).filter(u=>u!==currentUser.uid)
+    : (conv.members||[]).filter(u=>u!==currentUser.uid);
+  const updatePayload = {
     lastMessageAt: serverTimestamp(), lastMessageText: text||'', lastMessageBy: currentUser.uid,
     lastMessageAttachment: !!att.url, [`lastReadAt.${currentUser.uid}`]: serverTimestamp()
-  });
-  const recipients = conv.type==='broadcast' ? ['all'] : (conv.members||[]).filter(u=>u!==currentUser.uid);
-  await pushNotifications(recipients, `💬 رسالة من ${currentEmployee.name||''}`, text || '📎 مرفق');
+  };
+  recipients.forEach(u=>{ updatePayload[`unreadCounts.${u}`] = increment(1); });
+  await updateDoc(doc(db,'conversations',conv.id), updatePayload);
+  await pushNotifications(conv.type==='broadcast' ? ['all'] : recipients, `💬 رسالة من ${currentEmployee.name||''}`, text || '📎 مرفق');
 }
 async function findOrCreateDirectConversation(otherUid){
   const uid = currentUser.uid;
@@ -4283,31 +4387,18 @@ function renderMessagesTab(container){
   watchEmployeesCache(()=> drawConvList());
 
   const uid = currentUser.uid;
-  let rows1 = [], rows2 = [];
-  const q1 = query(collection(db,'conversations'), where('members','array-contains', uid));
-  const q2 = query(collection(db,'conversations'), where('type','==','broadcast'));
-  const u1 = onSnapshot(q1, qs=>{ rows1 = qs.docs.map(d=>({id:d.id,...d.data()})); mergeAndDraw(); }, err=>console.error(err));
-  const u2 = onSnapshot(q2, qs=>{ rows2 = qs.docs.map(d=>({id:d.id,...d.data()})); mergeAndDraw(); }, err=>console.error(err));
-  unsubList.push(u1, u2);
-
-  function mergeAndDraw(){
-    const map = {};
-    [...rows1, ...rows2].forEach(r=> map[r.id]=r);
-    msgConvCache = map;
-    msgConvList = Object.values(map).sort((a,b)=>
-      (b.lastMessageAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0) -
-      (a.lastMessageAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0)
-    );
+  msgConvListRenderCb = function(){
     drawConvList();
-    if(msgActiveConvId && map[msgActiveConvId]) refreshThreadIfOpen(map[msgActiveConvId]);
-  }
+    if(msgActiveConvId && msgConvCache[msgActiveConvId]) refreshThreadIfOpen(msgConvCache[msgActiveConvId]);
+  };
+  drawConvList();
 
   function drawConvList(){
     const box = container.querySelector('#conv-list');
     if(!box) return;
     if(msgConvList.length===0){ box.innerHTML = `<div class="empty-state"><div class="emoji">💬</div>لا توجد محادثات بعد</div>`; return; }
     box.innerHTML = msgConvList.map(c=>{
-      const unread = convUnreadFlag(c);
+      const cnt = convUnreadCount(c);
       const previewText = c.lastMessageText ? esc(c.lastMessageText) : (c.lastMessageAttachment ? '📎 مرفق' : 'لا توجد رسائل بعد');
       return `<div class="conv-item ${c.id===msgActiveConvId?'active':''}" data-id="${c.id}">
         <div class="conv-avatar">${esc(convAvatarLetter(c))}</div>
@@ -4317,7 +4408,7 @@ function renderMessagesTab(container){
         </div>
         <div class="conv-meta">
           <div class="conv-time">${c.lastMessageAt?fmtTime(c.lastMessageAt):''}</div>
-          ${unread?'<span class="conv-unread-badge">●</span>':''}
+          ${cnt>0?`<span class="conv-unread-count">${cnt>99?'99+':cnt}</span>`:''}
         </div>
       </div>`;
     }).join('');
@@ -4396,9 +4487,9 @@ function renderMessagesTab(container){
         <div id="thread-attach-preview" style="display:none;font-size:12px;color:var(--sub);margin-bottom:6px;"></div>
         <div style="display:flex;gap:8px;align-items:flex-end;">
           <label class="icon-btn" style="cursor:pointer;" title="إرفاق ملف">📎<input type="file" id="thread-file" style="display:none;"></label>
-          <textarea id="thread-text" placeholder="اكتب رسالتك..." rows="1" style="flex:1;padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;resize:none;max-height:120px;background:#fbfcfe;font-family:inherit;"></textarea>
-<button class="btn btn-primary btn-sm btn-auto" id="thread-send-btn">إرسال</button>
-</div>
+          <textarea id="thread-text" placeholder="اكتب رسالتك..." rows="1" style="flex:1;min-height:42px;padding:11px 14px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;resize:none;max-height:120px;background:#fbfcfe;font-family:inherit;line-height:1.4;"></textarea>
+          <button class="btn btn-primary btn-sm btn-auto" id="thread-send-btn">إرسال</button>
+        </div>
       </div>` : `<div class="small-note" style="margin:12px;">هذه رسالة جماعية من الإدارة — لا يمكن الرد عليها هنا</div>`}
     `;
     pane.querySelector('#msg-back-btn').addEventListener('click', ()=>{
@@ -4455,15 +4546,14 @@ function openNewConversationModal(container){
     <div class="modal-overlay">
       <div class="modal-box" style="max-width:460px;">
         <h3>➕ محادثة جديدة</h3>
-        ${isAdmin ? `
         <div class="field">
           <label>نوع المحادثة</label>
           <select id="nc-type">
             <option value="direct">💬 محادثة فردية</option>
-            <option value="group">👥 مجموعة عمل</option>
-            <option value="broadcast">📢 رسالة جماعية لجميع الموظفين</option>
+            <option value="group">👥 مجموعة</option>
+            ${isAdmin ? `<option value="broadcast">📢 رسالة جماعية لجميع الموظفين</option>` : ``}
           </select>
-        </div>` : ``}
+        </div>
         <div class="field" id="nc-title-wrap" style="display:none;">
           <label>اسم المجموعة *</label>
           <input type="text" id="nc-title" placeholder="مثال: فريق مشروع التقنين">
