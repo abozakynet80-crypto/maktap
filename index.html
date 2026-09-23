@@ -1483,7 +1483,19 @@ function renderMyRequests(box){
       <div class="filter-bar" id="mine-bulk-bar" style="justify-content:flex-start;">
         <button class="btn btn-primary btn-sm btn-auto" id="mine-bulk-done-btn" disabled>✓ تم إدخال المحدد</button>
       </div>
-      <div class="table-wrap" id="my-requests-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+
+      <div class="card" style="margin-top:14px;background:#fbfcfe;">
+        <h3 style="font-size:13.5px;margin-bottom:8px;">📋 تحويل بالنسخ واللصق (أرقام طلبات مجمّعة)</h3>
+        <div class="card-sub" style="margin-top:0;">الصق أرقام الطلبات (رقم في كل سطر، أو مفصولة بفواصل/مسافات) ثم اختر تحويلها إلى تم أو لم يتم — سيتم البحث عنها بين الطلبات المسندة إليك فقط.</div>
+        <textarea id="paste-req-numbers" rows="4" style="width:100%;padding:11px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;resize:vertical;" placeholder="مثال:&#10;12345&#10;12346&#10;12347"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm btn-auto" id="paste-mark-done-btn">✓ تحويل إلى تم</button>
+          <button class="btn btn-outline btn-sm btn-auto" id="paste-mark-undone-btn">↩ تحويل إلى لم يتم</button>
+        </div>
+        <div id="paste-req-result" class="small-note" style="margin-top:10px;display:none;"></div>
+      </div>
+
+      <div class="table-wrap" id="my-requests-table" style="margin-top:14px;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
     </div>
   `;
 
@@ -1644,6 +1656,91 @@ function renderMyRequests(box){
       updateBulkBar();
     }
   });
+
+  /* استخراج رقم الطلب الفعلي لصف معيّن (حسب العمود المحدد وقت الرفع reqField، مع احتياط لو مش موجود) */
+  function rowReqNumber(r){
+    if(r.reqField && r.data && r.data[r.reqField]!==undefined && r.data[r.reqField]!==null){
+      return normalizeDigits(String(r.data[r.reqField])).trim();
+    }
+    // احتياط: جرّب أي عمود اسمه قريب من "رقم الطلب"
+    if(r.data){
+      const key = Object.keys(r.data).find(k=> String(k).trim().toLowerCase().includes('requestnumber'));
+      if(key) return normalizeDigits(String(r.data[key]||'')).trim();
+    }
+    return '';
+  }
+
+  function parsePastedNumbers(raw){
+    return [...new Set(
+      normalizeDigits(raw)
+        .split(/[\n\r,،;\t ]+/)
+        .map(s=>s.trim())
+        .filter(Boolean)
+    )];
+  }
+
+  async function convertPastedNumbers(toDone){
+    const ta = box.querySelector('#paste-req-numbers');
+    const resultBox = box.querySelector('#paste-req-result');
+    const wanted = parsePastedNumbers(ta.value);
+    resultBox.style.display='block';
+    if(wanted.length===0){
+      resultBox.textContent = 'من فضلك الصق رقم طلب واحد على الأقل';
+      return;
+    }
+    const wantedSet = new Set(wanted);
+    const matches = myRows.filter(r=>{
+      const num = rowReqNumber(r);
+      return num && wantedSet.has(num) && r.done !== toDone;
+    });
+    const matchedNums = new Set(matches.map(r=>rowReqNumber(r)));
+    const notFound = wanted.filter(n=>!matchedNums.has(n));
+
+    if(matches.length===0){
+      resultBox.textContent = toDone
+        ? 'لم يتم العثور على أي من الأرقام المطلوبة ضمن طلباتك المتبقية (أو أنها تم إدخالها بالفعل)'
+        : 'لم يتم العثور على أي من الأرقام المطلوبة ضمن طلباتك المُدخَلة بالفعل';
+      return;
+    }
+
+    const doneBtn = box.querySelector('#paste-mark-done-btn');
+    const undoneBtn = box.querySelector('#paste-mark-undone-btn');
+    doneBtn.disabled = true; undoneBtn.disabled = true;
+    const oldTxt = toDone ? doneBtn.textContent : undoneBtn.textContent;
+    if(toDone) doneBtn.textContent = 'جارِ التحويل...'; else undoneBtn.textContent = 'جارِ التحويل...';
+
+    try{
+      const ids = matches.map(r=>r.id);
+      const chunkSize = 450;
+      const doneDate = todayCairoStr();
+      for(let i=0;i<ids.length;i+=chunkSize){
+        const chunk = ids.slice(i,i+chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(id=> batch.update(doc(db,'tokeenRequests',id), toDone
+          ? {done:true, doneAt: serverTimestamp(), doneDate}
+          : {done:false, doneAt: null, doneDate: null}));
+        await batch.commit();
+      }
+      const idSet = new Set(ids);
+      myRows = myRows.map(r=> idSet.has(r.id)
+        ? {...r, done:toDone, doneAt: toDone?{toDate:()=>new Date()}:null, doneDate: toDone?doneDate:null}
+        : r);
+      resultBox.textContent = `تم تحويل ${matches.length} طلب إلى «${toDone?'تم':'لم يتم'}»` + (notFound.length ? ` — لم يتم العثور على ${notFound.length} رقم: ${notFound.slice(0,15).join('، ')}${notFound.length>15?'...':''}` : '');
+      toast(`تم تحويل ${matches.length} طلب إلى «${toDone?'تم':'لم يتم'}»`, 'ok');
+      renderMyStats(myRows);
+      draw();
+    }catch(err){
+      console.error(err);
+      resultBox.textContent = 'حدث خطأ أثناء التحويل، حاول مرة أخرى';
+    }finally{
+      doneBtn.disabled=false; undoneBtn.disabled=false;
+      doneBtn.textContent = '✓ تحويل إلى تم';
+      undoneBtn.textContent = '↩ تحويل إلى لم يتم';
+    }
+  }
+
+  box.querySelector('#paste-mark-done-btn').addEventListener('click', ()=> convertPastedNumbers(true));
+  box.querySelector('#paste-mark-undone-btn').addEventListener('click', ()=> convertPastedNumbers(false));
 
   async function setDone(btn, id, val){
     btn.disabled = true;
