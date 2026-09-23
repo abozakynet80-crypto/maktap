@@ -626,6 +626,12 @@
   @keyframes drawerUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
   .project-cover.has-img,.project-detail-cover.has-img{height:auto !important;}
   .project-cover.has-img,.project-detail-cover.has-img{aspect-ratio:8/3;max-height:none;}
+  @media(max-width:700px){
+    .msg-shell,.msg-thread,.msg-sidebar{height:calc(100dvh - 200px) !important;min-height:0 !important;max-height:none !important;}
+  }
+  .avatar,.conv-avatar{overflow:hidden;}
+  .avatar img,.conv-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;}
+  .conv-item.locked-conv{opacity:.65;}
 </style>
 </head>
 <body>
@@ -1528,7 +1534,7 @@ function renderApp(){
           </div>
           <button class="btn btn-outline btn-sm" id="account-btn" title="حسابي">👤 حسابي</button>
           <div class="user-chip">
-            <div class="avatar">${esc((currentEmployee.name||'؟')[0])}</div>
+            <div class="avatar">${avatarInner(currentUser.uid,(currentEmployee.name||'؟')[0])}</div>
             <div>
               <div class="u-name">${esc(currentEmployee.name)}</div>
               <div class="u-dept">${esc(currentEmployee.department)}${isAdmin?' • مدير':''}</div>
@@ -1747,6 +1753,7 @@ function openAccountModal(){
       <div class="modal-box" style="max-width:520px;">
         <h3>👤 حسابي</h3>
         <div class="modal-sub">بيانات حسابك وكلمة المرور</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><div class="avatar" id="acc-avatar" style="width:64px;height:64px;font-size:24px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;">${avatarInner(currentUser.uid,(currentEmployee.name||'؟')[0])}</div><div><label class="btn btn-outline btn-sm btn-auto" style="cursor:pointer;">📷 تغيير الصورة<input type="file" id="acc-photo" accept="image/*" style="display:none;"></label><div class="muted" style="font-size:11px;margin-top:4px;">تظهر في المحادثات وبجوار اسمك</div></div></div>
         <div class="field"><label>اسم المستخدم</label><input type="text" id="acc-username" value="${esc(currentEmployee.username||'')}" disabled></div>
         <div class="field"><label>الاسم بالكامل *</label><input type="text" id="acc-name" value="${esc(currentEmployee.name||'')}"></div>
         <div class="field"><label>رقم الهاتف *</label><input type="tel" id="acc-phone" value="${esc(currentEmployee.phone||'')}"></div>
@@ -1773,6 +1780,25 @@ function openAccountModal(){
   overlay.querySelector('#acc-close-btn').addEventListener('click', ()=> overlay.remove());
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
   const content = overlay;
+  content.querySelector('#acc-photo').addEventListener('change', async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      const bmp = await createImageBitmap(f), S = 320, c = document.createElement('canvas');
+      c.width = c.height = S;
+      const r = Math.max(S/bmp.width, S/bmp.height), w = bmp.width*r, h = bmp.height*r;
+      c.getContext('2d').drawImage(bmp,(S-w)/2,(S-h)/2,w,h);
+      const blob = await new Promise(res=>c.toBlob(res,'image/jpeg',.85));
+      const up = await uploadTaskAttachment(new File([blob],'avatar.jpg',{type:'image/jpeg'}),'avatars/'+currentUser.uid);
+      if(!up.url) return;
+      await updateDoc(doc(db,'employees',currentUser.uid),{photoUrl:up.url});
+      currentEmployee = {...currentEmployee, photoUrl:up.url};
+      employeesCache[currentUser.uid] = {...(employeesCache[currentUser.uid]||{}), photoUrl:up.url};
+      const nm = (currentEmployee.name||'؟')[0];
+      content.querySelector('#acc-avatar').innerHTML = avatarInner(currentUser.uid,nm);
+      document.querySelector('.user-chip .avatar').innerHTML = avatarInner(currentUser.uid,nm);
+      toast('تم تحديث صورتك','ok');
+    }catch(err){ console.error(err); toast('تعذر تحديث الصورة','err'); }
+  });
 
   content.querySelector('#acc-save-btn').addEventListener('click', async ()=>{
     const name = content.querySelector('#acc-name').value.trim();
@@ -1793,7 +1819,7 @@ function openAccountModal(){
       toast('تم حفظ بياناتك', 'ok');
       document.querySelector('.user-chip .u-name').textContent = name;
       document.querySelector('.user-chip .u-dept').textContent = department + (isAdmin?' • مدير':'');
-      document.querySelector('.user-chip .avatar').textContent = name[0];
+      document.querySelector('.user-chip .avatar').innerHTML = avatarInner(currentUser.uid, name[0]);
     }catch(err){
       console.error(err);
       errBox.textContent='حدث خطأ أثناء الحفظ';
@@ -2158,6 +2184,7 @@ function watchEmployeesCache(cb){
   }, err=>console.error(err));
   unsubList.push(unsub);
 }
+function avatarInner(uid,letter){ const u=employeesCache[uid]||(currentUser&&uid===currentUser.uid?currentEmployee:null); return (u&&u.photoUrl)?`<img src="${esc(u.photoUrl)}" alt="" referrerpolicy="no-referrer">`:esc(letter); }
 function empName(uid){ return (employeesCache[uid] && employeesCache[uid].name) || 'غير معروف'; }
 function empDept(uid){ return (employeesCache[uid] && employeesCache[uid].department) || ''; }
 
@@ -4640,6 +4667,7 @@ let msgWatcherFirstLoad = true;
 /* إجمالي عدد الرسائل غير المقروءة لكل محادثة/عبر كل المحادثات (لعرض شارة الأرقام مثل واتساب) */
 function convUnreadCount(conv){
   const uid = currentUser.uid;
+  if(conv.type==='group' && !(conv.members||[]).includes(uid)) return 0;
   const uc = conv.unreadCounts && conv.unreadCounts[uid];
   if(typeof uc === 'number' && uc>=0) return uc;
   return convUnreadFlag(conv) ? 1 : 0; // احتياط للمحادثات القديمة قبل إضافة العداد
@@ -4687,11 +4715,11 @@ function startMessagesWatcher(){
   msgWatcherUnsubs = [];
   msgWatcherFirstLoad = true;
   const uid = currentUser.uid;
-  let rows1 = [], rows2 = [];
+  let rows1 = [], rows2 = [], rows3 = [];
   let initialSnapshots = 0;
   function merge(){
     const map = {};
-    [...rows1, ...rows2].forEach(r=> map[r.id]=r);
+    [...rows3, ...rows1, ...rows2].forEach(r=> map[r.id]=r);
     msgConvCache = map;
     const oldTotal = totalUnreadMessages();
     msgConvList = Object.values(map).sort((a,b)=>
@@ -4713,6 +4741,7 @@ function startMessagesWatcher(){
   const q1 = query(collection(db,'conversations'), where('members','array-contains', uid));
   const q2 = query(collection(db,'conversations'), where('type','==','broadcast'));
   msgWatcherUnsubs.push(onSnapshot(q1, qs=>{ rows1 = qs.docs.map(d=>({id:d.id,...d.data()})); merge(); }, err=>console.error(err)));
+  msgWatcherUnsubs.push(onSnapshot(query(collection(db,'conversations'), where('type','==','group')), qs=>{ rows3 = qs.docs.map(d=>({id:d.id,...d.data()})); merge(); }, err=>console.error(err)));
   msgWatcherUnsubs.push(onSnapshot(q2, qs=>{ rows2 = qs.docs.map(d=>({id:d.id,...d.data()})); merge(); }, err=>console.error(err)));
 }
 
@@ -4722,6 +4751,12 @@ function convOtherName(conv){
   const otherUid = (conv.members||[]).find(u=>u!==currentUser.uid);
   return otherUid ? empName(otherUid) : (conv.title||'محادثة');
 }
+function convAvatarHTML(conv){
+  if(conv.type==='group') return '👥';
+  if(conv.type==='broadcast') return '📢';
+  const o=(conv.members||[]).find(u=>u!==currentUser.uid);
+  return avatarInner(o, convAvatarLetter(conv));
+}
 function convAvatarLetter(conv){
   if(conv.type==='broadcast') return '📢';
   if(conv.type==='group') return (conv.title||'م')[0];
@@ -4729,6 +4764,7 @@ function convAvatarLetter(conv){
 }
 function convUnreadFlag(conv){
   const uid = currentUser.uid;
+  if(conv.type==='group' && !(conv.members||[]).includes(uid)) return false;
   if(!conv.lastMessageAt || conv.lastMessageBy===uid) return false;
   const lastRead = conv.lastReadAt && conv.lastReadAt[uid];
   if(!lastRead) return true;
@@ -4826,21 +4862,26 @@ function renderMessagesTab(container){
     if(!box) return;
     box.innerHTML = msgConvList.length ? msgConvList.map(c=>{
       const cnt = convUnreadCount(c);
-      const previewText = c.lastMessageText ? esc(c.lastMessageText) : (c.lastMessageAttachment ? '📎 مرفق' : 'لا توجد رسائل بعد');
-      return `<div class="conv-item ${c.type==='group'?'group-conv ':''}${c.id===msgActiveConvId?'active ':''}${cnt>0?'has-unread':''}" data-id="${c.id}">
-        <div class="conv-avatar">${c.type==='group'?'👥':esc(convAvatarLetter(c))}</div>
+      const locked = c.type==='group' && !(c.members||[]).includes(uid);
+      const previewText = locked ? '🔒 للأعضاء فقط' : c.lastMessageText ? esc(c.lastMessageText) : (c.lastMessageAttachment ? '📎 مرفق' : 'لا توجد رسائل بعد');
+      return `<div class="conv-item ${locked?'locked-conv ':''}${c.type==='group'?'group-conv ':''}${c.id===msgActiveConvId?'active ':''}${cnt>0?'has-unread':''}" data-id="${c.id}">
+        <div class="conv-avatar">${locked?'🔒':convAvatarHTML(c)}</div>
         <div class="conv-info">
           <div class="conv-name">${esc(convOtherName(c))}${c.type==='group'?'<span class="conv-type-label">جروب</span>':''}</div>
-          <div class="conv-preview">${c.lastMessageBy===uid?'أنت: ':''}${previewText}</div>
+          <div class="conv-preview">${!locked&&c.lastMessageBy===uid?'أنت: ':''}${previewText}</div>
         </div>
         <div class="conv-meta">
-          <div class="conv-time">${c.lastMessageAt?fmtTime(c.lastMessageAt):''}</div>
+          <div class="conv-time">${!locked&&c.lastMessageAt?fmtTime(c.lastMessageAt):''}</div>
           ${cnt>0?`<span class="conv-unread-count">${cnt>99?'99+':cnt}</span>`:''}
         </div>
       </div>`;
     }).join('') : `<div class="muted" style="padding:12px 14px;font-size:12px;">لا توجد محادثات سابقة</div>`;
     box.querySelectorAll('.conv-item').forEach(node=>{
-      node.addEventListener('click', ()=> openConversation(node.dataset.id));
+      node.addEventListener('click', ()=>{
+        const cv = msgConvCache[node.dataset.id];
+        if(cv && cv.type==='group' && !(cv.members||[]).includes(uid)){ toast('هذا الجروب خاص بأعضائه فقط','err'); return; }
+        openConversation(node.dataset.id);
+      });
     });
     drawEmployeeList();
   }
@@ -4852,7 +4893,7 @@ function renderMessagesTab(container){
     if(employees.length===0){ box.innerHTML = `<div class="muted" style="padding:12px 14px;font-size:12px;">لا يوجد موظفون آخرون</div>`; return; }
     box.innerHTML = employees.map(u=>`
       <div class="conv-item employee-contact" data-uid="${esc(u)}" title="فتح محادثة مع ${esc(empName(u))}">
-        <div class="conv-avatar">${esc((empName(u)||'؟')[0])}</div>
+        <div class="conv-avatar">${avatarInner(u,(empName(u)||'؟')[0])}</div>
         <div class="conv-info">
           <div class="conv-name">${esc(empName(u))}</div>
           <div class="conv-preview">متاح للمراسلة</div>
@@ -4885,7 +4926,7 @@ function renderMessagesTab(container){
     else if(conv.type==='broadcast') sub = 'رسالة جماعية تصل لجميع الموظفين';
     return `
       <button class="btn btn-outline btn-sm msg-back-btn" id="msg-back-btn">→ رجوع</button>
-      <div class="conv-avatar" style="width:34px;height:34px;font-size:13px;">${esc(convAvatarLetter(conv))}</div>
+      <div class="conv-avatar" style="width:34px;height:34px;font-size:13px;">${convAvatarHTML(conv)}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:800;font-size:14px;">${esc(convOtherName(conv))}</div>
         ${sub?`<div style="font-size:11.5px;color:var(--sub);">${esc(sub)}</div>`:''}
