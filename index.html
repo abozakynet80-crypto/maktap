@@ -595,6 +595,18 @@
     .tab-btn{padding-left:10px;padding-right:10px;}
   }
   html[data-theme="dark"] .msg-bubble.theirs{background:var(--card);}
+  .project-wrap{display:flex;flex-direction:column;gap:4px;}
+  .project-wrap .project-card{flex:1;}
+  .project-tools{display:flex;gap:4px;}
+  .pj-tool{border:1px solid var(--border);background:var(--card);border-radius:7px;font-size:12px;padding:1px 8px;cursor:pointer;line-height:1.7;}
+  @media(max-width:700px){
+    .projects-grid{gap:10px;}
+    .project-cover.has-img img{max-height:105px;}
+    .project-body{padding:10px;gap:6px;}
+    .project-title{font-size:13.5px;}
+    .project-desc{min-height:0;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .project-meta{font-size:11px;}
+  }
 </style>
 </head>
 <body>
@@ -5328,10 +5340,10 @@ function renderProjectsTab(container){
     if(selectedId){ drawDetail(view, list.find(p=>p.id===selectedId)); return; }
     if(list.length===0){ view.innerHTML='<div class="empty-state"><div class="emoji">📁</div>لا توجد مشاريع حاليًا</div>'; return; }
     view.innerHTML = `<div class="projects-grid">${list.map(p=>{
-      const stats=projectTasksStats(projectTasks.filter(t=>t.projectId===p.id));
+      const stats=projectTasksStats(projectTasks.filter(t=>t.projectId===p.id&&!t.parentId));
       const pct=stats.total ? stats.percent : Number(p.progress||0);
       const member=isProjectMember(p);
-      return `<article class="project-card${member?'':' project-card-locked'}" data-project-id="${p.id}" ${member?'':'title="الدخول لهذا المشروع متاح فقط لأعضائه"'}>
+      return `<div class="project-wrap">${isAdmin?`<div class="project-tools"><button class="pj-tool pj-edit" data-id="${p.id}" title="تعديل">✏️</button><button class="pj-tool pj-del" data-id="${p.id}" title="حذف">🗑</button></div>`:''}<article class="project-card${member?'':' project-card-locked'}" data-project-id="${p.id}" ${member?'':'title="الدخول لهذا المشروع متاح فقط لأعضائه"'}>
         <div class="project-cover${p.imageUrl?' has-img':''}">${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createTextNode('📁'))">`:'📁'}${member?'':'<span class="project-lock-badge">🔒</span>'}</div>
         <div class="project-body">
           <div class="flex-between"><div class="project-title">${esc(p.name)}</div><span class="status-pill ${p.status==='completed'?'pill-good':p.status==='paused'||p.status==='cancelled'?'pill-bad':'pill-warn'}">${projectStatusLabel(p.status)}</span></div>
@@ -5340,8 +5352,13 @@ function renderProjectsTab(container){
           <div class="project-progress"><div style="width:${Math.min(100,pct)}%"></div></div>
           <div class="project-meta"><span>نسبة الإنجاز ${pct}%</span><span>${esc(p.startDate||'')} ${p.endDate?` - ${esc(p.endDate)}`:''}</span></div>
         </div>
-      </article>`;
+      </article></div>`;
     }).join('')}</div>`;
+    view.querySelectorAll('.pj-edit').forEach(b=>b.addEventListener('click',()=>openProjectModal(list.find(x=>x.id===b.dataset.id))));
+    view.querySelectorAll('.pj-del').forEach(b=>b.addEventListener('click',async()=>{
+      if(!confirm('حذف المشروع؟ ستظل مهامه محفوظة كسجل، ولن يظهر المشروع للمستخدمين.')) return;
+      await updateDoc(doc(db,'projects',b.dataset.id),{active:false}); toast('تم إخفاء المشروع','ok');
+    }));
     view.querySelectorAll('.project-card').forEach(card=>card.addEventListener('click',()=>{
       const p=list.find(x=>x.id===card.dataset.projectId);
       if(!p) return;
@@ -5354,15 +5371,19 @@ function renderProjectsTab(container){
 
   function drawDetail(view, project){
     if(!project) return;
-    const tasks=projectTasks.filter(t=>t.projectId===project.id);
+    const allT=projectTasks.filter(t=>t.projectId===project.id);
+    const tasks=allT.filter(t=>!t.parentId);
     const stats=projectTasksStats(tasks);
     const manager=canManageProject(project);
     const members=project.memberUids||[];
+    const typeLbl={temporary:'مؤقتة',permanent:'دائمة',recurring:'متجددة'}, recLbl={daily:'يوميًا',weekly:'أسبوعيًا',monthly:'شهريًا'};
+    const badge=t=>t.taskType?`<span class="status-pill pill-warn" style="font-size:10px;">${typeLbl[t.taskType]||''}${t.taskType==='recurring'?' '+(recLbl[t.recurrence]||''):''}</span> `:'';
+    const internalHTML=t=>allT.filter(i=>i.parentId===t.id).map(i=>`<div class="project-task-meta" style="margin-top:6px;padding:6px 8px;border-inline-start:3px solid var(--brand);background:var(--bg);border-radius:6px;">↳ ${esc(i.title)} — 👤 ${esc(empName(i.assignedUid))} <span class="status-pill ${projectTaskStatusClass(i.status)}" style="font-size:10px;">${projectTaskStatusLabel(i.status)}</span>${(i.assignedUid===currentUser.uid||manager)&&i.status!=='completed'&&i.status!=='failed'?` <button class="btn btn-outline btn-sm update-project-task" data-id="${i.id}">تحديث</button>`:''}</div>`).join('');
     view.innerHTML=`
       <div class="flex-between" style="margin-bottom:14px;">
         <button class="btn btn-outline btn-sm btn-auto" id="projects-back-btn">← كل المشاريع</button>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${manager?'<button class="btn btn-primary btn-sm btn-auto" id="project-new-task-btn">➕ مهمة</button>':''}
+          <button class="btn btn-outline btn-sm btn-auto" id="team-toggle">👥 الفريق (${members.length})</button>${manager?'<button class="btn btn-primary btn-sm btn-auto" id="project-new-task-btn">➕ مهمة</button>':''}
           ${isAdmin?'<button class="btn btn-outline btn-sm btn-auto" id="project-edit-btn">✏️ تعديل</button><button class="btn btn-danger btn-sm btn-auto" id="project-delete-btn">حذف</button>':''}
         </div>
       </div>
@@ -5372,11 +5393,13 @@ function renderProjectsTab(container){
         <div class="project-meta" style="margin-top:12px;"><span>بداية: ${esc(project.startDate||'—')}</span><span>نهاية: ${esc(project.endDate||'مفتوحة')}</span><span>المصدر: ${esc(project.createdByName||'الإدارة')}</span></div>
       </div>
       <div class="stat-row" style="margin-top:16px;grid-template-columns:repeat(4,1fr);"><div class="stat-box"><div class="num">${stats.total}</div><div class="lbl">إجمالي المهام</div></div><div class="stat-box"><div class="num" style="color:var(--good);">${stats.completed}</div><div class="lbl">مكتملة</div></div><div class="stat-box"><div class="num" style="color:var(--warn);">${stats.remaining}</div><div class="lbl">متبقية</div></div><div class="stat-box"><div class="num">${stats.percent}%</div><div class="lbl">نسبة الإنجاز</div></div></div>
-      <div class="project-panels">
-        <div class="card"><h3>👥 الموظفون القائمون على المشروع</h3><div id="project-members-list">${members.length?members.map(uid=>`<div class="project-member-row"><div><div class="project-member-name">${esc(empName(uid))}</div>${(project.managerUids||[]).includes(uid)?'<span class="status-pill pill-warn" style="font-size:10px;margin-top:3px;">مسؤول مشروع</span>':''}<div class="project-task-meta">${tasks.filter(t=>t.assignedUid===uid).length} مهمة مسندة</div></div>${isAdmin?`<button class="btn btn-danger btn-sm remove-project-member" data-uid="${uid}">حذف</button>`:''}</div>`).join(''):'<div class="muted">لا يوجد أعضاء</div>'}</div></div>
-        <div class="card"><h3>📌 مهام المشروع <span class="muted" style="font-size:11px;font-weight:400;">(${tasks.length})</span></h3><div id="project-tasks-list">${tasks.length?tasks.map(t=>`<div class="project-task-row"><div class="project-task-main"><div class="project-task-title">${esc(t.title)}</div><div class="project-task-meta">👤 ${esc(empName(t.assignedUid))} · ${t.dueDate?`الموعد ${esc(t.dueDate)}`:'بدون موعد'} · ${t.source==='generalManager'?'المدير العام':'مسؤول المشروع'}${t.notes?`<br>📝 ${esc(t.notes)}`:''}${t.attachmentUrl?`<br><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a>`:''}</div></div><div><span class="status-pill ${projectTaskStatusClass(t.status)}">${projectTaskStatusLabel(t.status)}</span>${(t.assignedUid===currentUser.uid||manager)&&t.status!=='completed'&&t.status!=='failed'?`<button class="btn btn-outline btn-sm update-project-task" data-id="${t.id}" style="margin-top:6px;">تحديث</button>`:''}</div></div>`).join(''):'<div class="muted">لا توجد مهام لهذا المشروع</div>'}</div></div>
+      <div class="card" id="team-card" style="display:none;margin-top:16px;"><h3>👥 الموظفون القائمون على المشروع</h3><div id="project-members-list">${members.length?members.map(uid=>`<div class="project-member-row"><div><div class="project-member-name">${esc(empName(uid))}</div>${(project.managerUids||[]).includes(uid)?'<span class="status-pill pill-warn" style="font-size:10px;margin-top:3px;">مسؤول مشروع</span>':''}<div class="project-task-meta">${tasks.filter(t=>t.assignedUid===uid).length} مهمة مسندة</div></div>${isAdmin?`<button class="btn btn-danger btn-sm remove-project-member" data-uid="${uid}">حذف</button>`:''}</div>`).join(''):'<div class="muted">لا يوجد أعضاء</div>'}</div></div>
+      <div class="project-panels" style="grid-template-columns:1fr;">
+        <div class="card"><h3>📌 مهام المشروع <span class="muted" style="font-size:11px;font-weight:400;">(${tasks.length})</span></h3><div id="project-tasks-list">${tasks.length?tasks.map(t=>`<div class="project-task-row"><div class="project-task-main"><div class="project-task-title">${esc(t.title)}</div><div class="project-task-meta">${badge(t)}👤 ${esc(empName(t.assignedUid))} · ${t.dueDate?`الموعد ${esc(t.dueDate)}`:'بدون موعد'} · ${t.source==='generalManager'?'المدير العام':'مسؤول المشروع'}${t.notes?`<br>📝 ${esc(t.notes)}`:''}${t.attachmentUrl?`<br><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a>`:''}</div>${internalHTML(t)}</div><div><span class="status-pill ${projectTaskStatusClass(t.status)}">${projectTaskStatusLabel(t.status)}</span>${manager?`<button class="btn btn-outline btn-sm add-internal" data-id="${t.id}" style="margin:6px 0 0 4px;">➕ داخلي</button>`:''}${(t.assignedUid===currentUser.uid||manager)&&t.status!=='completed'&&t.status!=='failed'?`<button class="btn btn-outline btn-sm update-project-task" data-id="${t.id}" style="margin-top:6px;">تحديث</button>`:''}</div></div>`).join(''):'<div class="muted">لا توجد مهام لهذا المشروع</div>'}</div></div>
       </div>
     `;
+    view.querySelector('#team-toggle').addEventListener('click',()=>{const c=view.querySelector('#team-card');c.style.display=c.style.display==='none'?'block':'none';});
+    view.querySelectorAll('.add-internal').forEach(b=>b.addEventListener('click',()=>openProjectTaskModal(project,tasks.find(t=>t.id===b.dataset.id))));
     view.querySelector('#projects-back-btn').addEventListener('click',()=>closeNavLayer(projectLayer,()=>{selectedId=null;draw();}));
     if(manager) view.querySelector('#project-new-task-btn').addEventListener('click',()=>openProjectTaskModal(project));
     if(isAdmin){
@@ -5390,7 +5413,7 @@ function renderProjectsTab(container){
         await updateDoc(doc(db,'projects',project.id),{memberUids:nextMembers,managerUids:nextManagers});
       }));
     }
-    view.querySelectorAll('.update-project-task').forEach(btn=>btn.addEventListener('click',()=>openProjectTaskUpdateModal(tasks.find(t=>t.id===btn.dataset.id))));
+    view.querySelectorAll('.update-project-task').forEach(btn=>btn.addEventListener('click',()=>openProjectTaskUpdateModal(allT.find(t=>t.id===btn.dataset.id))));
   }
 }
 
@@ -5412,11 +5435,26 @@ function openProjectModal(project=null){
   });
 }
 
-function openProjectTaskModal(project){
+function openProjectTaskModal(project,parent=null){
   const members=project.memberUids||[];
-  const overlay=el(`<div class="modal-overlay"><div class="modal-box" style="max-width:540px;"><h3>➕ مهمة داخل مشروع: ${esc(project.name)}</h3><div class="field"><label>عنوان المهمة *</label><input id="pt-title"></div><div class="field"><label>التفاصيل</label><textarea id="pt-desc"></textarea></div><div class="grid grid-2"><div class="field"><label>الموظف المكلف *</label><select id="pt-assignee">${members.map(uid=>`<option value="${uid}">${esc(empName(uid))}</option>`).join('')}</select></div><div class="field"><label>الموعد النهائي</label><input type="date" id="pt-due"></div></div><div class="field"><label>ملاحظات</label><textarea id="pt-notes"></textarea></div><div class="field"><label>مرفق اختياري</label><input type="file" id="pt-file"></div><div class="error-text" id="pt-err" style="display:none;"></div><div class="modal-actions"><button class="btn btn-outline" id="pt-cancel">إلغاء</button><button class="btn btn-primary" id="pt-save">إسناد المهمة</button></div></div></div>`);
-  document.body.appendChild(overlay);overlay.querySelector('#pt-cancel').addEventListener('click',()=>overlay.remove());overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
-  overlay.querySelector('#pt-save').addEventListener('click',async()=>{const title=overlay.querySelector('#pt-title').value.trim(),err=overlay.querySelector('#pt-err'),assignedUid=overlay.querySelector('#pt-assignee').value;if(!title||!assignedUid){err.textContent='اكتب عنوان المهمة واختر الموظف';err.style.display='block';return;}const btn=overlay.querySelector('#pt-save');btn.disabled=true;btn.textContent='جارِ الحفظ...';try{const file=overlay.querySelector('#pt-file').files[0],att=await uploadTaskAttachment(file,'projectTaskAttachments');await setDoc(doc(collection(db,'projectTasks')),{projectId:project.id,projectName:project.name,title,description:overlay.querySelector('#pt-desc').value.trim(),assignedUid,assignedBy:currentUser.uid,assignedByName:currentEmployee.name||'',source:isAdmin?'generalManager':'projectManager',assignedAt:serverTimestamp(),dueDate:overlay.querySelector('#pt-due').value,status:'pending',notes:overlay.querySelector('#pt-notes').value.trim(),attachmentUrl:att.url,attachmentName:att.name,attachmentType:file?.type||null,attachmentPath:att.path,attachmentOwnerUid:currentUser.uid,attachmentAddedAt:serverTimestamp(),active:true});await pushNotifications([assignedUid],'📌 مهمة مشروع جديدة',`${project.name} — ${title}`);toast('تم إسناد مهمة المشروع','ok');overlay.remove();}catch(e){console.error(e);err.textContent='تعذر حفظ المهمة';err.style.display='block';btn.disabled=false;btn.textContent='إسناد المهمة';}});
+  const overlay=el(`<div class="modal-overlay"><div class="modal-box" style="max-width:540px;"><h3>${parent?'↳ تاسك داخلي ضمن: '+esc(parent.title):'➕ مهمة داخل مشروع: '+esc(project.name)}</h3><div class="field"><label>عنوان المهمة *</label><input id="pt-title"></div><div class="field"><label>التفاصيل</label><textarea id="pt-desc"></textarea></div><div class="grid grid-2"><div class="field"><label>نوع المهمة</label><select id="pt-type"><option value="temporary">مؤقتة</option><option value="permanent">دائمة</option><option value="recurring">متجددة</option></select></div><div class="field" id="pt-due-box"><label>الموعد النهائي</label><input type="date" id="pt-due"></div><div class="field" id="pt-rec-box" style="display:none;"><label>التجديد</label><select id="pt-rec"><option value="daily">يوميًا</option><option value="weekly">أسبوعيًا</option><option value="monthly">شهريًا</option></select></div></div><div class="field"><label>المكلفون *</label><label class="assignee-chk"><input type="checkbox" id="pt-all"> <b>كل الفريق</b></label><div class="assignee-list" id="pt-list">${members.map(uid=>`<label class="assignee-chk"><input type="checkbox" class="pt-who" value="${uid}"> ${esc(empName(uid))}</label>`).join('')}</div></div><div class="field"><label>ملاحظات</label><textarea id="pt-notes"></textarea></div><div class="field"><label>مرفق اختياري</label><input type="file" id="pt-file"></div><div class="error-text" id="pt-err" style="display:none;"></div><div class="modal-actions"><button class="btn btn-outline" id="pt-cancel">إلغاء</button><button class="btn btn-primary" id="pt-save">إسناد المهمة</button></div></div></div>`);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#pt-cancel').addEventListener('click',()=>overlay.remove());overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  const typeSel=overlay.querySelector('#pt-type'),allChk=overlay.querySelector('#pt-all'),whos=[...overlay.querySelectorAll('.pt-who')];
+  typeSel.addEventListener('change',()=>{overlay.querySelector('#pt-due-box').style.display=typeSel.value==='temporary'?'block':'none';overlay.querySelector('#pt-rec-box').style.display=typeSel.value==='recurring'?'block':'none';});
+  allChk.addEventListener('change',()=>whos.forEach(w=>{w.checked=allChk.checked;w.disabled=allChk.checked;}));
+  overlay.querySelector('#pt-save').addEventListener('click',async()=>{
+    const title=overlay.querySelector('#pt-title').value.trim(),err=overlay.querySelector('#pt-err'),type=typeSel.value;
+    const uids=allChk.checked?members:whos.filter(w=>w.checked).map(w=>w.value);
+    if(!title||!uids.length){err.textContent='اكتب عنوان المهمة واختر المكلفين';err.style.display='block';return;}
+    const btn=overlay.querySelector('#pt-save');btn.disabled=true;btn.textContent='جارِ الحفظ...';
+    try{
+      const file=overlay.querySelector('#pt-file').files[0],att=await uploadTaskAttachment(file,'projectTaskAttachments');
+      await Promise.all(uids.map(assignedUid=>setDoc(doc(collection(db,'projectTasks')),{projectId:project.id,projectName:project.name,title,description:overlay.querySelector('#pt-desc').value.trim(),assignedUid,assignedBy:currentUser.uid,assignedByName:currentEmployee.name||'',source:parent?'internal':(isAdmin?'generalManager':'projectManager'),parentId:parent?parent.id:null,internal:!!parent,taskType:type,recurrence:type==='recurring'?overlay.querySelector('#pt-rec').value:null,teamWide:allChk.checked,assignedAt:serverTimestamp(),dueDate:type==='temporary'?overlay.querySelector('#pt-due').value:'',status:'pending',notes:overlay.querySelector('#pt-notes').value.trim(),attachmentUrl:att.url,attachmentName:att.name,attachmentType:file?.type||null,attachmentPath:att.path,attachmentOwnerUid:currentUser.uid,attachmentAddedAt:serverTimestamp(),active:true})));
+      await pushNotifications(uids,parent?'↳ تاسك داخلي جديد':'📌 مهمة مشروع جديدة',`${project.name} — ${title}`);
+      toast('تم إسناد المهمة','ok');overlay.remove();
+    }catch(e){console.error(e);err.textContent='تعذر حفظ المهمة';err.style.display='block';btn.disabled=false;btn.textContent='إسناد المهمة';}
+  });
 }
 
 function openProjectTaskUpdateModal(task){
