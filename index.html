@@ -233,6 +233,9 @@
   .btn-entered{background:var(--good);color:#fff;}
 
   .stat-box{background:var(--brand-light);border-radius:12px;padding:16px;text-align:center;}
+  .stat-box-warn2{background:var(--warn-bg);}
+  .stat-box-warn2 .num{color:var(--warn);}
+  .card-muted{background:var(--bg);}
   .stat-box .num{font-size:26px;font-weight:800;color:var(--brand-dark);}
   .stat-box .lbl{font-size:12px;color:var(--sub);margin-top:2px;}
   .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
@@ -363,6 +366,33 @@
   .badge-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
   .ach-badge{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:3px 11px;font-size:11.5px;font-weight:700;color:#a9b2c0;}
   .ach-badge.on{background:#fff8e6;border-color:#f0d089;color:#8a6200;}
+
+  /* ===== إصلاحات المظهر الداكن: عناصر كانت بخلفية بيضاء/فاتحة ثابتة ===== */
+  html[data-theme="dark"] th, html[data-theme="dark"] td{background:var(--card);color:var(--ink);}
+  html[data-theme="dark"] .modal-box{background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.55);}
+  html[data-theme="dark"] .subtab-btn{background:var(--card);color:var(--sub);}
+  html[data-theme="dark"] .subtab-btn.active{color:var(--brand-dark);}
+  html[data-theme="dark"] .field input:focus, html[data-theme="dark"] .field select:focus, html[data-theme="dark"] .field textarea:focus{background:#141d27;color:var(--ink);}
+  html[data-theme="dark"] .filter-bar input, html[data-theme="dark"] .filter-bar select{background:#141d27;color:var(--ink);}
+  html[data-theme="dark"] tr.row-istifa td, html[data-theme="dark"] tr.row-istifa .col-action{background:#332711;}
+  html[data-theme="dark"] .note-row{background:#141d27;}
+  html[data-theme="dark"] .note-row .n-text{background:#141d27;color:var(--ink);}
+  html[data-theme="dark"] .note-row .n-count-wrap{background:#141d27;color:var(--ink);}
+  html[data-theme="dark"] .saved-task{border-color:#1e4636;}
+  html[data-theme="dark"] .saved-task .st-text{color:#7fe0b8;}
+  html[data-theme="dark"] .saved-task .st-count{background:#141d27;border-color:#1e4636;}
+  html[data-theme="dark"] .motiv-banner{background:linear-gradient(135deg,var(--brand-light),#182236);border-color:var(--border);}
+  html[data-theme="dark"] .ach-badge{background:var(--card);border-color:var(--border);color:#6d7c8f;}
+  html[data-theme="dark"] .ach-badge.on{background:#332711;border-color:#5c4a1c;color:#e2c069;}
+  html[data-theme="dark"] .dept-group-row td{background:var(--brand-light)!important;color:var(--brand-dark);}
+  html[data-theme="dark"] .pill-neutral{background:#26313f;color:var(--sub);}
+  html[data-theme="dark"] .badge-dept{background:#26313f;color:var(--ink);}
+  html[data-theme="dark"] .field input:disabled{background:#20303f;color:var(--sub);}
+  html[data-theme="dark"] th{background:#141d27;color:var(--sub);}
+  html[data-theme="dark"] .progress-bar{background:#26313f;}
+  html[data-theme="dark"] .leader-rank{background:#26313f;color:var(--sub);}
+  html[data-theme="dark"] .small-note{background:#141d27;color:var(--sub);}
+  html[data-theme="dark"] .center-chip{background:#141d27;}
 </style>
 </head>
 <body>
@@ -1175,7 +1205,7 @@ async function showMorningGreetingModal(){
   const overlay = el(`
     <div class="modal-overlay">
       <div class="modal-box" style="max-width:400px;text-align:center;position:relative;">
-        <button id="mg-close-btn" title="إغلاق" style="position:absolute;top:10px;left:10px;width:30px;height:30px;border:none;background:#eef1f6;color:var(--sub);border-radius:50%;font-size:16px;font-weight:800;cursor:pointer;line-height:1;">×</button>
+        <button id="mg-close-btn" title="إغلاق" style="position:absolute;top:10px;left:10px;width:30px;height:30px;border:none;background:var(--border);color:var(--sub);border-radius:50%;font-size:16px;font-weight:800;cursor:pointer;line-height:1;">×</button>
         <div style="font-size:38px;margin-bottom:6px;">☀️</div>
         <h3 style="margin-bottom:6px;">${esc(greetingText(currentEmployee.name||''))}</h3>
         <div class="modal-sub">سجّل حضورك دلوقتي، أو أخطر بالغياب مع ذكر السبب</div>
@@ -1697,7 +1727,7 @@ function renderMyRequests(box){
         <div class="stat-box"><div class="num" id="stat-target">0</div><div class="lbl">المستهدف</div></div>
         <div class="stat-box"><div class="num" id="stat-done">0</div><div class="lbl">تم إدخاله</div></div>
         <div class="stat-box"><div class="num" id="stat-remain">0</div><div class="lbl">المتبقي</div></div>
-        <div class="stat-box" style="background:#fff8e6;"><div class="num" id="stat-istifa" style="color:#b07d0a;">0</div><div class="lbl">استيفاء (خارج الحساب)</div></div>
+        <div class="stat-box stat-box-warn2"><div class="num" id="stat-istifa">0</div><div class="lbl">استيفاء (خارج الحساب)</div></div>
       </div>
       <div class="progress-bar"><div id="progress-fill" style="width:0%;"></div></div>
     </div>
@@ -1724,7 +1754,7 @@ function renderMyRequests(box){
         <button class="btn btn-primary btn-sm btn-auto" id="mine-bulk-done-btn" disabled>✓ تم إدخال المحدد</button>
       </div>
 
-      <div class="card" style="margin-top:14px;background:#fbfcfe;">
+      <div class="card card-muted" style="margin-top:14px;">
         <h3 style="font-size:13.5px;margin-bottom:8px;">📋 تحويل بالنسخ واللصق (أرقام طلبات مجمّعة)</h3>
         <div class="card-sub" style="margin-top:0;">الصق أرقام الطلبات (رقم في كل سطر، أو مفصولة بفواصل/مسافات) ثم اختر تحويلها إلى تم أو لم يتم — سيتم البحث عنها بين الطلبات المسندة إليك فقط.</div>
         <textarea id="paste-req-numbers" rows="4" style="width:100%;padding:11px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;resize:vertical;" placeholder="مثال:&#10;12345&#10;12346&#10;12347"></textarea>
