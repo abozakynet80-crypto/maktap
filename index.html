@@ -339,7 +339,9 @@
   .projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;}
   .project-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:.15s;display:flex;flex-direction:column;}
   .project-card:hover{transform:translateY(-2px);border-color:var(--brand);}
-  .project-cover{height:145px;background:linear-gradient(135deg,var(--brand),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:46px;overflow:hidden;}
+  .project-cover{height:145px;background:linear-gradient(135deg,var(--brand),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:46px;overflow:hidden;position:relative;}
+  .project-card-locked{cursor:not-allowed;opacity:.72;}
+  .project-lock-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.45);border-radius:8px;padding:3px 7px;font-size:14px;}
   .project-cover img{width:100%;height:100%;object-fit:cover;}
   .project-body{padding:14px;display:flex;flex-direction:column;gap:8px;flex:1;}
   .project-title{font-weight:800;font-size:15px;}
@@ -2727,7 +2729,9 @@ async function uploadTaskAttachment(file, folder){
       });
       const result = await response.json();
       if(!result.ok) throw new Error(result.error||'Google Drive upload failed');
-      return {url:result.url, name:result.fileName||file.name, type:result.mimeType||file.type, path:result.id, provider:'google-drive'};
+      const isImage = (result.mimeType||file.type||'').startsWith('image/');
+      const directUrl = result.id ? `https://drive.google.com/thumbnail?id=${result.id}&sz=w1600` : result.url;
+      return {url: isImage ? directUrl : result.url, name:result.fileName||file.name, type:result.mimeType||file.type, path:result.id, provider:'google-drive'};
     }
     const path = `${folder}/${Date.now()}_${file.name}`;
     const sref = storageRef(storage, path);
@@ -5248,20 +5252,24 @@ function renderProjectsTab(container){
   if(isAdmin) container.querySelector('#new-project-btn').addEventListener('click', ()=>openProjectModal());
 
   function visibleProjects(){
-    return projects.filter(p=>p.active!==false && (isAdmin || (p.memberUids||[]).includes(currentUser.uid) || (p.managerUids||[]).includes(currentUser.uid)));
+    return projects.filter(p=>p.active!==false);
+  }
+  function isProjectMember(p){
+    return isAdmin || (p.memberUids||[]).includes(currentUser.uid) || (p.managerUids||[]).includes(currentUser.uid);
   }
   function draw(){
     const view = container.querySelector('#projects-view');
     if(!view) return;
     const list = visibleProjects();
-    if(selectedId && !list.some(p=>p.id===selectedId)) selectedId=null;
+    if(selectedId && !list.some(p=>p.id===selectedId && isProjectMember(p))) selectedId=null;
     if(selectedId){ drawDetail(view, list.find(p=>p.id===selectedId)); return; }
-    if(list.length===0){ view.innerHTML='<div class="empty-state"><div class="emoji">📁</div>لا توجد مشاريع متاحة لك حاليًا</div>'; return; }
+    if(list.length===0){ view.innerHTML='<div class="empty-state"><div class="emoji">📁</div>لا توجد مشاريع حاليًا</div>'; return; }
     view.innerHTML = `<div class="projects-grid">${list.map(p=>{
       const stats=projectTasksStats(projectTasks.filter(t=>t.projectId===p.id));
       const pct=stats.total ? stats.percent : Number(p.progress||0);
-      return `<article class="project-card" data-project-id="${p.id}">
-        <div class="project-cover">${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="">`:'📁'}</div>
+      const member=isProjectMember(p);
+      return `<article class="project-card${member?'':' project-card-locked'}" data-project-id="${p.id}" ${member?'':'title="الدخول لهذا المشروع متاح فقط لأعضائه"'}>
+        <div class="project-cover">${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="">`:'📁'}${member?'':'<span class="project-lock-badge">🔒</span>'}</div>
         <div class="project-body">
           <div class="flex-between"><div class="project-title">${esc(p.name)}</div><span class="status-pill ${p.status==='completed'?'pill-good':p.status==='paused'||p.status==='cancelled'?'pill-bad':'pill-warn'}">${projectStatusLabel(p.status)}</span></div>
           <div class="project-desc">${esc(p.description||'لا يوجد وصف مختصر')}</div>
@@ -5271,7 +5279,12 @@ function renderProjectsTab(container){
         </div>
       </article>`;
     }).join('')}</div>`;
-    view.querySelectorAll('.project-card').forEach(card=>card.addEventListener('click',()=>{selectedId=card.dataset.projectId; draw();}));
+    view.querySelectorAll('.project-card').forEach(card=>card.addEventListener('click',()=>{
+      const p=list.find(x=>x.id===card.dataset.projectId);
+      if(!p) return;
+      if(!isProjectMember(p)){ toast('الدخول لهذا المشروع متاح فقط لأعضائه','err'); return; }
+      selectedId=card.dataset.projectId; draw();
+    }));
   }
 
   function drawDetail(view, project){
