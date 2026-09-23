@@ -367,6 +367,28 @@
   .ach-badge{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:3px 11px;font-size:11.5px;font-weight:700;color:#a9b2c0;}
   .ach-badge.on{background:#fff8e6;border-color:#f0d089;color:#8a6200;}
 
+  /* ===== قسم توزيع المهام ===== */
+  .task-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
+  .task-card .tc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+  .task-card .tc-title{font-weight:800;font-size:15px;}
+  .task-card .tc-desc{font-size:13px;color:var(--sub);margin-top:4px;white-space:pre-wrap;}
+  .task-card .tc-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--sub);}
+  .recur-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:14px;font-size:11px;font-weight:700;}
+  .recur-daily{background:var(--brand-light);color:var(--brand-dark);}
+  .recur-once{background:#eef1f6;color:var(--sub);}
+  html[data-theme="dark"] .recur-once{background:#26313f;color:var(--sub);}
+  .attach-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:700;}
+  .attach-link:hover{text-decoration:underline;}
+  .assignee-list{display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:9px;padding:8px;background:var(--bg);}
+  html[data-theme="dark"] .assignee-list{background:#141d27;}
+  .assignee-chk{display:flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:4px 10px;font-size:12px;cursor:pointer;}
+  .assignee-chk input{margin:0;}
+  .task-close-form{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+  .task-close-form textarea{width:100%;padding:9px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;resize:vertical;min-height:56px;background:#fbfcfe;color:var(--ink);}
+  html[data-theme="dark"] .task-close-form textarea{background:#141d27;}
+  .assignee-status-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .assignee-status-row:last-child{border-bottom:none;}
+
   /* ===== إصلاحات المظهر الداكن: عناصر كانت بخلفية بيضاء/فاتحة ثابتة ===== */
   html[data-theme="dark"] th, html[data-theme="dark"] td{background:var(--card);color:var(--ink);}
   html[data-theme="dark"] .modal-box{background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.55);}
@@ -1055,7 +1077,8 @@ function initNotifications(bellWrap){
   if(notifUnsub){ notifUnsub(); notifUnsub=null; }
   const uid = currentUser.uid;
   const badge = bellWrap.querySelector('.notif-badge');
-  const q = query(collection(db,'notifications'), where('audience','in',['all', uid]), orderBy('createdAt','desc'), limit(30));
+  const audiences = isAdmin ? ['all', uid, 'admins'] : ['all', uid];
+  const q = query(collection(db,'notifications'), where('audience','in',audiences), orderBy('createdAt','desc'), limit(30));
   notifUnsub = onSnapshot(q, qs=>{
     notifCache = [];
     qs.forEach(d=> notifCache.push({id:d.id, ...d.data()}));
@@ -1066,6 +1089,17 @@ function initNotifications(bellWrap){
     }
     renderNotifList(bellWrap);
   }, err=> console.error(err));
+}
+/* إرسال إشعار — audience: 'all' للجميع، 'admins' لكل المديرين، أو uid لموظف محدد */
+async function pushNotification(audience, title, body){
+  try{
+    await setDoc(doc(collection(db,'notifications')), {
+      audience, title, body: body||'', readBy: [], createdAt: serverTimestamp()
+    });
+  }catch(err){ console.error('notif error', err); }
+}
+async function pushNotifications(audiences, title, body){
+  for(const a of audiences){ await pushNotification(a, title, body); }
 }
 function renderNotifList(bellWrap){
   const listBox = bellWrap.querySelector('.nd-list');
@@ -1149,11 +1183,13 @@ function renderApp(){
             <button class="tab-btn" data-tab="admin-daily">📅 التقرير اليومي</button>
             <button class="tab-btn" data-tab="admin-upload">📤 رفع بيانات التقنين</button>
             <button class="tab-btn" data-tab="admin-done">✅ ما تم إدخاله (الكل)</button>
+            <button class="tab-btn" data-tab="admin-tasks">📌 توزيع المهام</button>
             <button class="tab-btn" data-tab="admin-achievements">🌟 إنجازات الموظفين</button>
             <button class="tab-btn" data-tab="admin-employees">👥 إدارة المستخدمين</button>
           ` : `
             <button class="tab-btn" data-tab="home">🏠 قسم الحضور والانصراف</button>
             <button class="tab-btn" data-tab="mine">📁 قسم طلباتي المسندة</button>
+            <button class="tab-btn" data-tab="my-tasks">📌 مهامي</button>
             <button class="tab-btn" data-tab="done">✅ قسم ما تم إدخاله للكل</button>
           `}
         </div>
@@ -1286,6 +1322,7 @@ function switchTab(tab){
   if(tab==='home') renderHomeTab(content);
   else if(tab==='mine') renderMyRequests(content);
   else if(tab==='done') renderDoneSection(content);
+  else if(tab==='my-tasks') renderMyTasks(content);
   else if(tab==='admin-dashboard') renderAdminDashboard(content);
   else if(tab==='admin-daily'){
     const f = pendingReportFilter; pendingReportFilter = null;
@@ -1293,6 +1330,7 @@ function switchTab(tab){
   }
   else if(tab==='admin-upload') renderAdminUpload(content);
   else if(tab==='admin-done') renderDoneSection(content);
+  else if(tab==='admin-tasks') renderAdminTasks(content);
   else if(tab==='admin-achievements') renderAdminAchievements(content);
   else if(tab==='admin-employees') renderAdminEmployees(content);
 }
@@ -1756,11 +1794,12 @@ function renderMyRequests(box){
 
       <div class="card card-muted" style="margin-top:14px;">
         <h3 style="font-size:13.5px;margin-bottom:8px;">📋 تحويل بالنسخ واللصق (أرقام طلبات مجمّعة)</h3>
-        <div class="card-sub" style="margin-top:0;">الصق أرقام الطلبات (رقم في كل سطر، أو مفصولة بفواصل/مسافات) ثم اختر تحويلها إلى تم أو لم يتم — سيتم البحث عنها بين الطلبات المسندة إليك فقط.</div>
+        <div class="card-sub" style="margin-top:0;">الصق أرقام الطلبات (رقم في كل سطر، أو مفصولة بفواصل/مسافات) ثم اختر تحويلها إلى تم أو لم يتم أو استيفاء — سيتم البحث عنها بين الطلبات المسندة إليك فقط.</div>
         <textarea id="paste-req-numbers" rows="4" style="width:100%;padding:11px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;resize:vertical;" placeholder="مثال:&#10;12345&#10;12346&#10;12347"></textarea>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="btn btn-primary btn-sm btn-auto" id="paste-mark-done-btn">✓ تحويل إلى تم</button>
           <button class="btn btn-outline btn-sm btn-auto" id="paste-mark-undone-btn">↩ تحويل إلى لم يتم</button>
+          <button class="btn btn-sm btn-auto btn-istifa" id="paste-mark-istifa-btn">⏳ تحويل إلى استيفاء</button>
         </div>
         <div id="paste-req-result" class="small-note" style="margin-top:10px;display:none;"></div>
       </div>
@@ -1949,7 +1988,9 @@ function renderMyRequests(box){
     )];
   }
 
-  async function convertPastedNumbers(toDone){
+  async function convertPastedNumbers(mode){
+    const toDone = mode==='done';
+    const toIstifa = mode==='istifa';
     const ta = box.querySelector('#paste-req-numbers');
     const resultBox = box.querySelector('#paste-req-result');
     const wanted = parsePastedNumbers(ta.value);
@@ -1961,23 +2002,26 @@ function renderMyRequests(box){
     const wantedSet = new Set(wanted);
     const matches = myRows.filter(r=>{
       const num = rowReqNumber(r);
-      return num && wantedSet.has(num) && r.done !== toDone;
+      if(!num || !wantedSet.has(num)) return false;
+      if(toIstifa) return !r.done && !r.istifa;
+      return r.done !== toDone;
     });
     const matchedNums = new Set(matches.map(r=>rowReqNumber(r)));
     const notFound = wanted.filter(n=>!matchedNums.has(n));
+    const modeLabel = toIstifa ? 'استيفاء' : (toDone ? 'تم' : 'لم يتم');
 
     if(matches.length===0){
-      resultBox.textContent = toDone
-        ? 'لم يتم العثور على أي من الأرقام المطلوبة ضمن طلباتك المتبقية (أو أنها تم إدخالها بالفعل)'
-        : 'لم يتم العثور على أي من الأرقام المطلوبة ضمن طلباتك المُدخَلة بالفعل';
+      resultBox.textContent = `لم يتم العثور على أي من الأرقام المطلوبة ضمن طلباتك القابلة للتحويل إلى «${modeLabel}»`;
       return;
     }
 
     const doneBtn = box.querySelector('#paste-mark-done-btn');
     const undoneBtn = box.querySelector('#paste-mark-undone-btn');
-    doneBtn.disabled = true; undoneBtn.disabled = true;
-    const oldTxt = toDone ? doneBtn.textContent : undoneBtn.textContent;
-    if(toDone) doneBtn.textContent = 'جارِ التحويل...'; else undoneBtn.textContent = 'جارِ التحويل...';
+    const istifaBtn = box.querySelector('#paste-mark-istifa-btn');
+    doneBtn.disabled = true; undoneBtn.disabled = true; istifaBtn.disabled = true;
+    const activeBtn = toIstifa ? istifaBtn : (toDone ? doneBtn : undoneBtn);
+    const oldTxt = activeBtn.textContent;
+    activeBtn.textContent = 'جارِ التحويل...';
 
     try{
       const ids = matches.map(r=>r.id);
@@ -1986,31 +2030,37 @@ function renderMyRequests(box){
       for(let i=0;i<ids.length;i+=chunkSize){
         const chunk = ids.slice(i,i+chunkSize);
         const batch = writeBatch(db);
-        chunk.forEach(id=> batch.update(doc(db,'tokeenRequests',id), toDone
-          ? {done:true, doneAt: serverTimestamp(), doneDate}
-          : {done:false, doneAt: null, doneDate: null}));
+        chunk.forEach(id=> batch.update(doc(db,'tokeenRequests',id), toIstifa
+          ? {istifa:true, istifaAt: serverTimestamp()}
+          : (toDone
+            ? {done:true, doneAt: serverTimestamp(), doneDate}
+            : {done:false, doneAt: null, doneDate: null})));
         await batch.commit();
       }
       const idSet = new Set(ids);
       myRows = myRows.map(r=> idSet.has(r.id)
-        ? {...r, done:toDone, doneAt: toDone?{toDate:()=>new Date()}:null, doneDate: toDone?doneDate:null}
+        ? (toIstifa
+          ? {...r, istifa:true}
+          : {...r, done:toDone, doneAt: toDone?{toDate:()=>new Date()}:null, doneDate: toDone?doneDate:null})
         : r);
-      resultBox.textContent = `تم تحويل ${matches.length} طلب إلى «${toDone?'تم':'لم يتم'}»` + (notFound.length ? ` — لم يتم العثور على ${notFound.length} رقم: ${notFound.slice(0,15).join('، ')}${notFound.length>15?'...':''}` : '');
-      toast(`تم تحويل ${matches.length} طلب إلى «${toDone?'تم':'لم يتم'}»`, 'ok');
+      resultBox.textContent = `تم تحويل ${matches.length} طلب إلى «${modeLabel}»` + (notFound.length ? ` — لم يتم العثور على ${notFound.length} رقم: ${notFound.slice(0,15).join('، ')}${notFound.length>15?'...':''}` : '');
+      toast(`تم تحويل ${matches.length} طلب إلى «${modeLabel}»`, 'ok');
       renderMyStats(myRows);
       draw();
     }catch(err){
       console.error(err);
       resultBox.textContent = 'حدث خطأ أثناء التحويل، حاول مرة أخرى';
     }finally{
-      doneBtn.disabled=false; undoneBtn.disabled=false;
+      doneBtn.disabled=false; undoneBtn.disabled=false; istifaBtn.disabled=false;
       doneBtn.textContent = '✓ تحويل إلى تم';
       undoneBtn.textContent = '↩ تحويل إلى لم يتم';
+      istifaBtn.textContent = '⏳ تحويل إلى استيفاء';
     }
   }
 
-  box.querySelector('#paste-mark-done-btn').addEventListener('click', ()=> convertPastedNumbers(true));
-  box.querySelector('#paste-mark-undone-btn').addEventListener('click', ()=> convertPastedNumbers(false));
+  box.querySelector('#paste-mark-done-btn').addEventListener('click', ()=> convertPastedNumbers('done'));
+  box.querySelector('#paste-mark-undone-btn').addEventListener('click', ()=> convertPastedNumbers('undone'));
+  box.querySelector('#paste-mark-istifa-btn').addEventListener('click', ()=> convertPastedNumbers('istifa'));
 
   async function setDone(btn, id, val){
     btn.disabled = true;
@@ -2254,6 +2304,9 @@ function renderAdminDashboard(container){
       <button class="dash-card" data-tab="admin-done" style="background:linear-gradient(135deg,#1e9e6b,#33c288);">
         <div class="dc-icon">✅</div><div class="dc-title">ما تم إدخاله (الكل)</div><div class="dc-desc">متابعة الطلبات المنجزة لجميع الموظفين</div>
       </button>
+      <button class="dash-card" data-tab="admin-tasks" style="background:linear-gradient(135deg,#d1477a,#ee7ba3);">
+        <div class="dc-icon">📌</div><div class="dc-title">توزيع المهام</div><div class="dc-desc">تكليف الموظفين بمهام ثابتة أو مؤقتة ومتابعة إنجازها</div>
+      </button>
       <button class="dash-card" data-tab="admin-achievements" style="background:linear-gradient(135deg,#c9852b,#e2a247);">
         <div class="dc-icon">🌟</div><div class="dc-title">إنجازات الموظفين</div><div class="dc-desc">أداء كل موظف على مدار الفترة</div>
       </button>
@@ -2304,6 +2357,358 @@ function renderAdminDashboard(container){
     set('ds-present', present);
     set('ds-absent', absent);
     set('ds-early', early);
+  }
+}
+
+/* ============ قسم توزيع المهام ============ */
+function fmtRecurLabel(r){ return r==='daily' ? '🔁 ثابتة (يومية)' : '📌 مؤقتة (مرة واحدة)'; }
+
+async function uploadTaskAttachment(file, folder){
+  if(!file) return {url:null, name:null, path:null};
+  try{
+    const path = `${folder}/${Date.now()}_${file.name}`;
+    const sref = storageRef(storage, path);
+    await uploadBytes(sref, file);
+    const url = await getDownloadURL(sref);
+    return {url, name:file.name, path};
+  }catch(err){
+    console.error('attachment upload error', err);
+    toast('تعذر رفع المرفق، سيتم الحفظ بدونه', 'err');
+    return {url:null, name:null, path:null};
+  }
+}
+
+/* ---------- لوحة المدير: توزيع المهام ---------- */
+function renderAdminTasks(container){
+  if(!container) return;
+  container.innerHTML = `
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:6px;">
+        <h3 style="margin:0;">📌 توزيع المهام</h3>
+        <button class="btn btn-primary btn-sm btn-auto" id="new-task-btn">➕ تكليف مهمة جديدة</button>
+      </div>
+      <div class="card-sub" style="margin-top:0;">وزّع مهام ثابتة (يومية متكررة) أو مؤقتة (مرة واحدة) على موظفين محددين، وتابع حالة إنجازها.</div>
+    </div>
+    <div id="admin-tasks-list" style="margin-top:16px;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+  `;
+
+  let employees = {};
+  let templates = [];
+  let completionsToday = {};
+  let completionsAll = {};
+  const today = todayCairoStr();
+
+  const empUnsub = onSnapshot(collection(db,'employees'), qs=>{
+    employees = {}; qs.forEach(d=> employees[d.id]=d.data());
+    draw();
+  }, err=>console.error(err));
+  unsubList.push(empUnsub);
+
+  const tmplUnsub = onSnapshot(query(collection(db,'taskTemplates'), where('active','==',true)), qs=>{
+    templates = []; qs.forEach(d=> templates.push({id:d.id, ...d.data()}));
+    templates.sort((a,b)=> (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    draw();
+  }, err=>console.error(err));
+  unsubList.push(tmplUnsub);
+
+  const compUnsub = onSnapshot(collection(db,'taskCompletions'), qs=>{
+    completionsToday = {}; completionsAll = {};
+    qs.forEach(d=>{
+      const c = {id:d.id, ...d.data()};
+      const key = `${c.templateId}_${c.uid}`;
+      if(c.forDate===today) completionsToday[key]=c;
+      if(!c.forDate){
+        if(!completionsAll[key] || (c.completedAt?.seconds||0) > (completionsAll[key].completedAt?.seconds||0)) completionsAll[key]=c;
+      }
+    });
+    draw();
+  }, err=>console.error(err));
+  unsubList.push(compUnsub);
+
+  function draw(){
+    const box = container.querySelector('#admin-tasks-list');
+    if(!box) return;
+    if(templates.length===0){ box.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>لا توجد مهام موزّعة بعد</div>`; return; }
+    box.innerHTML = templates.map(t=>{
+      const names = (t.assignees||[]).map(uid=> employees[uid]?.name || '؟');
+      let done=0, failed=0, pending=0;
+      (t.assignees||[]).forEach(uid=>{
+        const key = `${t.id}_${uid}`;
+        const c = t.recurrence==='daily' ? completionsToday[key] : completionsAll[key];
+        if(!c) pending++; else if(c.status==='done') done++; else failed++;
+      });
+      return `
+      <div class="task-card">
+        <div class="tc-head">
+          <div>
+            <span class="recur-badge ${t.recurrence==='daily'?'recur-daily':'recur-once'}">${fmtRecurLabel(t.recurrence)}</span>
+            <div class="tc-title" style="margin-top:6px;">${esc(t.title)}</div>
+          </div>
+          <div class="action-stack">
+            <button class="btn btn-outline btn-sm view-task-btn" data-id="${t.id}">عرض التفاصيل</button>
+            <button class="btn btn-danger btn-sm del-task-btn" data-id="${t.id}">حذف</button>
+          </div>
+        </div>
+        ${t.description ? `<div class="tc-desc">${esc(t.description)}</div>` : ''}
+        ${t.attachmentUrl ? `<div style="margin-top:6px;"><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a></div>` : ''}
+        <div class="tc-meta">
+          <span>👥 ${names.length} موظف: ${esc(names.join('، '))}</span>
+          <span class="status-pill pill-good">✅ ${done}</span>
+          <span class="status-pill pill-bad">❌ ${failed}</span>
+          <span class="status-pill pill-neutral">⏺ ${pending}</span>
+        </div>
+      </div>`;
+    }).join('');
+    box.querySelectorAll('.view-task-btn').forEach(b=> b.addEventListener('click', ()=> openTaskDetailsModal(b.dataset.id)));
+    box.querySelectorAll('.del-task-btn').forEach(b=> b.addEventListener('click', ()=> deleteTaskTemplate(b.dataset.id)));
+  }
+
+  function openTaskDetailsModal(templateId){
+    const t = templates.find(x=>x.id===templateId);
+    if(!t) return;
+    const overlay = el(`
+      <div class="modal-overlay">
+        <div class="modal-box" style="max-width:560px;">
+          <h3>${esc(t.title)}</h3>
+          <div class="modal-sub">${fmtRecurLabel(t.recurrence)}${t.recurrence==='daily' ? ' — الحالة المعروضة الآن لليوم الحالي' : ''}</div>
+          <div id="task-assignee-rows"></div>
+          <div class="modal-actions"><button class="btn btn-outline btn-block" id="task-details-close">إغلاق</button></div>
+        </div>
+      </div>
+    `);
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+    overlay.querySelector('#task-details-close').addEventListener('click', ()=> overlay.remove());
+
+    const rowsBox = overlay.querySelector('#task-assignee-rows');
+    rowsBox.innerHTML = (t.assignees||[]).map(uid=>{
+      const key = `${t.id}_${uid}`;
+      const c = t.recurrence==='daily' ? completionsToday[key] : completionsAll[key];
+      const name = employees[uid]?.name || '؟';
+      let pill, extra='';
+      if(!c) pill = `<span class="status-pill pill-neutral">⏺ لم تُنجز بعد</span>`;
+      else if(c.status==='done'){
+        pill = `<span class="status-pill pill-good">✅ تم الإنجاز</span>`;
+        extra = `<div style="font-size:12px;color:var(--sub);margin-top:4px;">${fmtDateTime(c.completedAt)}${c.note?` — ${esc(c.note)}`:''}${c.attachmentUrl?` — <a class="attach-link" href="${esc(c.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(c.attachmentName||'مرفق')}</a>`:''}</div>`;
+      } else {
+        pill = `<span class="status-pill pill-bad">❌ تعذّر</span>`;
+        extra = `<div style="font-size:12px;color:var(--sub);margin-top:4px;">${fmtDateTime(c.completedAt)}${c.note?` — السبب: ${esc(c.note)}`:''}${c.attachmentUrl?` — <a class="attach-link" href="${esc(c.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(c.attachmentName||'مرفق')}</a>`:''}</div>`;
+      }
+      return `<div class="assignee-status-row"><div><div style="font-weight:700;font-size:13.5px;">${esc(name)}</div>${extra}</div>${pill}</div>`;
+    }).join('');
+  }
+
+  async function deleteTaskTemplate(templateId){
+    if(!confirm('هل تريد حذف هذه المهمة؟ لن تظهر بعد الآن للموظفين (سجل الإنجاز السابق يبقى محفوظًا).')) return;
+    try{
+      await updateDoc(doc(db,'taskTemplates',templateId), {active:false});
+      toast('تم حذف المهمة', 'ok');
+    }catch(err){ console.error(err); toast('حدث خطأ أثناء الحذف', 'err'); }
+  }
+
+  container.querySelector('#new-task-btn').addEventListener('click', ()=> openNewTaskModal(employees));
+}
+
+function openNewTaskModal(employees){
+  const empList = Object.keys(employees).filter(uid=> employees[uid].role!=='admin')
+    .sort((a,b)=> (employees[a].name||'').localeCompare(employees[b].name||'','ar'));
+  const overlay = el(`
+    <div class="modal-overlay">
+      <div class="modal-box" style="max-width:560px;">
+        <h3>➕ تكليف مهمة جديدة</h3>
+        <div class="field"><label>عنوان المهمة *</label><input type="text" id="nt-title" placeholder="مثال: مراجعة طلبات مركز ملوي"></div>
+        <div class="field"><label>وصف المهمة</label><textarea id="nt-desc" placeholder="تفاصيل إضافية (اختياري)"></textarea></div>
+        <div class="field">
+          <label>نوع المهمة *</label>
+          <select id="nt-recurrence">
+            <option value="once">📌 مؤقتة (مرة واحدة)</option>
+            <option value="daily">🔁 ثابتة (يومية متكررة)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>مرفق (اختياري)</label>
+          <input type="file" id="nt-file">
+        </div>
+        <div class="field">
+          <div class="flex-between" style="margin-bottom:6px;"><label style="margin:0;">الموظفون المكلّفون *</label><button type="button" class="btn btn-outline btn-sm btn-auto" id="nt-select-all">تحديد الكل</button></div>
+          <div class="assignee-list" id="nt-assignee-list">
+            ${empList.map(uid=> `<label class="assignee-chk"><input type="checkbox" class="nt-assignee-chk" value="${uid}"> ${esc(employees[uid].name)}</label>`).join('') || '<span class="muted" style="font-size:12.5px;">لا يوجد موظفون</span>'}
+          </div>
+        </div>
+        <div class="error-text" id="nt-err" style="display:none;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="nt-cancel-btn">إلغاء</button>
+          <button class="btn btn-primary" id="nt-save-btn">تكليف المهمة</button>
+        </div>
+      </div>
+    </div>
+  `);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#nt-cancel-btn').addEventListener('click', ()=> overlay.remove());
+  overlay.querySelector('#nt-select-all').addEventListener('click', ()=>{
+    const chks = overlay.querySelectorAll('.nt-assignee-chk');
+    const allChecked = [...chks].every(c=>c.checked);
+    chks.forEach(c=> c.checked = !allChecked);
+  });
+
+  overlay.querySelector('#nt-save-btn').addEventListener('click', async ()=>{
+    const title = overlay.querySelector('#nt-title').value.trim();
+    const description = overlay.querySelector('#nt-desc').value.trim();
+    const recurrence = overlay.querySelector('#nt-recurrence').value;
+    const assignees = [...overlay.querySelectorAll('.nt-assignee-chk')].filter(c=>c.checked).map(c=>c.value);
+    const file = overlay.querySelector('#nt-file').files[0];
+    const errBox = overlay.querySelector('#nt-err');
+    errBox.style.display='none';
+    if(!title){ errBox.textContent='من فضلك اكتب عنوان المهمة'; errBox.style.display='block'; return; }
+    if(assignees.length===0){ errBox.textContent='من فضلك اختر موظفًا واحدًا على الأقل'; errBox.style.display='block'; return; }
+
+    const btn = overlay.querySelector('#nt-save-btn');
+    btn.disabled=true; btn.textContent='جارِ الحفظ...';
+    try{
+      const att = await uploadTaskAttachment(file, 'taskAttachments');
+      await setDoc(doc(collection(db,'taskTemplates')), {
+        title, description, recurrence, assignees,
+        attachmentUrl: att.url, attachmentName: att.name, attachmentPath: att.path,
+        createdBy: currentUser.uid, createdByName: currentEmployee.name||'',
+        createdAt: serverTimestamp(), active: true
+      });
+      await pushNotifications(assignees, '📌 مهمة جديدة', title);
+      toast('تم تكليف المهمة بنجاح', 'ok');
+      overlay.remove();
+    }catch(err){
+      console.error(err);
+      errBox.textContent = 'حدث خطأ أثناء الحفظ، حاول مرة أخرى';
+      errBox.style.display='block';
+      btn.disabled=false; btn.textContent='تكليف المهمة';
+    }
+  });
+}
+
+/* ---------- صفحة الموظف: مهامي ---------- */
+function renderMyTasks(container){
+  if(!container) return;
+  container.innerHTML = `
+    <div class="card">
+      <h3 style="margin:0;">📌 مهامي</h3>
+      <div class="card-sub" style="margin-top:6px;">المهام المكلّف بها من الإدارة — الثابتة تتجدد كل يوم، والمؤقتة تُغلق مرة واحدة.</div>
+    </div>
+    <div id="my-tasks-list" style="margin-top:16px;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+  `;
+  const uid = currentUser.uid;
+  const today = todayCairoStr();
+  let templates = [];
+  let completions = {};
+
+  const tmplUnsub = onSnapshot(query(collection(db,'taskTemplates'), where('assignees','array-contains',uid)), qs=>{
+    templates = []; qs.forEach(d=>{ const data=d.data(); if(data.active!==false) templates.push({id:d.id, ...data}); });
+    templates.sort((a,b)=> (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    draw();
+  }, err=>console.error(err));
+  unsubList.push(tmplUnsub);
+
+  const compUnsub = onSnapshot(query(collection(db,'taskCompletions'), where('uid','==',uid)), qs=>{
+    completions = {};
+    qs.forEach(d=>{
+      const c = {id:d.id, ...d.data()};
+      const key = c.forDate ? `${c.templateId}_${c.forDate}` : c.templateId;
+      if(!completions[key] || (c.completedAt?.seconds||0) > (completions[key].completedAt?.seconds||0)) completions[key]=c;
+    });
+    draw();
+  }, err=>console.error(err));
+  unsubList.push(compUnsub);
+
+  function draw(){
+    const box = container.querySelector('#my-tasks-list');
+    if(!box) return;
+    if(templates.length===0){ box.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>لا توجد مهام مكلّف بها حاليًا</div>`; return; }
+    box.innerHTML = templates.map(t=>{
+      const key = t.recurrence==='daily' ? `${t.id}_${today}` : t.id;
+      const c = completions[key];
+      let statusHtml;
+      if(!c){
+        statusHtml = `
+          <div class="task-close-form">
+            <textarea id="tf-note-${t.id}" placeholder="ملاحظات (اختياري عند الإنجاز، وسبب إلزامي عند التعذّر)"></textarea>
+            <div style="margin-top:8px;"><input type="file" id="tf-file-${t.id}"></div>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm btn-auto close-task-btn" data-id="${t.id}" data-status="done">✅ تم الإنجاز</button>
+              <button class="btn btn-danger btn-sm btn-auto close-task-btn" data-id="${t.id}" data-status="failed">❌ تعذّر</button>
+            </div>
+          </div>`;
+      } else {
+        const pill = c.status==='done' ? `<span class="status-pill pill-good">✅ تم الإنجاز</span>` : `<span class="status-pill pill-bad">❌ تعذّر</span>`;
+        statusHtml = `
+          <div class="task-close-form">
+            ${pill}
+            <div style="font-size:12.5px;color:var(--sub);margin-top:6px;">${fmtDateTime(c.completedAt)}${c.note?` — ${esc(c.note)}`:''}</div>
+            ${c.attachmentUrl ? `<div style="margin-top:4px;"><a class="attach-link" href="${esc(c.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(c.attachmentName||'مرفق')}</a></div>` : ''}
+            <button class="btn btn-outline btn-sm btn-auto undo-task-btn" style="margin-top:8px;" data-comp-id="${c.id}">↩ تراجع</button>
+          </div>`;
+      }
+      return `
+      <div class="task-card">
+        <span class="recur-badge ${t.recurrence==='daily'?'recur-daily':'recur-once'}">${fmtRecurLabel(t.recurrence)}</span>
+        <div class="tc-title" style="margin-top:6px;">${esc(t.title)}</div>
+        ${t.description ? `<div class="tc-desc">${esc(t.description)}</div>` : ''}
+        ${t.attachmentUrl ? `<div style="margin-top:6px;"><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a></div>` : ''}
+        <div class="tc-meta"><span>👤 من: ${esc(t.createdByName||'الإدارة')}</span></div>
+        ${statusHtml}
+      </div>`;
+    }).join('');
+
+    box.querySelectorAll('.close-task-btn').forEach(b=>{
+      b.addEventListener('click', ()=> closeTask(b, b.dataset.id, b.dataset.status));
+    });
+    box.querySelectorAll('.undo-task-btn').forEach(b=>{
+      b.addEventListener('click', ()=> undoTask(b, b.dataset.compId));
+    });
+  }
+
+  async function closeTask(btn, templateId, status){
+    const t = templates.find(x=>x.id===templateId);
+    if(!t) return;
+    const noteEl = container.querySelector(`#tf-note-${templateId}`);
+    const fileEl = container.querySelector(`#tf-file-${templateId}`);
+    const note = noteEl ? noteEl.value.trim() : '';
+    if(status==='failed' && !note){
+      toast('من فضلك اكتب سبب التعذّر', 'err');
+      return;
+    }
+    const file = fileEl ? fileEl.files[0] : null;
+    const row = btn.closest('.task-close-form');
+    row.querySelectorAll('button').forEach(b=> b.disabled=true);
+    const oldTxt = btn.textContent;
+    btn.textContent = 'جارِ الحفظ...';
+    try{
+      const att = await uploadTaskAttachment(file, 'taskCompletionAttachments');
+      await setDoc(doc(collection(db,'taskCompletions')), {
+        templateId, uid, forDate: t.recurrence==='daily' ? today : null,
+        status, note, attachmentUrl: att.url, attachmentName: att.name, attachmentPath: att.path,
+        completedAt: serverTimestamp(), completedByName: currentEmployee.name||''
+      });
+      await pushNotifications(['admins'], status==='done' ? '✅ تم إنجاز مهمة' : '❌ تعذّر تنفيذ مهمة',
+        `${currentEmployee.name||''} — ${t.title}`);
+      toast(status==='done' ? 'تم تسجيل إنجاز المهمة 👏' : 'تم تسجيل التعذّر', 'ok');
+    }catch(err){
+      console.error(err);
+      toast('حدث خطأ أثناء الحفظ، حاول مرة أخرى', 'err');
+      row.querySelectorAll('button').forEach(b=> b.disabled=false);
+      btn.textContent = oldTxt;
+    }
+  }
+
+  async function undoTask(btn, compId){
+    if(!confirm('هل تريد التراجع عن حالة هذه المهمة؟')) return;
+    btn.disabled = true; btn.textContent='...';
+    try{
+      await deleteDoc(doc(db,'taskCompletions', compId));
+      toast('تم التراجع، المهمة رجعت لقائمة المعلّقة', 'ok');
+    }catch(err){
+      console.error(err);
+      toast('حدث خطأ، حاول مرة أخرى', 'err');
+      btn.disabled=false; btn.textContent='↩ تراجع';
+    }
   }
 }
 
