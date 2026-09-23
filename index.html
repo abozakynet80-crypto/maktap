@@ -4397,8 +4397,8 @@ function renderMessagesTab(container){
         <div style="display:flex;gap:8px;align-items:flex-end;">
           <label class="icon-btn" style="cursor:pointer;" title="إرفاق ملف">📎<input type="file" id="thread-file" style="display:none;"></label>
           <textarea id="thread-text" placeholder="اكتب رسالتك..." rows="1" style="flex:1;padding:10px 12px;border-radius:9px;border:1.5px solid var(--border);font-size:13.5px;resize:none;max-height:120px;background:#fbfcfe;font-family:inherit;"></textarea>
-          <button class="btn btn-primary btn-sm" id="thread-send-btn">إرسال</button>
-        </div>
+<button class="btn btn-primary btn-sm btn-auto" id="thread-send-btn">إرسال</button>
+</div>
       </div>` : `<div class="small-note" style="margin:12px;">هذه رسالة جماعية من الإدارة — لا يمكن الرد عليها هنا</div>`}
     `;
     pane.querySelector('#msg-back-btn').addEventListener('click', ()=>{
