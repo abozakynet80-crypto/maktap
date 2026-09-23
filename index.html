@@ -343,6 +343,9 @@
   .project-card-locked{cursor:not-allowed;opacity:.72;}
   .project-lock-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.45);border-radius:8px;padding:3px 7px;font-size:14px;}
   .project-cover img{width:100%;height:100%;object-fit:cover;}
+  /* عرض الصورة كاملة بدون قص */
+  .project-cover.has-img,.project-detail-cover.has-img{height:auto;min-height:0;display:block;font-size:0;background:#0f172a;}
+  .project-cover.has-img img,.project-detail-cover.has-img img{width:100%;height:auto;max-height:340px;object-fit:contain;display:block;margin:0 auto;}
   .project-body{padding:14px;display:flex;flex-direction:column;gap:8px;flex:1;}
   .project-title{font-weight:800;font-size:15px;}
   .project-desc{font-size:12.5px;color:var(--sub);line-height:1.6;min-height:40px;}
@@ -461,6 +464,7 @@
   .msg-sidebar{width:280px;flex:none;border-left:1px solid var(--border);display:flex;flex-direction:column;direction:rtl;overflow:hidden;}
   .msg-thread{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;}
   .msg-back-btn{display:none;}
+  .msg-side-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
   .conv-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;direction:rtl;}
   .conv-item:hover, .conv-item.active{background:var(--brand-light);}
   .conv-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex:none;}
@@ -1273,6 +1277,45 @@ function renderCompleteProfile(user){
 
 /* ============ App Shell ============ */
 let activeTab = 'home';
+/* ===== نظام الرجوع: كل شاشة/نافذة فرعية تُسجَّل في سجل المتصفح، وزر الرجوع يرجع خطوة خطوة حتى الرئيسية ===== */
+const navLayers = [];
+let navReady = false;
+function pushNavLayer(close, kind){
+  const layer = {close, kind:kind||'sub', dead:false};
+  navLayers.push(layer);
+  try{ history.pushState({appNav:true}, '', location.href); }catch(e){}
+  return layer;
+}
+function killNavLayers(kind){ navLayers.forEach(l=>{ if(l.kind===kind) l.dead=true; }); }
+/* للاستخدام من أزرار الرجوع داخل الواجهة */
+function closeNavLayer(layer, fallback){
+  if(layer && !layer.dead){
+    if(navLayers[navLayers.length-1]===layer){ history.back(); return; }
+    layer.dead = true;
+  }
+  fallback();
+}
+function handleNavPop(e){
+  if(navLayers.length){
+    const layer = navLayers.pop();
+    if(layer.dead){ history.back(); }
+    else { try{ layer.close(); }catch(err){ console.error(err); } }
+    return true;
+  }
+  return !!(e.state && e.state.appGuard);
+}
+function setupModalHistory(){
+  new MutationObserver(muts=>{
+    muts.forEach(m=>{
+      m.addedNodes.forEach(n=>{
+        if(n.nodeType===1 && n.classList.contains('modal-overlay')){
+          n._navLayer = pushNavLayer(()=>{ n.remove(); }, 'modal');
+        }
+      });
+      m.removedNodes.forEach(n=>{ if(n._navLayer) n._navLayer.dead = true; });
+    });
+  }).observe(document.body,{childList:true});
+}
 let mobileExitGuardReady = false;
 let mobileExitConfirmed = false;
 function setupMobileExitGuard(shell){
@@ -1292,8 +1335,11 @@ function setupMobileExitGuard(shell){
     history.back();
   });
   if(isMobile()) history.pushState({appGuard:true}, '', location.href);
-  window.addEventListener('popstate', ()=>{
+  else history.replaceState({appGuard:true}, '', location.href);
+  setupModalHistory();
+  window.addEventListener('popstate', e=>{
     if(mobileExitConfirmed) return;
+    if(handleNavPop(e)) return;
     showExitWarning();
   });
   window.addEventListener('beforeunload', e=>{
@@ -1532,7 +1578,11 @@ function renderApp(){
     localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
   });
 
+  navLayers.length = 0;
+  navReady = false;
+  activeTab = '';
   switchTab(isAdmin ? 'admin-dashboard' : 'home');
+  navReady = true;
   if(!isAdmin) showMorningGreetingModal();
 }
 
@@ -1626,7 +1676,12 @@ async function showMorningGreetingModal(){
   });
 }
 
-function switchTab(tab){
+function switchTab(tab, opts){
+  const prevTab = activeTab;
+  killNavLayers('sub');
+  if(navReady && !(opts&&opts.silent) && tab!==prevTab){
+    pushNavLayer(()=> switchTab(prevTab,{silent:true}), 'tab');
+  }
   activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('.mobile-nav-btn[data-mobile-tab]').forEach(b=> b.classList.toggle('active', b.dataset.mobileTab===tab));
@@ -4713,9 +4768,11 @@ function renderMessagesTab(container){
           <div style="padding:12px;border-bottom:1px solid var(--border);">
             <button class="btn btn-primary btn-sm btn-block" id="new-group-btn">👥 إنشاء جروب</button>
           </div>
-          <div id="conv-list" style="overflow-y:auto;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
-          <div class="msg-section-title">كل الموظفين</div>
-          <div id="employee-list" style="flex:1;overflow-y:auto;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+          <div class="msg-side-scroll" id="msg-side-scroll">
+            <div id="conv-list"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+            <div class="msg-section-title">كل الموظفين</div>
+            <div id="employee-list"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+          </div>
         </div>
         <div class="msg-thread" id="msg-thread-pane">
           <div class="empty-state" style="margin:auto;"><div class="emoji">💬</div>اختر محادثة من القائمة أو ابدأ محادثة جديدة</div>
@@ -4876,9 +4933,20 @@ function renderMessagesTab(container){
     catch(error){ console.error(error); toast('تعذر حذف الرسالة، تحقق من قواعد Firestore','err'); }
   }
 
+  let convLayer = null;
+  function closeThread(){
+    msgActiveConvId = null;
+    convLayer = null;
+    const sh = container.querySelector('#msg-shell');
+    if(sh) sh.classList.remove('thread-open');
+    const pn = container.querySelector('#msg-thread-pane');
+    if(pn) pn.innerHTML='<div class="empty-state" style="margin:auto;"><div class="emoji">💬</div>اختر محادثة من القائمة أو ابدأ محادثة جديدة</div>';
+    drawConvList();
+  }
   function openConversation(id){
     msgActiveConvId = id;
     const shellEl = container.querySelector('#msg-shell');
+    if(shellEl && !shellEl.classList.contains('thread-open')) convLayer = pushNavLayer(closeThread, 'sub');
     if(shellEl) shellEl.classList.add('thread-open');
     drawConvList();
     const conv = msgConvCache[id];
@@ -4900,12 +4968,7 @@ function renderMessagesTab(container){
     `;
     bindThreadHeaderActions(conv);
     const backButton = pane.querySelector('#msg-back-btn');
-    if(backButton) backButton.onclick = ()=>{
-      msgActiveConvId = null;
-      if(shellEl) shellEl.classList.remove('thread-open');
-      pane.innerHTML='<div class="empty-state" style="margin:auto;"><div class="emoji">💬</div>اختر محادثة من القائمة أو ابدأ محادثة جديدة</div>';
-      drawConvList();
-    };
+    if(backButton) backButton.onclick = ()=> closeNavLayer(convLayer, closeThread);
 
     if(canSend){
       const ta = pane.querySelector('#thread-text');
@@ -5237,7 +5300,7 @@ function renderProjectsTab(container){
     </div>
     <div id="projects-view"><div class="muted" style="padding:20px;text-align:center;">جارِ تحميل المشاريع...</div></div>
   `;
-  let projects = [], projectTasks = [], selectedId = null;
+  let projects = [], projectTasks = [], selectedId = null, projectLayer = null;
   const projectUnsub = onSnapshot(collection(db,'projects'), qs=>{
     projects = qs.docs.map(d=>({id:d.id,...d.data()}));
     projects.sort((a,b)=> (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
@@ -5269,7 +5332,7 @@ function renderProjectsTab(container){
       const pct=stats.total ? stats.percent : Number(p.progress||0);
       const member=isProjectMember(p);
       return `<article class="project-card${member?'':' project-card-locked'}" data-project-id="${p.id}" ${member?'':'title="الدخول لهذا المشروع متاح فقط لأعضائه"'}>
-        <div class="project-cover">${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="">`:'📁'}${member?'':'<span class="project-lock-badge">🔒</span>'}</div>
+        <div class="project-cover${p.imageUrl?' has-img':''}">${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createTextNode('📁'))">`:'📁'}${member?'':'<span class="project-lock-badge">🔒</span>'}</div>
         <div class="project-body">
           <div class="flex-between"><div class="project-title">${esc(p.name)}</div><span class="status-pill ${p.status==='completed'?'pill-good':p.status==='paused'||p.status==='cancelled'?'pill-bad':'pill-warn'}">${projectStatusLabel(p.status)}</span></div>
           <div class="project-desc">${esc(p.description||'لا يوجد وصف مختصر')}</div>
@@ -5283,7 +5346,9 @@ function renderProjectsTab(container){
       const p=list.find(x=>x.id===card.dataset.projectId);
       if(!p) return;
       if(!isProjectMember(p)){ toast('الدخول لهذا المشروع متاح فقط لأعضائه','err'); return; }
-      selectedId=card.dataset.projectId; draw();
+      selectedId=card.dataset.projectId;
+      projectLayer = pushNavLayer(()=>{ selectedId=null; draw(); }, 'sub');
+      draw();
     }));
   }
 
@@ -5302,7 +5367,7 @@ function renderProjectsTab(container){
         </div>
       </div>
       <div class="card">
-        <div class="project-detail-cover">${project.imageUrl?`<img src="${esc(project.imageUrl)}" alt="">`:'📁'}</div>
+        <div class="project-detail-cover${project.imageUrl?' has-img':''}">${project.imageUrl?`<img src="${esc(project.imageUrl)}" alt="" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createTextNode('📁'))">`:'📁'}</div>
         <div class="flex-between" style="margin-top:14px;align-items:flex-start;"><div><h2 style="margin:0 0 5px;">${esc(project.name)}</h2><div class="muted" style="font-size:12.5px;">${esc(project.description||'لا يوجد وصف')}</div></div><span class="status-pill ${project.status==='completed'?'pill-good':project.status==='paused'||project.status==='cancelled'?'pill-bad':'pill-warn'}">${projectStatusLabel(project.status)}</span></div>
         <div class="project-meta" style="margin-top:12px;"><span>بداية: ${esc(project.startDate||'—')}</span><span>نهاية: ${esc(project.endDate||'مفتوحة')}</span><span>المصدر: ${esc(project.createdByName||'الإدارة')}</span></div>
       </div>
@@ -5312,7 +5377,7 @@ function renderProjectsTab(container){
         <div class="card"><h3>📌 مهام المشروع <span class="muted" style="font-size:11px;font-weight:400;">(${tasks.length})</span></h3><div id="project-tasks-list">${tasks.length?tasks.map(t=>`<div class="project-task-row"><div class="project-task-main"><div class="project-task-title">${esc(t.title)}</div><div class="project-task-meta">👤 ${esc(empName(t.assignedUid))} · ${t.dueDate?`الموعد ${esc(t.dueDate)}`:'بدون موعد'} · ${t.source==='generalManager'?'المدير العام':'مسؤول المشروع'}${t.notes?`<br>📝 ${esc(t.notes)}`:''}${t.attachmentUrl?`<br><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a>`:''}</div></div><div><span class="status-pill ${projectTaskStatusClass(t.status)}">${projectTaskStatusLabel(t.status)}</span>${(t.assignedUid===currentUser.uid||manager)&&t.status!=='completed'&&t.status!=='failed'?`<button class="btn btn-outline btn-sm update-project-task" data-id="${t.id}" style="margin-top:6px;">تحديث</button>`:''}</div></div>`).join(''):'<div class="muted">لا توجد مهام لهذا المشروع</div>'}</div></div>
       </div>
     `;
-    view.querySelector('#projects-back-btn').addEventListener('click',()=>{selectedId=null;draw();});
+    view.querySelector('#projects-back-btn').addEventListener('click',()=>closeNavLayer(projectLayer,()=>{selectedId=null;draw();}));
     if(manager) view.querySelector('#project-new-task-btn').addEventListener('click',()=>openProjectTaskModal(project));
     if(isAdmin){
       view.querySelector('#project-edit-btn').addEventListener('click',()=>openProjectModal(project));
