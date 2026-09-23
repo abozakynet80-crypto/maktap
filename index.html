@@ -641,6 +641,31 @@
   .at-proj{display:inline-block;background:var(--brand-light);color:var(--brand-dark);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px;}
   .at-proj.at-priv{background:var(--warn-bg);color:var(--warn);}
   .at-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
+  /* توزيع الملف: اختيار الموظفين */
+  .eq-emp{border:1.5px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;background:var(--card);}
+  .eq-emp.sel{border-color:var(--brand);background:var(--brand-light);}
+  .eq-row{display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .eq-row .conv-avatar{width:42px;height:42px;}
+  .eq-chk{width:19px;height:19px;flex:none;accent-color:var(--brand);}
+  .eq-info{flex:1;min-width:0;}
+  .eq-name{font-weight:800;font-size:13.5px;}
+  .eq-sub{font-size:11.5px;color:var(--sub);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px;}
+  .eq-left{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700;background:var(--warn-bg);color:var(--warn);}
+  .eq-left.zero{background:var(--good-bg);color:var(--good);}
+  .eq-share{font-size:12px;font-weight:800;color:var(--brand-dark);white-space:nowrap;}
+  .eq-opts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);}
+  .eq-opts label{flex:1 1 150px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border:1px solid var(--border);border-radius:9px;padding:7px 9px;cursor:pointer;background:var(--card);}
+  .dist-emp-info{display:flex;align-items:center;gap:8px;margin-top:6px;}
+  .dist-emp-info:empty{display:none;}
+  .dist-emp-info .conv-avatar{width:30px;height:30px;font-size:12px;}
+  .cc-side{display:flex;flex-direction:column;align-items:stretch;}
+  @media(max-width:700px){
+    .container{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));}
+    .users-table-wrap{max-height:none;}
+    .center-chip{flex-wrap:wrap;}
+    .center-chip .cc-side{width:100%;}
+    .center-chip select{min-width:0;width:100%;}
+  }
 </style>
 </head>
 <body>
@@ -1483,13 +1508,13 @@ function shellTabsForMobile(admin){
   return admin ? [
     {tab:'admin-dashboard',icon:'🏠',label:'الرئيسية'},
     {tab:'admin-upload',icon:'📤',label:'رفع بيانات التقنين'},
-    {tab:'admin-done',icon:'✅',label:'ما تم إدخاله'},
+    {tab:'admin-done',icon:'✅',label:'إدخال تقنين'},
     {tab:'admin-achievements',icon:'🌟',label:'إنجازات الموظفين'},
     {tab:'performance',icon:'📊',label:'مؤشرات الأداء'},
     {tab:'admin-employees',icon:'👥',label:'إدارة المستخدمين'}
   ] : [
     {tab:'mine',icon:'📁',label:'طلبات التقنين'},
-    {tab:'done',icon:'✅',label:'ما تم إدخاله للكل'}
+    {tab:'done',icon:'✅',label:'إدخال تقنين'}
   ];
 }
 
@@ -1540,17 +1565,17 @@ function renderApp(){
             <button class="tab-btn" data-tab="admin-dashboard">🏠 الرئيسية</button>
             <button class="tab-btn" data-tab="admin-daily">📅 التقرير اليومي</button>
             <button class="tab-btn" data-tab="admin-upload">📤 رفع بيانات التقنين</button>
-            <button class="tab-btn" data-tab="admin-done">✅ ما تم إدخاله (الكل)</button>
+            <button class="tab-btn" data-tab="admin-done">✅ إدخال تقنين</button>
             <button class="tab-btn" data-tab="admin-achievements">🌟 إنجازات الموظفين</button>
             <button class="tab-btn" data-tab="performance">📊 مؤشرات الأداء</button>
             <button class="tab-btn" data-tab="admin-employees">👥 إدارة المستخدمين</button>
-            <button class="tab-btn" data-tab="projects">📁 المشاريع والمهام</button>
+            <button class="tab-btn" data-tab="projects">📁 مشاريع ومهام</button>
             <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
           ` : `
             <button class="tab-btn" data-tab="home">🏠 الحضور والانصراف</button>
             <button class="tab-btn" data-tab="mine">📁 طلبات التقنين</button>
-            <button class="tab-btn" data-tab="projects">📁 المشاريع والمهام</button>
-            <button class="tab-btn" data-tab="done">✅ ما تم إدخاله للكل</button>
+            <button class="tab-btn" data-tab="projects">📁 مشاريع ومهام</button>
+            <button class="tab-btn" data-tab="done">✅ إدخال تقنين</button>
             <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
           `}
         </div>
@@ -1559,7 +1584,7 @@ function renderApp(){
       <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="التنقل الرئيسي">
         <button class="mobile-nav-btn" data-mobile-tab="${isAdmin?'admin-daily':'home'}"><span class="mobile-nav-icon">🕘</span><span>الحضور</span></button>
         <button class="mobile-nav-btn" data-mobile-tab="messages"><span class="mobile-nav-icon">💬</span><span>الرسائل</span><span class="messages-tab-badge"></span></button>
-        <button class="mobile-nav-btn" data-mobile-tab="projects"><span class="mobile-nav-icon">📁</span><span>المشاريع</span></button>
+        <button class="mobile-nav-btn" data-mobile-tab="projects"><span class="mobile-nav-icon">📁</span><span>مشاريع ومهام</span></button>
         <button class="mobile-nav-btn" id="mobile-more-btn"><span class="mobile-nav-icon">☰</span><span>المزيد</span></button>
       </nav>
       <div class="mobile-more-menu" id="mobile-more-menu">
@@ -2536,7 +2561,7 @@ function renderMyRequests(box){
         ? {done:true, doneAt: serverTimestamp(), doneDate: todayCairoStr()}
         : {done:false, doneAt: null, doneDate: null});
       myRows = myRows.map(r=> r.id===id ? {...r, done:val, doneAt: val?{toDate:()=>new Date()}:null, doneDate: val?todayCairoStr():null} : r);
-      toast(val ? 'تم نقل الطلب إلى «ما تم إدخاله»' : 'تم التراجع عن الإدخال', 'ok');
+      toast(val ? 'تم نقل الطلب إلى «إدخال تقنين»' : 'تم التراجع عن الإدخال', 'ok');
       renderMyStats(myRows);
       draw();
     }catch(err){
@@ -2773,7 +2798,7 @@ function renderAdminDashboard(container){
         <div class="dc-icon">📤</div><div class="dc-title">رفع بيانات التقنين</div><div class="dc-desc">رفع وتوزيع طلبات التقنين على الموظفين</div>
       </button>
       <button class="dash-card" data-tab="admin-done" style="background:linear-gradient(135deg,#1e9e6b,#33c288);">
-        <div class="dc-icon">✅</div><div class="dc-title">ما تم إدخاله (الكل)</div><div class="dc-desc">متابعة الطلبات المنجزة لجميع الموظفين</div>
+        <div class="dc-icon">✅</div><div class="dc-title">إدخال تقنين</div><div class="dc-desc">متابعة الطلبات المنجزة لجميع الموظفين</div>
       </button>
       <button class="dash-card" data-tab="projects" data-view="tasks" style="background:linear-gradient(135deg,#d1477a,#ee7ba3);">
         <div class="dc-icon">📌</div><div class="dc-title">المهام المكلف بها</div><div class="dc-desc">تكليف الموظفين (ضمن مشروع أو مهام خاصة) ومتابعة إنجازها</div>
@@ -2788,7 +2813,7 @@ function renderAdminDashboard(container){
         <div class="dc-icon">👥</div><div class="dc-title">إدارة المستخدمين</div><div class="dc-desc">إضافة وتعديل حسابات الموظفين</div>
       </button>
       <button class="dash-card" data-tab="projects" style="background:linear-gradient(135deg,#345995,#5b8dff);">
-        <div class="dc-icon">📁</div><div class="dc-title">مشاريع العمل</div><div class="dc-desc">متابعة المشاريع والموظفين والمهام ونسب الإنجاز</div>
+        <div class="dc-icon">📁</div><div class="dc-title">مشاريع ومهام</div><div class="dc-desc">متابعة المشاريع والموظفين والمهام ونسب الإنجاز</div>
       </button>
       <button class="dash-card" data-tab="messages" style="background:linear-gradient(135deg,#0f9d8c,#34c9a8);">
         <div class="dc-icon">💬</div><div class="dc-title">المراسلات</div><div class="dc-desc">تواصل مباشر أو جماعي مع الموظفين</div>
@@ -3880,7 +3905,7 @@ function renderAdminEmployees(container){
           ${DEPARTMENTS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}
         </select>
       </div>
-      <div class="table-wrap" id="emp-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+      <div class="table-wrap users-table-wrap" id="emp-table"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
     </div>
   `;
   container.querySelector('#add-user-btn').addEventListener('click', openAddUserModal);
@@ -4092,6 +4117,32 @@ function renderAdminUpload(container){
         </div>
       </div>
 
+      <div id="up-mode-wrap" style="display:none;">
+        <div class="pj-seg" id="up-mode-seg">
+          <button type="button" data-m="centers">🏢 تقسيم بالمراكز</button>
+          <button type="button" data-m="equal">⚖️ تقسيم بالتساوي</button>
+        </div>
+      </div>
+
+      <div id="up-equal-wrap" style="display:none;">
+        <div class="field" id="eq-center-wrap" style="display:none;">
+          <label>المركز *</label>
+          <select id="eq-center">
+            <option value="">-- اختر المركز --</option>
+            ${DEFAULT_CENTERS.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+            <option value="__other__">مركز آخر (اكتب يدويًا)</option>
+          </select>
+          <input type="text" id="eq-center-other" placeholder="اكتب اسم المركز" style="display:none;margin-top:8px;">
+        </div>
+        <div class="flex-between" style="margin-bottom:8px;">
+          <h3 style="margin:0;font-size:14px;">👥 اختر الموظفين</h3>
+          <button type="button" class="btn btn-outline btn-sm btn-auto" id="eq-select-all">تحديد الكل</button>
+        </div>
+        <div id="eq-emp-list"></div>
+        <div class="small-note" id="eq-summary" style="margin:10px 0;"></div>
+        <button class="btn btn-primary" id="eq-submit-btn">⚖️ توزيع</button>
+      </div>
+
       <div id="up-single-wrap" style="display:none;">
         <div class="field">
           <label>المركز *</label>
@@ -4105,6 +4156,7 @@ function renderAdminUpload(container){
         <div class="field">
           <label>الموظف *</label>
           <select id="up-emp"><option value="">-- اختر الموظف --</option></select>
+          <div class="dist-emp-info" id="up-emp-info"></div>
         </div>
         <button class="btn btn-primary" id="up-submit-single-btn">رفع الطلبات للموظف</button>
       </div>
@@ -4129,6 +4181,7 @@ function renderAdminUpload(container){
   let employeesList = [];
   const u = onSnapshot(collection(db,'employees'), qs=>{
     employeesList = qs.docs.map(d=>({id:d.id, ...d.data()})).filter(e=>e.role!=='admin');
+    employeesList.forEach(e=>{ employeesCache[e.id] = {...(employeesCache[e.id]||{}), ...e}; });   /* عشان صور البروفايل تظهر */
     const empSelect = container.querySelector('#up-emp');
     if(empSelect){
       const cur = empSelect.value;
@@ -4142,10 +4195,15 @@ function renderAdminUpload(container){
         employeesList.map(e=>`<option value="${e.id}">${esc(e.name)} (${esc(e.department)})</option>`).join('');
       if(cur) sel.value = cur;
     });
+    drawEqList(); refreshEmpInfos();
   }, err=>console.error(err));
   unsubList.push(u);
 
   container.addEventListener('change', (e)=>{
+    if(e.target && e.target.id==='eq-center'){
+      container.querySelector('#eq-center-other').style.display = (e.target.value==='__other__') ? 'block' : 'none';
+    }
+    if(e.target && (e.target.id==='up-emp' || (e.target.classList && e.target.classList.contains('dist-emp-select')))) refreshEmpInfos();
     if(e.target && e.target.id==='up-center'){
       container.querySelector('#up-center-other').style.display = (e.target.value==='__other__') ? 'block' : 'none';
     }
@@ -4160,6 +4218,99 @@ function renderAdminUpload(container){
     return `<option value="">-- اختر الموظف --</option>` +
       employeesList.map(e=>`<option value="${e.id}">${esc(e.name)} (${esc(e.department)})</option>`).join('');
   }
+
+  /* ===== طريقة التوزيع: بالمراكز / بالتساوي ===== */
+  let distMode = 'centers', centersLayout = 'single';
+  let eqSel = {};                                   // uid -> {on, mode:'add'|'replace'}
+  let pendingByUid = {}, pendingState = 'idle';     // idle | loading | ok | err
+  const eqOf = uid => eqSel[uid] || (eqSel[uid] = {on:false, mode:'add'});
+  const leftOf = uid => (pendingByUid[uid]||[]).length;
+  const sortedEmps = () => employeesList.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+  const eqSelected = () => sortedEmps().filter(e=>eqOf(e.id).on);
+  function eqSplit(n,k){ const base = Math.floor(n/k); return {base, rem: n-base*k}; }
+
+  /* المتبقي عند كل موظف = طلبات لم تُدخل بعد (بدون طلبات الاستيفاء، زي إحصائيات الموظف) */
+  async function loadPending(){
+    pendingState = 'loading'; drawEqList(); refreshEmpInfos();
+    try{
+      const qs = await getDocs(query(collection(db,'tokeenRequests'), where('done','==',false)));
+      pendingByUid = {};
+      qs.docs.forEach(d=>{ const r = d.data(); if(r.istifa) return; (pendingByUid[r.uid] = pendingByUid[r.uid]||[]).push(d.id); });
+      pendingState = 'ok';
+    }catch(err){ console.error(err); pendingState = 'err'; }
+    drawEqList(); refreshEmpInfos();
+  }
+  function leftBadge(uid){
+    if(pendingState==='idle' || pendingState==='loading') return '<span class="eq-left">جارِ حساب المتبقي...</span>';
+    if(pendingState==='err') return '<span class="eq-left">تعذر حساب المتبقي</span>';
+    const n = leftOf(uid);
+    return `<span class="eq-left ${n?'':'zero'}">${n ? 'متبقي من قبل: '+n : 'لا يوجد متبقٍ'}</span>`;
+  }
+  function empInfoHTML(uid){
+    const e = uid && employeesList.find(x=>x.id===uid);
+    if(!e) return '';
+    return `<div class="conv-avatar">${avatarInner(uid,(e.name||'؟')[0])}</div><div><b style="font-size:12.5px;">${esc(e.name)}</b> ${leftBadge(uid)}</div>`;
+  }
+  function refreshEmpInfos(){
+    container.querySelectorAll('.dist-emp-select').forEach(sel=>{
+      const box = sel.parentElement.querySelector('.dist-emp-info'); if(box) box.innerHTML = empInfoHTML(sel.value);
+    });
+    const single = container.querySelector('#up-emp'), sb = container.querySelector('#up-emp-info');
+    if(single && sb) sb.innerHTML = empInfoHTML(single.value);
+  }
+  function drawEqList(){
+    const box = container.querySelector('#eq-emp-list'); if(!box) return;
+    const emps = sortedEmps(), sel = emps.filter(e=>eqOf(e.id).on), n = parsedRows.length, k = sel.length;
+    const sp = k ? eqSplit(n,k) : null;
+    box.innerHTML = emps.length ? emps.map(e=>{
+      const st = eqOf(e.id), idx = sel.indexOf(e);
+      const share = st.on ? sp.base + (idx===k-1 ? sp.rem : 0) : 0;
+      return `<div class="eq-emp ${st.on?'sel':''}" data-uid="${esc(e.id)}">
+        <label class="eq-row"><input type="checkbox" class="eq-chk" ${st.on?'checked':''}>
+          <div class="conv-avatar">${avatarInner(e.id,(e.name||'؟')[0])}</div>
+          <div class="eq-info"><div class="eq-name">${esc(e.name)}</div><div class="eq-sub">${esc(e.department||'')} ${leftBadge(e.id)}</div></div>
+          ${st.on ? `<span class="eq-share">سيستلم ${share}</span>` : ''}
+        </label>
+        ${st.on && leftOf(e.id)>0 ? `<div class="eq-opts">
+          <label><input type="radio" name="eqm-${esc(e.id)}" value="add" ${st.mode!=='replace'?'checked':''}> ➕ إضافة على المتبقي</label>
+          <label><input type="radio" name="eqm-${esc(e.id)}" value="replace" ${st.mode==='replace'?'checked':''}> 🗑 حذف المتبقي وإضافة جديد</label>
+        </div>` : ''}
+      </div>`;
+    }).join('') : '<div class="muted">لا يوجد موظفون</div>';
+    const sum = container.querySelector('#eq-summary');
+    if(sum) sum.innerHTML = !k ? 'اختر الموظفين اللي هيتوزع عليهم الملف'
+      : `إجمالي <b>${n}</b> طلب على <b>${k}</b> موظف — لكل موظف <b>${sp.base}</b>${sp.rem ? `، والأخير في القائمة (${esc(sel[k-1].name)}) يستلم <b>${sp.base+sp.rem}</b>` : ''}`;
+  }
+  function applyMode(){
+    const has = parsedRows.length>0;
+    const g = id => container.querySelector(id);
+    g('#up-mode-wrap').style.display = has ? 'block' : 'none';
+    container.querySelectorAll('#up-mode-seg button').forEach(b=> b.classList.toggle('active', b.dataset.m===distMode));
+    if(!has){ g('#up-single-wrap').style.display='none'; g('#up-multi-wrap').style.display='none'; g('#up-equal-wrap').style.display='none'; return; }
+    if(distMode==='equal'){
+      g('#up-single-wrap').style.display='none'; g('#up-multi-wrap').style.display='none'; g('#up-equal-wrap').style.display='block';
+      g('#eq-center-wrap').style.display = detectedCenterCol ? 'none' : 'block';
+      drawEqList();
+    }else{
+      g('#up-equal-wrap').style.display='none';
+      g('#up-single-wrap').style.display = centersLayout==='single' ? 'block' : 'none';
+      g('#up-multi-wrap').style.display = centersLayout==='multi' ? 'block' : 'none';
+    }
+    if(pendingState==='idle') loadPending(); else refreshEmpInfos();
+  }
+  container.querySelectorAll('#up-mode-seg button').forEach(b=> b.addEventListener('click', ()=>{ distMode = b.dataset.m; applyMode(); }));
+  container.querySelector('#eq-emp-list').addEventListener('change', e=>{
+    const card = e.target.closest('.eq-emp'); if(!card) return;
+    const st = eqOf(card.dataset.uid);
+    if(e.target.classList.contains('eq-chk')) st.on = e.target.checked;
+    else if(e.target.type==='radio') st.mode = e.target.value;
+    drawEqList();
+  });
+  container.querySelector('#eq-select-all').addEventListener('click', ()=>{
+    const emps = sortedEmps(), all = emps.every(e=>eqOf(e.id).on);
+    emps.forEach(e=>{ eqOf(e.id).on = !all; });
+    drawEqList();
+  });
 
   container.querySelector('#up-file').addEventListener('change', (e)=>{
     const file = e.target.files[0];
@@ -4203,24 +4354,23 @@ function renderAdminUpload(container){
 
         if(centerNames.length>1){
           noteBox.textContent = `تم العثور على ${json.length} صف بعمود المركز "${detectedCenterCol}" — عدد المراكز: ${centerNames.length}. وزّع كل مركز على الموظف المناسب (يمكن اختيار نفس الموظف لأكثر من مركز).`;
-          singleWrap.style.display='none';
-          multiWrap.style.display='block';
+          centersLayout = 'multi';
           container.querySelector('#up-center-chips').innerHTML = centerNames.map((c)=>`
             <div class="center-chip">
               <div>
                 <div class="cc-name">${esc(c)}</div>
                 <div class="cc-count">${centersMap[c].length} طلب</div>
               </div>
-              <select class="dist-emp-select" data-center="${esc(c)}">${empSelectOptions()}</select>
+              <div class="cc-side"><select class="dist-emp-select" data-center="${esc(c)}">${empSelectOptions()}</select><div class="dist-emp-info"></div></div>
             </div>
           `).join('');
+          pendingState = 'idle'; applyMode();
         }else{
           const autoCenter = centerNames.length===1 ? centerNames[0] : '';
           noteBox.textContent = detectedCenterCol
             ? `تم العثور على ${json.length} صف، بمركز واحد: "${autoCenter}"`
             : `تم العثور على ${json.length} صف بالأعمدة: ${cols.join('، ')} — لم يتم العثور على عمود مركز، اكتب المركز يدويًا`;
-          multiWrap.style.display='none';
-          singleWrap.style.display='block';
+          centersLayout = 'single'; pendingState = 'idle'; applyMode();
           if(autoCenter){
             const centerSel = container.querySelector('#up-center');
             const opt = [...centerSel.options].find(o=>o.value===autoCenter);
@@ -4440,6 +4590,56 @@ function renderAdminUpload(container){
     btn.disabled=false; btn.textContent='توزيع الطلبات على الموظفين';
   });
 
+  container.querySelector('#eq-submit-btn').addEventListener('click', async ()=>{
+    const errBox = container.querySelector('#up-err');
+    errBox.style.display='none';
+    const fail = m=>{ errBox.textContent = m; errBox.style.display='block'; };
+    const btn = container.querySelector('#eq-submit-btn'), LABEL = '⚖️ توزيع';
+    const reqField = container.querySelector('#up-req-field') ? container.querySelector('#up-req-field').value : '';
+    const sel = eqSelected();
+    let fixedCenter = '';
+    if(!detectedCenterCol){
+      fixedCenter = container.querySelector('#eq-center').value;
+      if(fixedCenter==='__other__') fixedCenter = container.querySelector('#eq-center-other').value.trim();
+    }
+    if(!parsedRows.length || !reqField) return fail('من فضلك ارفع ملفًا صالحًا واختر عمود رقم الطلب');
+    if(!sel.length) return fail('اختر موظفًا واحدًا على الأقل');
+    if(!detectedCenterCol && !fixedCenter) return fail('من فضلك اختر المركز');
+    btn.disabled=true; btn.textContent='جارِ التحقق...';
+    try{
+      await loadPending();                       // أرقام المتبقي بتتجدد قبل الحذف/الرفع
+      const delIds = sel.filter(e=>eqOf(e.id).mode==='replace').flatMap(e=>pendingByUid[e.id]||[]);
+      if(delIds.length && !confirm(`سيتم حذف ${delIds.length} طلب متبقٍ قديم قبل رفع الجديد (الطلبات المُدخَلة فعليًا لا تتأثر). متابعة؟`)){
+        btn.disabled=false; btn.textContent=LABEL; return;
+      }
+      if(delIds.length){ btn.textContent='جارِ حذف المتبقي القديم...'; await deleteRequestsBulk(delIds); }
+      btn.textContent='جارِ التوزيع والرفع...';
+      const n = parsedRows.length, k = sel.length, {base, rem} = eqSplit(n,k);
+      const centersUsed = new Set(), batchIds = [];
+      let idx = 0;
+      for(let i=0;i<k;i++){
+        const cnt = base + (i===k-1 ? rem : 0);
+        const slice = parsedRows.slice(idx, idx+cnt); idx += cnt;
+        const groups = {};
+        slice.forEach(r=>{
+          const c = detectedCenterCol ? (String(r[detectedCenterCol]||'').trim() || 'غير محدد') : fixedCenter;
+          (groups[c] = groups[c]||[]).push(r);
+        });
+        for(const [c, rows] of Object.entries(groups)){
+          batchIds.push(await uploadRowsFor(sel[i].id, c, rows, reqField));
+          centersUsed.add(c);
+        }
+      }
+      await saveFileRecord([...centersUsed], batchIds);
+      toast(`تم توزيع ${n} طلب بالتساوي على ${k} موظف${delIds.length?` (بعد حذف ${delIds.length} طلب متبقٍ قديم)`:''}`, 'ok');
+      resetForm();
+    }catch(err){
+      console.error(err);
+      fail('حدث خطأ أثناء الرفع، حاول مرة أخرى');
+    }
+    btn.disabled=false; btn.textContent=LABEL;
+  });
+
   function resetForm(){
     parsedRows = []; centersMap = {}; currentFile = null; detectedCenterCol = null;
     container.querySelector('#up-file').value='';
@@ -4451,6 +4651,11 @@ function renderAdminUpload(container){
     container.querySelector('#up-center-other').style.display='none';
     container.querySelector('#up-center-other').value='';
     container.querySelector('#up-emp').value='';
+    container.querySelector('#eq-center').value='';
+    container.querySelector('#eq-center-other').style.display='none';
+    container.querySelector('#eq-center-other').value='';
+    eqSel = {}; pendingByUid = {}; pendingState = 'idle';
+    applyMode(); refreshEmpInfos();
   }
 
   /* ---- جدول الملفات المرفوعة ---- */
@@ -5424,7 +5629,7 @@ function renderProjectsTab(container){
   if(!container) return;
   container.innerHTML = `
     <div class="flex-between" id="projects-head" style="margin-bottom:14px;">
-      <div><h2 style="margin:0;font-size:20px;">📁 المشاريع والمهام</h2><div class="muted" style="font-size:12.5px;margin-top:4px;">المشاريع والفرق والمهام المكلف بها</div></div>
+      <div><h2 style="margin:0;font-size:20px;">📁 مشاريع ومهام</h2><div class="muted" style="font-size:12.5px;margin-top:4px;">المشاريع والفرق والمهام المكلف بها</div></div>
       ${isAdmin ? '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm btn-auto" id="assign-task-btn" style="background:#7c3aed;border-color:#7c3aed;">📌 تكليف موظف</button><button class="btn btn-primary btn-sm btn-auto" id="new-project-btn">➕ مشروع جديد</button></div>' : ''}
     </div>
     <div class="pj-seg" id="projects-seg">
