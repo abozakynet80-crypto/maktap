@@ -358,6 +358,12 @@
   .project-member-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
   .project-member-row:last-child{border-bottom:none;}
   .project-member-name{font-weight:700;font-size:13px;}
+  .performance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:14px 0;}
+  .performance-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;}
+  .performance-panel h3{font-size:15px;margin:0 0 12px;}
+  .performance-score{font-size:28px;font-weight:800;color:var(--brand-dark);}
+  .performance-bar{height:9px;background:#eef1f6;border-radius:6px;overflow:hidden;margin-top:8px;}
+  .performance-bar>div{height:100%;background:linear-gradient(90deg,var(--brand),var(--accent));border-radius:6px;}
   @media(max-width:760px){.project-panels{grid-template-columns:1fr;}.project-detail-cover{height:160px;}}
 
   .center-chip{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fafbfd;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
@@ -449,9 +455,9 @@
   html[data-theme="dark"] .center-chip{background:#141d27;}
 
   /* ===== قسم المراسلات ===== */
-  .msg-shell{display:flex;min-height:65vh;max-height:75vh;direction:rtl;}
-  .msg-sidebar{width:280px;flex:none;border-left:1px solid var(--border);display:flex;flex-direction:column;direction:rtl;}
-  .msg-thread{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .msg-shell{display:flex;height:75vh;min-height:520px;max-height:75vh;direction:rtl;}
+  .msg-sidebar{width:280px;flex:none;border-left:1px solid var(--border);display:flex;flex-direction:column;direction:rtl;overflow:hidden;}
+  .msg-thread{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;}
   .msg-back-btn{display:none;}
   .conv-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;direction:rtl;}
   .conv-item:hover, .conv-item.active{background:var(--brand-light);}
@@ -488,7 +494,7 @@
   .msg-readers-btn:hover{opacity:1;text-decoration:underline;}
   .mobile-bottom-nav,.mobile-more-menu,.exit-warning-overlay{display:none;}
   @media(max-width:760px){
-    .msg-shell{flex-direction:column;}
+    .msg-shell{flex-direction:column;height:calc(100dvh - 150px);min-height:440px;max-height:none;}
     .msg-sidebar{width:100%;border-left:none;border-bottom:1px solid var(--border);}
     #msg-shell.thread-open .msg-sidebar{display:none;}
     .msg-thread{display:none;}
@@ -547,7 +553,7 @@
     .modal-actions{flex-wrap:wrap;}
     .modal-actions .btn{min-width:0;}
     .assignee-list{max-height:190px;}
-    .msg-shell{min-height:calc(100dvh - 150px);max-height:none;}
+    .msg-shell{height:calc(100dvh - 150px);min-height:0;max-height:none;}
     .msg-sidebar{height:calc(100dvh - 150px);max-height:none;}
     .msg-thread{height:calc(100dvh - 150px);min-height:0;}
     #thread-messages{min-height:0;overflow-y:auto;overscroll-behavior:contain;}
@@ -1401,6 +1407,7 @@ function shellTabsForMobile(admin){
     {tab:'admin-upload',icon:'📤',label:'رفع بيانات التقنين'},
     {tab:'admin-done',icon:'✅',label:'ما تم إدخاله'},
     {tab:'admin-achievements',icon:'🌟',label:'إنجازات الموظفين'},
+    {tab:'performance',icon:'📊',label:'مؤشرات الأداء'},
     {tab:'admin-employees',icon:'👥',label:'إدارة المستخدمين'},
     {tab:'projects',icon:'📁',label:'مشاريع العمل'}
   ] : [
@@ -1460,6 +1467,7 @@ function renderApp(){
             <button class="tab-btn" data-tab="admin-done">✅ ما تم إدخاله (الكل)</button>
             <button class="tab-btn" data-tab="admin-tasks">📌 توزيع المهام</button>
             <button class="tab-btn" data-tab="admin-achievements">🌟 إنجازات الموظفين</button>
+            <button class="tab-btn" data-tab="performance">📊 مؤشرات الأداء</button>
             <button class="tab-btn" data-tab="admin-employees">👥 إدارة المستخدمين</button>
             <button class="tab-btn" data-tab="projects">📁 مشاريع العمل</button>
             <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
@@ -1638,6 +1646,7 @@ function switchTab(tab){
   else if(tab==='admin-done') renderDoneSection(content);
   else if(tab==='admin-tasks') renderAdminTasks(content);
   else if(tab==='admin-achievements') renderAdminAchievements(content);
+  else if(tab==='performance') renderPerformanceTab(content);
   else if(tab==='admin-employees') renderAdminEmployees(content);
   else if(tab==='projects') renderProjectsTab(content);
   else if(tab==='messages') renderMessagesTab(content);
@@ -2623,6 +2632,9 @@ function renderAdminDashboard(container){
       </button>
       <button class="dash-card" data-tab="admin-achievements" style="background:linear-gradient(135deg,#c9852b,#e2a247);">
         <div class="dc-icon">🌟</div><div class="dc-title">إنجازات الموظفين</div><div class="dc-desc">أداء كل موظف على مدار الفترة</div>
+      </button>
+      <button class="dash-card" data-tab="performance" style="background:linear-gradient(135deg,#176b87,#27a6b8);">
+        <div class="dc-icon">📊</div><div class="dc-title">مؤشرات الأداء</div><div class="dc-desc">الموظفون والمشاريع والالتزام بالحضور</div>
       </button>
       <button class="dash-card" data-tab="admin-employees" style="background:linear-gradient(135deg,#6b4fd6,#8f6fee);">
         <div class="dc-icon">👥</div><div class="dc-title">إدارة المستخدمين</div><div class="dc-desc">إضافة وتعديل حسابات الموظفين</div>
@@ -4545,6 +4557,12 @@ function convUnreadCount(conv){
 function totalUnreadMessages(){
   return msgConvList.reduce((s,c)=> s + convUnreadCount(c), 0);
 }
+function messageTimestampMs(value){
+  if(!value) return 0;
+  if(typeof value.toMillis==='function') return value.toMillis();
+  if(typeof value.seconds==='number') return value.seconds*1000;
+  return 0;
+}
 function updateMessagesTabBadge(){
   const n = totalUnreadMessages();
   document.querySelectorAll('.messages-tab-badge').forEach(b=>{
@@ -4587,8 +4605,8 @@ function startMessagesWatcher(){
     msgConvCache = map;
     const oldTotal = totalUnreadMessages();
     msgConvList = Object.values(map).sort((a,b)=>
-      (b.lastMessageAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0) -
-      (a.lastMessageAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0)
+      (messageTimestampMs(b.lastMessageAt)||messageTimestampMs(b.createdAt)) -
+      (messageTimestampMs(a.lastMessageAt)||messageTimestampMs(a.createdAt))
     );
     const newTotal = totalUnreadMessages();
     updateMessagesTabBadge();
@@ -4877,9 +4895,13 @@ function renderMessagesTab(container){
       </div>` : `<div class="small-note" style="margin:12px;">هذه رسالة جماعية من الإدارة — لا يمكن الرد عليها هنا</div>`}
     `;
     bindThreadHeaderActions(conv);
-    pane.querySelector('#msg-back-btn').addEventListener('click', ()=>{
+    const backButton = pane.querySelector('#msg-back-btn');
+    if(backButton) backButton.onclick = ()=>{
+      msgActiveConvId = null;
       if(shellEl) shellEl.classList.remove('thread-open');
-    });
+      pane.innerHTML='<div class="empty-state" style="margin:auto;"><div class="emoji">💬</div>اختر محادثة من القائمة أو ابدأ محادثة جديدة</div>';
+      drawConvList();
+    };
 
     if(canSend){
       const ta = pane.querySelector('#thread-text');
@@ -5113,6 +5135,74 @@ function openNewConversationModal(container, initialType='direct'){
       btn.disabled=false; btn.textContent='بدء المحادثة';
     }
   });
+}
+
+/* ============ مؤشرات الأداء ============ */
+function renderPerformanceTab(container){
+  if(!container) return;
+  const today=todayCairoStr(), month=today.slice(0,7);
+  container.innerHTML=`
+    <div class="flex-between"><div><h2 style="margin:0;font-size:20px;">📊 مؤشرات الأداء</h2><div class="muted" style="font-size:12.5px;margin-top:4px;">تقرير الموظفين والمشاريع والالتزام بالحضور والانصراف</div></div></div>
+    <div class="card" style="margin-top:14px;"><div class="filter-bar"><label style="font-size:12px;font-weight:700;">من <input type="date" id="perf-from" value="${month}-01"></label><label style="font-size:12px;font-weight:700;">إلى <input type="date" id="perf-to" value="${today}"></label><select id="perf-employee"><option value="">كل الموظفين</option></select><button class="btn btn-outline btn-sm" id="perf-refresh">تحديث</button></div></div>
+    <div id="performance-content"><div class="muted" style="padding:20px;text-align:center;">جارِ حساب المؤشرات...</div></div>
+  `;
+  let employees={},attendance=[],requests=[],projects=[],projectTasks=[];
+  const subscriptions=[
+    onSnapshot(collection(db,'employees'),qs=>{employees={};qs.forEach(d=>employees[d.id]=d.data());fillEmployeeFilter();draw();},console.error),
+    onSnapshot(collection(db,'attendance'),qs=>{attendance=qs.docs.map(d=>({id:d.id,...d.data()}));draw();},console.error),
+    onSnapshot(collection(db,'tokeenRequests'),qs=>{requests=qs.docs.map(d=>({id:d.id,...d.data()}));draw();},console.error),
+    onSnapshot(collection(db,'projects'),qs=>{projects=qs.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.active!==false);draw();},console.error),
+    onSnapshot(collection(db,'projectTasks'),qs=>{projectTasks=qs.docs.map(d=>({id:d.id,...d.data()})).filter(t=>t.active!==false);draw();},console.error)
+  ];
+  unsubList.push(...subscriptions);
+  const employeeSelect=container.querySelector('#perf-employee');
+  function fillEmployeeFilter(){
+    if(!employeeSelect)return;
+    const current=employeeSelect.value;
+    employeeSelect.innerHTML='<option value="">كل الموظفين</option>'+Object.keys(employees).filter(uid=>employees[uid].role!=='admin').sort((a,b)=>(employees[a].name||'').localeCompare(employees[b].name||'','ar')).map(uid=>`<option value="${uid}">${esc(employees[uid].name||'غير معروف')}</option>`).join('');
+    employeeSelect.value=current;
+  }
+  const inRange=(value,from,to)=>{const d=String(value||'');return (!from||d>=from)&&(!to||d<=to);};
+  const tsDate=ts=>ts?.toDate?new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit'}).format(ts.toDate()):'';
+  function attendanceStatus(rec){
+    if(!rec||rec.absenceReason)return 'absent';
+    if(!rec.checkIn)return 'absent';
+    const ci=cairoHM(rec.checkIn),co=cairoHM(rec.checkOut);
+    return {present:true,late:ci&&ci.h>WORK_START_HOUR,onTimeIn:ci&&ci.h<=WORK_START_HOUR,onTimeOut:!!(co&&co.h>=16),checkIn:ci,checkOut:co};
+  }
+  function draw(){
+    const box=container.querySelector('#performance-content');if(!box)return;
+    const from=container.querySelector('#perf-from').value,to=container.querySelector('#perf-to').value,selected=employeeSelect.value;
+    const staff=Object.keys(employees).filter(uid=>employees[uid].role!=='admin'&&(!selected||uid===selected));
+    const dates=workDaysBetween(from,to);
+    const reports=staff.map(uid=>{
+      const rows=attendance.filter(a=>a.uid===uid&&inRange(a.date,from,to));
+      let present=0,onTimeIn=0,onTimeOut=0,late=0,absent=0;
+      dates.forEach(date=>{const rec=rows.find(a=>a.date===date),st=attendanceStatus(rec);if(st==='absent'){absent++;return;}present++;if(st.onTimeIn)onTimeIn++;else late++;if(st.onTimeOut)onTimeOut++;});
+      const assigned=projectTasks.filter(t=>t.assignedUid===uid&&inRange(tsDate(t.assignedAt)||t.assignedDate,from,to));
+      const completed=assigned.filter(t=>t.status==='completed').length;
+      const reqs=requests.filter(r=>r.uid===uid&&inRange(r.date,from,to));
+      const reqDone=reqs.filter(r=>r.done).length;
+      const attendanceScore=dates.length?Math.round(((onTimeIn+onTimeOut)/(dates.length*2))*100):0;
+      const taskScore=assigned.length?Math.round(completed*100/assigned.length):0;
+      const overall=Math.round(attendanceScore*.45+taskScore*.35+(reqs.length?reqDone*100/reqs.length:0)*.2);
+      return {uid,name:employees[uid].name||'غير معروف',dept:employees[uid].department||'',present,onTimeIn,onTimeOut,late,absent,assigned:assigned.length,completed,reqs:reqs.length,reqDone,attendanceScore,taskScore,overall,rows};
+    });
+    const allTasks=projectTasks.filter(t=>inRange(tsDate(t.assignedAt)||t.assignedDate,from,to));
+    const projectRows=projects.map(p=>{const tasks=allTasks.filter(t=>t.projectId===p.id),done=tasks.filter(t=>t.status==='completed').length;return {...p,total:tasks.length,done,percent:tasks.length?Math.round(done*100/tasks.length):0};}).filter(p=>p.total||selected==='');
+    const totalPresent=reports.reduce((s,r)=>s+r.present,0),totalOnTime=reports.reduce((s,r)=>s+r.onTimeIn+r.onTimeOut,0),possible=dates.length*reports.length*2;
+    box.innerHTML=`
+      <div class="performance-grid"><div class="performance-panel"><h3>👥 الموظفون</h3><div class="performance-score">${reports.length}</div><div class="muted">موظف في التقرير</div></div><div class="performance-panel"><h3>⏱ الالتزام</h3><div class="performance-score">${possible?Math.round(totalOnTime*100/possible):0}%</div><div class="muted">حضور وانصراف في الموعد</div><div class="performance-bar"><div style="width:${possible?Math.round(totalOnTime*100/possible):0}%"></div></div></div><div class="performance-panel"><h3>📁 المشاريع</h3><div class="performance-score">${projectRows.length}</div><div class="muted">مشروع ظاهر في الفترة</div></div><div class="performance-panel"><h3>📌 المهام</h3><div class="performance-score">${allTasks.filter(t=>t.status==='completed').length}/${allTasks.length}</div><div class="muted">مكتملة من الإجمالي</div></div></div>
+      <div class="performance-panel"><h3>📊 مؤشرات الموظفين</h3><div class="table-wrap"><table class="sticky-table"><thead><tr><th>الموظف</th><th>الأداء العام</th><th>الالتزام</th><th>مهام المشاريع</th><th>طلبات التقنين</th><th>الحضور</th><th>تقرير</th></tr></thead><tbody>${reports.map((r,i)=>`<tr><td><b>${esc(r.name)}</b><br><span class="muted">${esc(r.dept)}</span></td><td><span class="status-pill ${r.overall>=80?'pill-good':r.overall>=50?'pill-warn':'pill-bad'}">${r.overall}%</span></td><td>${r.attendanceScore}%</td><td>${r.completed}/${r.assigned}</td><td>${r.reqDone}/${r.reqs}</td><td>حضور ${r.present}<br>تأخير ${r.late}<br>غياب ${r.absent}</td><td><button class="link-btn perf-detail-btn" data-idx="${i}">عرض التقرير</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد بيانات</td></tr>'}</tbody></table></div></div>
+      <div class="performance-panel" style="margin-top:14px;"><h3>📁 مؤشرات أداء المشاريع</h3><div class="projects-grid">${projectRows.map(p=>`<div><div class="flex-between"><b>${esc(p.name)}</b><span class="status-pill ${p.percent>=80?'pill-good':p.percent>=50?'pill-warn':'pill-neutral'}">${p.percent}%</span></div><div class="muted" style="font-size:11px;margin-top:4px;">${p.done} مكتملة من ${p.total} مهمة · ${(p.memberUids||[]).length} أعضاء</div><div class="performance-bar"><div style="width:${p.percent}%"></div></div></div>`).join('')||'<div class="muted">لا توجد مهام مشاريع في الفترة</div>'}</div></div>
+      <div class="performance-panel" style="margin-top:14px;"><h3>🕘 الالتزام بالحضور والانصراف</h3><div class="table-wrap"><table><thead><tr><th>الموظف</th><th>حضور في الموعد</th><th>انصراف في الموعد</th><th>التأخير</th><th>الغياب</th><th>النسبة</th></tr></thead><tbody>${reports.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.onTimeIn}</td><td>${r.onTimeOut}</td><td>${r.late}</td><td>${r.absent}</td><td><span class="status-pill ${r.attendanceScore>=80?'pill-good':r.attendanceScore>=50?'pill-warn':'pill-bad'}">${r.attendanceScore}%</span></td></tr>`).join('')}</tbody></table></div></div>`;
+    box.querySelectorAll('.perf-detail-btn').forEach(btn=>btn.addEventListener('click',()=>openPerformanceEmployeeModal(reports[+btn.dataset.idx],from,to,dates)));
+  }
+  container.querySelector('#perf-from').addEventListener('change',draw);container.querySelector('#perf-to').addEventListener('change',draw);employeeSelect.addEventListener('change',draw);container.querySelector('#perf-refresh').addEventListener('click',draw);
+}
+
+function openPerformanceEmployeeModal(report,from,to,dates){
+  const overlay=el(`<div class="modal-overlay"><div class="modal-box" style="max-width:700px;"><h3>📋 تقرير ${esc(report.name)}</h3><div class="modal-sub">${esc(report.dept)} · الفترة من ${esc(from)} إلى ${esc(to)}</div><div class="performance-grid"><div class="performance-panel"><b>الأداء العام</b><div class="performance-score">${report.overall}%</div></div><div class="performance-panel"><b>الالتزام</b><div class="performance-score">${report.attendanceScore}%</div></div><div class="performance-panel"><b>مهام المشاريع</b><div class="performance-score">${report.completed}/${report.assigned}</div></div></div><div class="table-wrap" style="max-height:52vh;"><table><thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th></tr></thead><tbody>${dates.map(date=>{const rec=report.rows.find(r=>r.date===date),st=attendanceStatus(rec);const label=st==='absent'?'غائب':st.onTimeIn?'حاضر في الموعد':'حاضر متأخر';return `<tr><td>${fmtDate(date)}</td><td>${fmtTime(rec&&rec.checkIn)}</td><td>${fmtTime(rec&&rec.checkOut)}</td><td>${label}</td></tr>`;}).join('')}</tbody></table></div><div class="modal-actions"><button class="btn btn-outline btn-block" id="perf-close">إغلاق</button></div></div></div>`);document.body.appendChild(overlay);overlay.querySelector('#perf-close').addEventListener('click',()=>overlay.remove());overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
 
 /* ============ مشاريع العمل ============ */
