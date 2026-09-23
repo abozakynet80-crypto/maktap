@@ -486,6 +486,7 @@
   .msg-delete-btn:hover{opacity:1;color:var(--bad);}
   .msg-readers-btn{display:block;margin-top:3px;background:none;border:0;color:inherit;opacity:.7;font-size:10px;padding:0;cursor:pointer;}
   .msg-readers-btn:hover{opacity:1;text-decoration:underline;}
+  .mobile-bottom-nav,.mobile-more-menu,.exit-warning-overlay{display:none;}
   @media(max-width:760px){
     .msg-shell{flex-direction:column;}
     .msg-sidebar{width:100%;border-left:none;border-bottom:1px solid var(--border);}
@@ -512,9 +513,9 @@
     .icon-btn{width:36px;height:36px;}
     .message-alert-popup{position:fixed;top:92px;right:10px;width:calc(100vw - 20px);max-width:320px;}
     .notif-dropdown{position:fixed;top:92px;left:10px;right:10px;width:auto;max-width:none;}
-    .tabs{padding:0 8px;gap:5px;top:92px;scroll-snap-type:x proximity;}
+    .tabs{display:none;}
     .tab-btn{padding:10px 12px;font-size:12px;scroll-snap-align:start;}
-    .container{padding:14px 10px 36px;}
+    .container{padding:14px 10px 86px;}
     .card{padding:14px;border-radius:11px;}
     .card h3{font-size:14px;}
     .dash-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px;}
@@ -546,9 +547,11 @@
     .modal-actions{flex-wrap:wrap;}
     .modal-actions .btn{min-width:0;}
     .assignee-list{max-height:190px;}
-    .msg-shell{min-height:calc(100vh - 150px);max-height:none;}
-    .msg-sidebar{max-height:calc(100vh - 150px);}
-    .msg-thread{min-height:calc(100vh - 150px);}
+    .msg-shell{min-height:calc(100dvh - 150px);max-height:none;}
+    .msg-sidebar{height:calc(100dvh - 150px);max-height:none;}
+    .msg-thread{height:calc(100dvh - 150px);min-height:0;}
+    #thread-messages{min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+    #thread-input-wrap{flex:none;position:sticky;bottom:0;background:var(--card);z-index:2;}
     .msg-bubble{max-width:88%;font-size:13px;}
     .msg-image-attach{width:min(240px,100%);max-height:200px;}
     .msg-conv-list{max-height:42vh;}
@@ -557,6 +560,22 @@
     .table-wrap{max-width:100%;}
     table{font-size:12px;}
     .btn{font-size:13px;}
+    .mobile-bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(4,1fr);bottom:0;right:0;left:0;height:66px;background:var(--card);border-top:1px solid var(--border);box-shadow:0 -4px 18px rgba(20,30,60,.12);z-index:80;padding:5px 7px calc(5px + env(safe-area-inset-bottom));}
+    .mobile-nav-btn{border:0;background:none;color:var(--sub);font:inherit;font-size:10.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;border-radius:9px;}
+    .mobile-nav-btn .mobile-nav-icon{font-size:21px;line-height:1;}
+    .mobile-nav-btn.active{color:var(--brand);background:var(--brand-light);}
+    .mobile-nav-btn .messages-tab-badge{position:absolute;top:2px;right:calc(50% - 22px);margin:0;}
+    .mobile-more-menu{position:fixed;display:none;bottom:72px;right:8px;left:8px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);z-index:79;padding:8px;max-height:55vh;overflow-y:auto;}
+    .mobile-more-menu.open{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
+    .mobile-more-item{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:10px 6px;color:var(--ink);font:inherit;font-size:12px;font-weight:700;}
+    .mobile-more-item.active{color:var(--brand);background:var(--brand-light);border-color:var(--brand);}
+    .exit-warning-overlay{position:fixed;inset:0;background:rgba(15,25,40,.55);display:none;align-items:center;justify-content:center;z-index:120;padding:18px;}
+    .exit-warning-overlay.open{display:flex;}
+    .exit-warning-box{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:20px;width:min(380px,100%);text-align:center;}
+    .exit-warning-box h3{margin:0 0 7px;font-size:17px;}
+    .exit-warning-box p{margin:0;color:var(--sub);font-size:13px;}
+    .exit-warning-actions{display:flex;gap:8px;margin-top:18px;}
+    .exit-warning-actions .btn{flex:1;}
   }
   @media(max-width:380px){
     .topbar .right #account-btn{display:none;}
@@ -1246,6 +1265,44 @@ function renderCompleteProfile(user){
 
 /* ============ App Shell ============ */
 let activeTab = 'home';
+let mobileExitGuardReady = false;
+let mobileExitConfirmed = false;
+function setupMobileExitGuard(shell){
+  const overlay = shell.querySelector('#exit-warning-overlay');
+  if(!overlay || mobileExitGuardReady) return;
+  mobileExitGuardReady = true;
+  const isMobile = ()=>window.matchMedia('(max-width: 700px)').matches;
+  const showExitWarning = ()=>{
+    if(!isMobile()) return;
+    history.pushState({appGuard:true}, '', location.href);
+    overlay.classList.add('open');
+  };
+  shell.querySelector('#exit-cancel-btn').addEventListener('click', ()=>overlay.classList.remove('open'));
+  shell.querySelector('#exit-confirm-btn').addEventListener('click', ()=>{
+    mobileExitConfirmed=true;
+    overlay.classList.remove('open');
+    history.back();
+  });
+  if(isMobile()) history.pushState({appGuard:true}, '', location.href);
+  window.addEventListener('popstate', ()=>{
+    if(mobileExitConfirmed) return;
+    showExitWarning();
+  });
+  window.addEventListener('beforeunload', e=>{
+    if(isMobile() && !mobileExitConfirmed){ e.preventDefault(); e.returnValue=''; }
+  });
+}
+function setupMobileNavigation(shell){
+  const moreMenu = shell.querySelector('#mobile-more-menu');
+  shell.querySelectorAll('[data-mobile-tab]').forEach(button=>button.addEventListener('click',()=>{
+    switchTab(button.dataset.mobileTab);
+    if(moreMenu) moreMenu.classList.remove('open');
+  }));
+  shell.querySelector('#mobile-more-btn').addEventListener('click',()=>moreMenu.classList.toggle('open'));
+  document.addEventListener('click', e=>{
+    if(moreMenu && !moreMenu.contains(e.target) && !shell.querySelector('#mobile-more-btn').contains(e.target)) moreMenu.classList.remove('open');
+  });
+}
 /* ============ الساعة الرقمية أعلى الصفحة ============ */
 let clockInterval = null;
 function startDigitalClock(elm){
@@ -1338,6 +1395,21 @@ document.addEventListener('click', (e)=>{
   });
 });
 
+function shellTabsForMobile(admin){
+  return admin ? [
+    {tab:'admin-dashboard',icon:'🏠',label:'الرئيسية'},
+    {tab:'admin-upload',icon:'📤',label:'رفع بيانات التقنين'},
+    {tab:'admin-done',icon:'✅',label:'ما تم إدخاله'},
+    {tab:'admin-achievements',icon:'🌟',label:'إنجازات الموظفين'},
+    {tab:'admin-employees',icon:'👥',label:'إدارة المستخدمين'},
+    {tab:'projects',icon:'📁',label:'مشاريع العمل'}
+  ] : [
+    {tab:'mine',icon:'📁',label:'طلبات التقنين'},
+    {tab:'projects',icon:'📁',label:'مشاريع العمل'},
+    {tab:'done',icon:'✅',label:'ما تم إدخاله للكل'}
+  ];
+}
+
 function renderApp(){
   root.innerHTML='';
   const shell = el(`
@@ -1402,6 +1474,22 @@ function renderApp(){
         </div>
         <div class="container" id="tab-content"></div>
       </div>
+      <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="التنقل الرئيسي">
+        <button class="mobile-nav-btn" data-mobile-tab="${isAdmin?'admin-daily':'home'}"><span class="mobile-nav-icon">🏠</span><span>${isAdmin?'التقرير':'الحضور'}</span></button>
+        <button class="mobile-nav-btn" data-mobile-tab="messages"><span class="mobile-nav-icon">💬</span><span>المراسلات</span><span class="messages-tab-badge"></span></button>
+        <button class="mobile-nav-btn" data-mobile-tab="${isAdmin?'admin-tasks':'my-tasks'}"><span class="mobile-nav-icon">📌</span><span>المهام</span></button>
+        <button class="mobile-nav-btn" id="mobile-more-btn"><span class="mobile-nav-icon">☰</span><span>المزيد</span></button>
+      </nav>
+      <div class="mobile-more-menu" id="mobile-more-menu">
+        ${[...shellTabsForMobile(isAdmin)].map(item=>`<button class="mobile-more-item" data-mobile-tab="${item.tab}">${item.icon} ${item.label}</button>`).join('')}
+      </div>
+      <div class="exit-warning-overlay" id="exit-warning-overlay">
+        <div class="exit-warning-box">
+          <h3>هل تريد الخروج؟</h3>
+          <p>قد تفقد التغييرات غير المحفوظة في الصفحة الحالية.</p>
+          <div class="exit-warning-actions"><button class="btn btn-outline" id="exit-cancel-btn">إلغاء</button><button class="btn btn-danger" id="exit-confirm-btn">تأكيد الخروج</button></div>
+        </div>
+      </div>
     </div>
   `);
   root.appendChild(shell);
@@ -1418,6 +1506,8 @@ function renderApp(){
     clearTimeout(messagePopupTimer);
     switchTab('messages');
   });
+  setupMobileNavigation(shell);
+  setupMobileExitGuard(shell);
 
   const notifWrap = shell.querySelector('#notif-wrap');
   shell.querySelector('#notif-btn').addEventListener('click', (e)=>{ e.stopPropagation(); toggleNotifDropdown(notifWrap); });
@@ -1529,6 +1619,8 @@ async function showMorningGreetingModal(){
 function switchTab(tab){
   activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.mobile-nav-btn[data-mobile-tab]').forEach(b=> b.classList.toggle('active', b.dataset.mobileTab===tab));
+  document.querySelectorAll('.mobile-more-item[data-mobile-tab]').forEach(b=> b.classList.toggle('active', b.dataset.mobileTab===tab));
   const content = document.getElementById('tab-content');
   if(!content) return;
   content.innerHTML = '';
