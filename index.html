@@ -25,6 +25,7 @@
     --bad:#d6483f;
     --bad-bg:#fceceb;
     --radius:14px;
+    --topbar-bg:linear-gradient(135deg,#0a5a5a,#0d6e6e 55%,#1b7a9a);
     --shadow:0 2px 10px rgba(20,30,60,.06), 0 1px 2px rgba(20,30,60,.05);
   }
   html[data-theme="dark"]{
@@ -44,6 +45,7 @@
     --bad:#ea6259;
     --bad-bg:#3a1f1d;
     --shadow:0 2px 14px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.3);
+    --topbar-bg:linear-gradient(135deg,#0b3a3d,#0f4f52 60%,#14586e);
   }
   html[data-theme="dark"] body{background:var(--bg);}
   html[data-theme="dark"] .field input, html[data-theme="dark"] .field select, html[data-theme="dark"] .field textarea{background:#141d27;color:var(--ink);}
@@ -99,7 +101,7 @@
   .btn-auto{width:auto;}
   .error-text{color:var(--bad);font-size:13px;margin-top:8px;}
 
-  .topbar{background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:10px 22px;position:sticky;top:0;z-index:20;}
+  .topbar{background:var(--topbar-bg);border-bottom:1px solid rgba(255,255,255,.14);box-shadow:0 3px 12px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:space-between;padding:10px 22px;position:sticky;top:0;z-index:20;}
   .topbar .left{display:flex;align-items:center;gap:12px;}
   .topbar .logo-circle{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex:none;}
   .topbar .title{font-weight:800;font-size:15.5px;line-height:1.2;}
@@ -109,17 +111,15 @@
   .user-chip .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
   .user-chip .u-name{font-size:13.5px;font-weight:700;}
   .user-chip .u-dept{font-size:11px;color:var(--sub);}
+  .tb-break{display:none;}
+  .topbar .title,.topbar .u-name{color:#fff;}
+  .topbar .subtitle,.topbar .u-dept{color:rgba(255,255,255,.78);}
+  .topbar .icon-btn{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);color:#fff;}
+  .topbar .icon-btn:hover{border-color:#fff;}
+  .topbar .btn-outline,html[data-theme="dark"] .topbar .btn-outline{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.35);color:#fff;}
+  .topbar .btn-outline:hover,html[data-theme="dark"] .topbar .btn-outline:hover{background:rgba(255,255,255,.26);border-color:#fff;color:#fff;}
+  .topbar .user-chip .avatar{border:2px solid rgba(255,255,255,.75);}
 
-  /* الساعة الرقمية */
-  .digital-clock{
-    display:flex;align-items:baseline;gap:6px;background:var(--brand-light);color:var(--brand-dark);
-    padding:7px 14px;border-radius:10px;font-weight:800;border:1px solid var(--border);
-    font-variant-numeric:tabular-nums;letter-spacing:.5px;
-  }
-  .digital-clock .dc-time{font-size:16px;}
-  .digital-clock .dc-period{font-size:10.5px;font-weight:700;opacity:.85;}
-  .digital-clock .dc-date{font-size:10px;color:var(--sub);font-weight:700;margin-right:4px;border-right:1px solid var(--border);padding-right:8px;}
-  @media(max-width:700px){ .digital-clock .dc-date{display:none;} }
   .message-alert-wrap{position:relative;flex:none;}
   .message-alert-badge{position:absolute;top:-5px;right:-5px;background:var(--bad);color:#fff;border-radius:50%;min-width:18px;height:18px;padding:0 4px;border:2px solid var(--card);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;}
   .message-alert-popup{position:absolute;top:46px;right:0;width:280px;max-width:80vw;background:var(--card);border:1px solid var(--brand);border-radius:10px;box-shadow:var(--shadow);padding:10px 12px;z-index:70;cursor:pointer;animation:messagePopIn .2s ease-out;}
@@ -508,23 +508,25 @@
     .msg-back-btn{display:inline-flex;}
   }
   @media(max-width:700px){
-    .topbar{padding:8px 10px;gap:8px;align-items:flex-start;flex-wrap:wrap;}
-    .topbar .left{gap:8px;min-width:0;flex:1;}
-    .topbar .left .title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .topbar{padding:8px 10px;gap:8px 6px;align-items:center;flex-wrap:wrap;}
+    .topbar .left{gap:8px;min-width:0;flex:1 1 0;}
+    .topbar .left>div:last-child{min-width:0;}
+    .topbar .left .title{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .topbar .left .subtitle{font-size:10px;}
     .topbar .logo-circle{width:32px;height:32px;font-size:13px;}
-    .topbar .right{width:100%;gap:6px;justify-content:flex-start;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
-    .topbar .right::-webkit-scrollbar{display:none;}
-    .digital-clock{padding:6px 9px;min-height:36px;}
-    .digital-clock .dc-time{font-size:13px;}
-    .digital-clock .dc-period{font-size:9px;}
-    .topbar .right .user-chip{order:5;margin-right:auto;min-width:max-content;}
-    .topbar .right .user-chip .u-name{font-size:11.5px;}
-    .topbar .right .user-chip .u-dept{font-size:9.5px;}
-    .topbar .right #account-btn,.topbar .right #logout-btn{font-size:11px;padding:7px 9px;white-space:nowrap;}
+    .topbar .right{display:contents;}
+    .topbar .right .tb-break{display:block;order:4;flex:0 0 100%;height:0;}
+    .topbar .right .user-chip{order:5;flex:1 1 0;min-width:0;}
+    .topbar .right .user-chip>div:last-child{min-width:0;}
+    .topbar .right .user-chip .u-name,.topbar .right .user-chip .u-dept{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .topbar .right .user-chip .u-name{font-size:12px;}
+    .topbar .right .user-chip .u-dept{font-size:10px;}
+    .topbar .right #logout-btn{order:6;font-size:11.5px;padding:7px 12px;white-space:nowrap;}
+    .topbar .right #account-btn{width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none;}
+    .topbar .right #account-btn .acc-lbl{display:none;}
     .icon-btn{width:36px;height:36px;}
-    .message-alert-popup{position:fixed;top:92px;right:10px;width:calc(100vw - 20px);max-width:320px;}
-    .notif-dropdown{position:fixed;top:92px;left:10px;right:10px;width:auto;max-width:none;}
+    .message-alert-popup{position:fixed;top:104px;right:10px;width:calc(100vw - 20px);max-width:320px;}
+    .notif-dropdown{position:fixed;top:104px;left:10px;right:10px;width:auto;max-width:none;}
     .tabs{display:none;}
     .tab-btn{padding:10px 12px;font-size:12px;scroll-snap-align:start;}
     .container{padding:14px 10px 86px;}
@@ -590,7 +592,6 @@
     .exit-warning-actions .btn{flex:1;}
   }
   @media(max-width:380px){
-    .topbar .right #account-btn{display:none;}
     .dash-cards-grid{grid-template-columns:1fr;}
     .tab-btn{padding-left:10px;padding-right:10px;}
   }
@@ -632,6 +633,14 @@
   .avatar,.conv-avatar{overflow:hidden;}
   .avatar img,.conv-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;}
   .conv-item.locked-conv{opacity:.65;}
+  .pj-seg{display:flex;gap:6px;background:var(--brand-light);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:14px;}
+  .pj-seg button{flex:1;border:0;background:transparent;color:var(--sub);font:inherit;font-weight:800;font-size:13px;padding:9px 6px;border-radius:9px;cursor:pointer;}
+  .pj-seg button.active{background:var(--card);color:var(--brand);box-shadow:var(--shadow);}
+  .pj-seg-count{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font-size:10.5px;line-height:18px;margin-right:4px;}
+  .pj-seg-count:empty{display:none;}
+  .at-proj{display:inline-block;background:var(--brand-light);color:var(--brand-dark);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px;}
+  .at-proj.at-priv{background:var(--warn-bg);color:var(--warn);}
+  .at-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
 </style>
 </head>
 <body>
@@ -1147,6 +1156,7 @@ let currentUser = null;
 let currentEmployee = null;
 let isAdmin = false;
 let pendingReportFilter = null;
+let pendingProjectsView = null;   /* 'tasks' لفتح تبويب المشاريع مباشرة على المهام المكلف بها */
 let unsubList = [];
 function clearSubs(){ msgConvListRenderCb = null; unsubList.forEach(u=>{ try{u();}catch(e){} }); unsubList=[]; }
 
@@ -1394,23 +1404,6 @@ function setupMobileNavigation(shell){
     if(moreMenu && !moreMenu.contains(e.target) && !shell.querySelector('#mobile-more-btn').contains(e.target)) moreMenu.classList.remove('open');
   });
 }
-/* ============ الساعة الرقمية أعلى الصفحة ============ */
-let clockInterval = null;
-function startDigitalClock(elm){
-  if(clockInterval) clearInterval(clockInterval);
-  function tick(){
-    const c = cairoNow();
-    const period = c.hour < 12 ? 'ص' : 'م';
-    let h12 = c.hour % 12; if(h12===0) h12=12;
-    const pad = n=> String(n).padStart(2,'0');
-    const today = todayCairoStr();
-    const dateLbl = new Intl.DateTimeFormat('ar-EG-u-nu-latn',{timeZone:'Africa/Cairo', weekday:'long', day:'2-digit', month:'2-digit'}).format(new Date(today+'T12:00:00'));
-    elm.innerHTML = `<span class="dc-date">${esc(dateLbl)}</span><span class="dc-time">${pad(h12)}:${pad(c.minute)}:${pad(c.second)}</span><span class="dc-period">${period}</span>`;
-  }
-  tick();
-  clockInterval = setInterval(tick, 1000);
-}
-
 /* ============ الإشعارات ============ */
 let notifUnsub = null;
 let notifCache = [];
@@ -1493,10 +1486,8 @@ function shellTabsForMobile(admin){
     {tab:'admin-done',icon:'✅',label:'ما تم إدخاله'},
     {tab:'admin-achievements',icon:'🌟',label:'إنجازات الموظفين'},
     {tab:'performance',icon:'📊',label:'مؤشرات الأداء'},
-    {tab:'admin-employees',icon:'👥',label:'إدارة المستخدمين'},
-    {tab:'admin-tasks',icon:'📌',label:'المهام'}
+    {tab:'admin-employees',icon:'👥',label:'إدارة المستخدمين'}
   ] : [
-    {tab:'my-tasks',icon:'📌',label:'المهام'},
     {tab:'mine',icon:'📁',label:'طلبات التقنين'},
     {tab:'done',icon:'✅',label:'ما تم إدخاله للكل'}
   ];
@@ -1516,7 +1507,6 @@ function renderApp(){
           </div>
         </div>
         <div class="right">
-          <div class="digital-clock" id="digital-clock"></div>
           <div class="message-alert-wrap">
             <button class="icon-btn" id="message-alert-btn" title="الرسائل غير المقروءة">💬<span class="message-alert-badge" style="display:none;">0</span></button>
             <div class="message-alert-popup" style="display:none;"></div>
@@ -1532,7 +1522,8 @@ function renderApp(){
               <div class="nd-list"></div>
             </div>
           </div>
-          <button class="btn btn-outline btn-sm" id="account-btn" title="حسابي">👤 حسابي</button>
+          <button class="btn btn-outline btn-sm" id="account-btn" title="حسابي">👤<span class="acc-lbl"> حسابي</span></button>
+          <span class="tb-break"></span>
           <div class="user-chip">
             <div class="avatar">${avatarInner(currentUser.uid,(currentEmployee.name||'؟')[0])}</div>
             <div>
@@ -1550,17 +1541,15 @@ function renderApp(){
             <button class="tab-btn" data-tab="admin-daily">📅 التقرير اليومي</button>
             <button class="tab-btn" data-tab="admin-upload">📤 رفع بيانات التقنين</button>
             <button class="tab-btn" data-tab="admin-done">✅ ما تم إدخاله (الكل)</button>
-            <button class="tab-btn" data-tab="admin-tasks">📌 توزيع المهام</button>
             <button class="tab-btn" data-tab="admin-achievements">🌟 إنجازات الموظفين</button>
             <button class="tab-btn" data-tab="performance">📊 مؤشرات الأداء</button>
             <button class="tab-btn" data-tab="admin-employees">👥 إدارة المستخدمين</button>
-            <button class="tab-btn" data-tab="projects">📁 مشاريع العمل</button>
+            <button class="tab-btn" data-tab="projects">📁 المشاريع والمهام</button>
             <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
           ` : `
             <button class="tab-btn" data-tab="home">🏠 الحضور والانصراف</button>
             <button class="tab-btn" data-tab="mine">📁 طلبات التقنين</button>
-            <button class="tab-btn" data-tab="my-tasks">📌 المهام المكلف بها</button>
-            <button class="tab-btn" data-tab="projects">📁 مشاريع العمل</button>
+            <button class="tab-btn" data-tab="projects">📁 المشاريع والمهام</button>
             <button class="tab-btn" data-tab="done">✅ ما تم إدخاله للكل</button>
             <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
           `}
@@ -1590,7 +1579,6 @@ function renderApp(){
   shell.querySelector('#account-btn').addEventListener('click', openAccountModal);
   shell.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
 
-  startDigitalClock(shell.querySelector('#digital-clock'));
   applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
   shell.querySelector('#theme-toggle-btn').addEventListener('click', toggleTheme);
   shell.querySelector('#message-alert-btn').addEventListener('click', ()=>{
@@ -1714,6 +1702,7 @@ async function showMorningGreetingModal(){
 }
 
 function switchTab(tab, opts){
+  if(tab==='admin-tasks' || tab==='my-tasks'){ pendingProjectsView='tasks'; tab='projects'; }
   const prevTab = activeTab;
   killNavLayers('sub');
   if(navReady && !(opts&&opts.silent) && tab!==prevTab){
@@ -1783,19 +1772,8 @@ function openAccountModal(){
   content.querySelector('#acc-photo').addEventListener('change', async e=>{
     const f = e.target.files[0]; if(!f) return;
     try{
-      const bmp = await createImageBitmap(f), S = 320, c = document.createElement('canvas');
-      c.width = c.height = S;
-      const r = Math.max(S/bmp.width, S/bmp.height), w = bmp.width*r, h = bmp.height*r;
-      c.getContext('2d').drawImage(bmp,(S-w)/2,(S-h)/2,w,h);
-      const blob = await new Promise(res=>c.toBlob(res,'image/jpeg',.85));
-      const up = await uploadTaskAttachment(new File([blob],'avatar.jpg',{type:'image/jpeg'}),'avatars/'+currentUser.uid);
-      if(!up.url) return;
-      await updateDoc(doc(db,'employees',currentUser.uid),{photoUrl:up.url});
-      currentEmployee = {...currentEmployee, photoUrl:up.url};
-      employeesCache[currentUser.uid] = {...(employeesCache[currentUser.uid]||{}), photoUrl:up.url};
-      const nm = (currentEmployee.name||'؟')[0];
-      content.querySelector('#acc-avatar').innerHTML = avatarInner(currentUser.uid,nm);
-      document.querySelector('.user-chip .avatar').innerHTML = avatarInner(currentUser.uid,nm);
+      await setEmployeePhoto(currentUser.uid, f);
+      content.querySelector('#acc-avatar').innerHTML = avatarInner(currentUser.uid,(currentEmployee.name||'؟')[0]);
       toast('تم تحديث صورتك','ok');
     }catch(err){ console.error(err); toast('تعذر تحديث الصورة','err'); }
   });
@@ -2184,7 +2162,62 @@ function watchEmployeesCache(cb){
   }, err=>console.error(err));
   unsubList.push(unsub);
 }
-function avatarInner(uid,letter){ const u=employeesCache[uid]||(currentUser&&uid===currentUser.uid?currentEmployee:null); return (u&&u.photoUrl)?`<img src="${esc(u.photoUrl)}" alt="" referrerpolicy="no-referrer">`:esc(letter); }
+function avatarInner(uid,letter){ const u=employeesCache[uid]||(currentUser&&uid===currentUser.uid?currentEmployee:null); return (u&&u.photoUrl)?`<img src="${esc(u.photoUrl)}" alt="" data-uid="${esc(uid)}" referrerpolicy="no-referrer">`:esc(letter); }
+
+/* ===== تغيير صورة بروفايل أي موظف (للمدير) أو الصورة الشخصية ===== */
+async function setEmployeePhoto(uid, file){
+  const bmp = await createImageBitmap(file), S = 320, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const r = Math.max(S/bmp.width, S/bmp.height), w = bmp.width*r, h = bmp.height*r;
+  c.getContext('2d').drawImage(bmp,(S-w)/2,(S-h)/2,w,h);
+  const blob = await new Promise(res=>c.toBlob(res,'image/jpeg',.85));
+  const up = await uploadTaskAttachment(new File([blob],'avatar.jpg',{type:'image/jpeg'}),'avatars/'+uid);
+  if(!up.url) throw new Error('avatar upload failed');
+  await updateDoc(doc(db,'employees',uid),{photoUrl:up.url});
+  employeesCache[uid] = {...(employeesCache[uid]||{}), photoUrl:up.url};
+  if(currentUser && uid===currentUser.uid){
+    currentEmployee = {...currentEmployee, photoUrl:up.url};
+    const chip = document.querySelector('.user-chip .avatar');
+    if(chip) chip.innerHTML = avatarInner(uid,(currentEmployee.name||'؟')[0]);
+  }
+  return up.url;
+}
+
+/* ===== فتح صورة البروفايل في نافذة منبثقة (من أي مكان في التطبيق) ===== */
+function openAvatarLightbox(imgEl){
+  const uid = imgEl.dataset.uid || '';
+  const canEdit = isAdmin && uid;
+  const ov = el(`
+    <div class="modal-overlay avatar-lightbox" style="background:rgba(8,14,22,.85);align-items:center;">
+      <div style="width:min(92vw,440px);text-align:center;">
+        <img class="al-img" src="${esc(imgEl.currentSrc||imgEl.src)}" alt="" referrerpolicy="no-referrer" style="display:block;margin:0 auto;width:min(80vw,340px);max-height:68vh;border-radius:16px;object-fit:contain;background:#0f172a;box-shadow:0 12px 40px rgba(0,0,0,.5);">
+        ${uid?`<div style="color:#fff;font-weight:800;font-size:15px;margin-top:12px;">${esc(empName(uid))}</div>`:''}
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;">
+          ${canEdit?`<label class="btn btn-primary btn-sm btn-auto" style="cursor:pointer;">📷 تغيير الصورة<input type="file" class="al-file" accept="image/*" style="display:none;"></label>`:''}
+          <button class="btn btn-outline btn-sm btn-auto al-close" style="min-width:110px;">✕ إغلاق</button>
+        </div>
+      </div>
+    </div>`);
+  document.body.appendChild(ov);
+  ov.querySelector('.al-close').addEventListener('click', ()=> ov.remove());
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
+  const fi = ov.querySelector('.al-file');
+  if(fi) fi.addEventListener('change', async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      toast('جارِ رفع الصورة...');
+      const url = await setEmployeePhoto(uid, f);
+      ov.querySelector('.al-img').src = url;
+      toast('تم تحديث الصورة','ok');
+    }catch(err){ console.error(err); toast('تعذر تحديث الصورة','err'); }
+  });
+}
+document.addEventListener('click', e=>{
+  const img = e.target.closest && e.target.closest('.avatar img, .conv-avatar img');
+  if(!img || img.closest('.avatar-lightbox')) return;
+  e.preventDefault(); e.stopPropagation();
+  openAvatarLightbox(img);
+}, true);
 function empName(uid){ return (employeesCache[uid] && employeesCache[uid].name) || 'غير معروف'; }
 function empDept(uid){ return (employeesCache[uid] && employeesCache[uid].department) || ''; }
 
@@ -2725,9 +2758,9 @@ function renderAdminDashboard(container){
       <div class="dash-stat-card" data-filter="absent"><div class="num" id="ds-absent" style="color:var(--bad);">—</div><div class="lbl">عدد الغياب</div></div>
       <div class="dash-stat-card" data-filter="early"><div class="num" id="ds-early" style="color:var(--warn);">—</div><div class="lbl">انصراف قبل الموعد</div></div>
       <div class="dash-stat-card" data-tab="projects"><div class="num" id="ds-projects" style="color:var(--accent);">—</div><div class="lbl">المشاريع</div></div>
-      <div class="dash-stat-card" data-tab="projects"><div class="num" id="ds-newtasks" style="color:var(--warn);">—</div><div class="lbl">المهام الجديدة</div></div>
-      <div class="dash-stat-card" data-tab="projects"><div class="num" id="ds-completedtasks" style="color:var(--good);">—</div><div class="lbl">المهام المكتملة</div></div>
-      <div class="dash-stat-card" data-tab="projects"><div class="num" id="ds-overduetasks" style="color:var(--bad);">—</div><div class="lbl">المهام المتأخرة</div></div>
+      <div class="dash-stat-card" data-tab="projects" data-view="tasks"><div class="num" id="ds-newtasks" style="color:var(--warn);">—</div><div class="lbl">المهام الجديدة</div></div>
+      <div class="dash-stat-card" data-tab="projects" data-view="tasks"><div class="num" id="ds-completedtasks" style="color:var(--good);">—</div><div class="lbl">المهام المكتملة</div></div>
+      <div class="dash-stat-card" data-tab="projects" data-view="tasks"><div class="num" id="ds-overduetasks" style="color:var(--bad);">—</div><div class="lbl">المهام المتأخرة</div></div>
       <div class="dash-stat-card" data-tab="messages"><div class="num" id="ds-unread" style="color:var(--bad);">—</div><div class="lbl">رسائل غير مقروءة</div></div>
       <div class="dash-stat-card"><div class="num" id="ds-notifs" style="color:var(--warn);">—</div><div class="lbl">إشعارات جديدة</div></div>
     </div>
@@ -2742,8 +2775,8 @@ function renderAdminDashboard(container){
       <button class="dash-card" data-tab="admin-done" style="background:linear-gradient(135deg,#1e9e6b,#33c288);">
         <div class="dc-icon">✅</div><div class="dc-title">ما تم إدخاله (الكل)</div><div class="dc-desc">متابعة الطلبات المنجزة لجميع الموظفين</div>
       </button>
-      <button class="dash-card" data-tab="admin-tasks" style="background:linear-gradient(135deg,#d1477a,#ee7ba3);">
-        <div class="dc-icon">📌</div><div class="dc-title">توزيع المهام</div><div class="dc-desc">تكليف الموظفين بمهام ثابتة أو مؤقتة ومتابعة إنجازها</div>
+      <button class="dash-card" data-tab="projects" data-view="tasks" style="background:linear-gradient(135deg,#d1477a,#ee7ba3);">
+        <div class="dc-icon">📌</div><div class="dc-title">المهام المكلف بها</div><div class="dc-desc">تكليف الموظفين (ضمن مشروع أو مهام خاصة) ومتابعة إنجازها</div>
       </button>
       <button class="dash-card" data-tab="admin-achievements" style="background:linear-gradient(135deg,#c9852b,#e2a247);">
         <div class="dc-icon">🌟</div><div class="dc-title">إنجازات الموظفين</div><div class="dc-desc">أداء كل موظف على مدار الفترة</div>
@@ -2764,11 +2797,11 @@ function renderAdminDashboard(container){
   `;
 
   container.querySelectorAll('.dash-card').forEach(b=>{
-    b.addEventListener('click', ()=> switchTab(b.dataset.tab));
+    b.addEventListener('click', ()=>{ if(b.dataset.view) pendingProjectsView=b.dataset.view; switchTab(b.dataset.tab); });
   });
   container.querySelectorAll('.dash-stat-card').forEach(b=>{
     b.addEventListener('click', ()=>{
-      if(b.dataset.tab){ switchTab(b.dataset.tab); return; }
+      if(b.dataset.tab){ if(b.dataset.view) pendingProjectsView=b.dataset.view; switchTab(b.dataset.tab); return; }
       pendingReportFilter = b.dataset.filter;
       switchTab('admin-daily');
     });
@@ -2859,17 +2892,18 @@ async function uploadTaskAttachment(file, folder){
 }
 
 /* ---------- لوحة المدير: توزيع المهام ---------- */
-function renderAdminTasks(container){
+function renderAdminTasks(container, opts){
+  opts = opts || {};
   if(!container) return;
   container.innerHTML = `
-    <div class="card">
+    ${opts.legacy ? '' : `<div class="card">
       <div class="flex-between" style="margin-bottom:6px;">
         <h3 style="margin:0;">📌 توزيع المهام</h3>
         <button class="btn btn-primary btn-sm btn-auto" id="new-task-btn">➕ تكليف مهمة جديدة</button>
       </div>
       <div class="card-sub" style="margin-top:0;">وزّع مهام ثابتة (يومية متكررة) أو مؤقتة (مرة واحدة) على موظفين محددين، وتابع حالة إنجازها.</div>
-    </div>
-    <div id="admin-tasks-list" style="margin-top:16px;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+    </div>`}
+    <div id="admin-tasks-list" style="margin-top:${opts.legacy?0:16}px;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
   `;
 
   let employees = {};
@@ -2908,8 +2942,8 @@ function renderAdminTasks(container){
   function draw(){
     const box = container.querySelector('#admin-tasks-list');
     if(!box) return;
-    if(templates.length===0){ box.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>لا توجد مهام موزّعة بعد</div>`; return; }
-    box.innerHTML = templates.map(t=>{
+    if(templates.length===0){ box.innerHTML = opts.legacy ? '' : `<div class="empty-state"><div class="emoji">📭</div>لا توجد مهام موزّعة بعد</div>`; return; }
+    box.innerHTML = (opts.legacy ? '<h3 style="margin:22px 0 10px;font-size:15px;">📌 تكليفات سابقة (ثابتة / مؤقتة)</h3>' : '') + templates.map(t=>{
       const names = (t.assignees||[]).map(uid=> employees[uid]?.name || '؟');
       let done=0, failed=0, pending=0;
       (t.assignees||[]).forEach(uid=>{
@@ -2986,7 +3020,8 @@ function renderAdminTasks(container){
     }catch(err){ console.error(err); toast('حدث خطأ أثناء الحذف', 'err'); }
   }
 
-  container.querySelector('#new-task-btn').addEventListener('click', ()=> openNewTaskModal(employees));
+  const newTaskBtn = container.querySelector('#new-task-btn');
+  if(newTaskBtn) newTaskBtn.addEventListener('click', ()=> openNewTaskModal(employees));
 }
 
 function openNewTaskModal(employees){
@@ -3067,14 +3102,15 @@ function openNewTaskModal(employees){
 }
 
 /* ---------- صفحة الموظف: المهام المكلف بها ---------- */
-function renderMyTasks(container){
+function renderMyTasks(container, opts){
+  opts = opts || {};
   if(!container) return;
   container.innerHTML = `
-    <div class="card">
+    ${opts.legacy ? '' : `<div class="card">
       <h3 style="margin:0;">📌 المهام المكلف بها</h3>
       <div class="card-sub" style="margin-top:6px;">المهام المكلّف بها من الإدارة — الثابتة تتجدد كل يوم، والمؤقتة تُغلق مرة واحدة.</div>
-    </div>
-    <div id="my-tasks-list" style="margin-top:16px;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
+    </div>`}
+    <div id="my-tasks-list" style="margin-top:${opts.legacy?0:16}px;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
   `;
   const uid = currentUser.uid;
   const today = todayCairoStr();
@@ -3100,17 +3136,19 @@ function renderMyTasks(container){
   }, err=>console.error(err));
   unsubList.push(compUnsub);
 
+  if(!opts.legacy){
   const projectTaskUnsub = onSnapshot(query(collection(db,'projectTasks'), where('assignedUid','==',uid)), qs=>{
     projectTasks = []; qs.forEach(d=>{ const data=d.data(); if(data.active!==false) projectTasks.push({id:d.id,...data}); });
     projectTasks.sort((a,b)=> (b.assignedAt?.seconds||0)-(a.assignedAt?.seconds||0));
     draw();
   }, err=>console.error(err));
   unsubList.push(projectTaskUnsub);
+  }
 
   function draw(){
     const box = container.querySelector('#my-tasks-list');
     if(!box) return;
-    if(templates.length===0 && projectTasks.length===0){ box.innerHTML = `<div class="empty-state"><div class="emoji">📭</div>لا توجد مهام مكلّف بها حاليًا</div>`; return; }
+    if(templates.length===0 && projectTasks.length===0){ box.innerHTML = opts.legacy ? '' : `<div class="empty-state"><div class="emoji">📭</div>لا توجد مهام مكلّف بها حاليًا</div>`; return; }
     const regularTasksHtml = templates.map(t=>{
       const key = t.recurrence==='daily' ? `${t.id}_${today}` : t.id;
       const c = completions[key];
@@ -3146,7 +3184,7 @@ function renderMyTasks(container){
       </div>`;
     }).join('');
     const projectTasksHtml = projectTasks.length ? `<div class="card" style="margin-top:16px;"><h3>📁 مهام المشاريع</h3>${projectTasks.map(t=>`<div class="project-task-row"><div class="project-task-main"><div class="project-task-title">${esc(t.title)}</div><div class="project-task-meta">📁 ${esc(t.projectName||'مشروع')} · ${t.dueDate?`الموعد ${esc(t.dueDate)}`:'بدون موعد'} · ${t.source==='generalManager'?'المدير العام':'مسؤول المشروع'}${t.notes?`<br>📝 ${esc(t.notes)}`:''}${t.attachmentUrl?`<br><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a>`:''}</div></div><div><span class="status-pill ${projectTaskStatusClass(t.status)}">${projectTaskStatusLabel(t.status)}</span>${t.status!=='completed'&&t.status!=='failed'?`<br><button class="btn btn-outline btn-sm update-project-task" data-id="${t.id}" style="margin-top:6px;">تحديث</button>`:''}</div></div>`).join('')}</div>` : '';
-    box.innerHTML = regularTasksHtml + projectTasksHtml;
+    box.innerHTML = (opts.legacy ? '<h3 style="margin:22px 0 10px;font-size:15px;">📌 تكليفات سابقة (ثابتة / مؤقتة)</h3>' : '') + regularTasksHtml + projectTasksHtml;
 
     box.querySelectorAll('.close-task-btn').forEach(b=>{
       b.addEventListener('click', ()=> closeTask(b, b.dataset.id, b.dataset.status));
@@ -3956,6 +3994,10 @@ function openEditEmployeeModal(emp){
     <div class="modal-overlay">
       <div class="modal-box">
         <h3>تعديل بيانات ${esc(emp.name)}</h3>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div class="avatar" id="edit-avatar" style="width:64px;height:64px;font-size:24px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;">${emp.photoUrl?`<img src="${esc(emp.photoUrl)}" alt="" data-uid="${esc(emp.id)}" referrerpolicy="no-referrer">`:esc((emp.name||'؟')[0])}</div>
+          <label class="btn btn-outline btn-sm btn-auto" style="cursor:pointer;">📷 تغيير الصورة<input type="file" id="edit-photo" accept="image/*" style="display:none;"></label>
+        </div>
         <div class="field"><label>اسم المستخدم</label><input type="text" value="${esc(emp.username||'')}" disabled></div>
         <div class="field"><label>الاسم *</label><input type="text" id="edit-name" value="${esc(emp.name)}"></div>
         <div class="field"><label>رقم الهاتف</label><input type="tel" id="edit-phone" value="${esc(emp.phone||'')}"></div>
@@ -3983,6 +4025,16 @@ function openEditEmployeeModal(emp){
   document.body.appendChild(overlay);
   overlay.querySelector('#cancel-edit-btn').addEventListener('click', ()=> overlay.remove());
   overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#edit-photo').addEventListener('change', async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      toast('جارِ رفع الصورة...');
+      const url = await setEmployeePhoto(emp.id, f);
+      emp.photoUrl = url;
+      overlay.querySelector('#edit-avatar').innerHTML = `<img src="${esc(url)}" alt="" data-uid="${esc(emp.id)}" referrerpolicy="no-referrer">`;
+      toast('تم تحديث الصورة','ok');
+    }catch(err){ console.error(err); toast('تعذر تحديث الصورة','err'); }
+  });
   overlay.querySelector('#reset-pass-btn').addEventListener('click', async ()=>{
     if(!confirm(`سيتم تصفير كلمة مرور ${emp.name} إلى 123123. متابعة؟`)) return;
     const btn = overlay.querySelector('#reset-pass-btn');
@@ -4848,6 +4900,7 @@ function renderMessagesTab(container){
     </div>
   `;
 
+  msgActiveConvId = null;
   watchEmployeesCache(()=> drawConvList());
 
   const uid = currentUser.uid;
@@ -5039,8 +5092,6 @@ function renderMessagesTab(container){
       </div>` : `<div class="small-note" style="margin:12px;">هذه رسالة جماعية من الإدارة — لا يمكن الرد عليها هنا</div>`}
     `;
     bindThreadHeaderActions(conv);
-    const backButton = pane.querySelector('#msg-back-btn');
-    if(backButton) backButton.onclick = ()=> closeNavLayer(convLayer, closeThread);
 
     if(canSend){
       const ta = pane.querySelector('#thread-text');
@@ -5083,6 +5134,10 @@ function renderMessagesTab(container){
     unsubList.push(mu);
   }
 
+  /* زر الرجوع: تفويض حدث على الحاوية لأن هيدر المحادثة بيتعاد رسمه مع كل تحديث للمحادثة (وكان ده بيفقد زر الرجوع الـ handler) */
+  container.querySelector('#msg-thread-pane').addEventListener('click', e=>{
+    if(e.target.closest('#msg-back-btn')) closeNavLayer(convLayer, closeThread);
+  });
   container.querySelector('#new-group-btn').addEventListener('click', ()=> openNewConversationModal(container, 'group'));
 }
 
@@ -5368,25 +5423,36 @@ function projectTasksStats(tasks){
 function renderProjectsTab(container){
   if(!container) return;
   container.innerHTML = `
-    <div class="flex-between" id="projects-head" style="margin-bottom:16px;">
-      <div><h2 style="margin:0;font-size:20px;">📁 مشاريع العمل</h2><div class="muted" style="font-size:12.5px;margin-top:4px;">المشاريع والفرق والمهام المرتبطة بها</div></div>
-      ${isAdmin ? '<button class="btn btn-primary btn-sm btn-auto" id="new-project-btn">➕ مشروع جديد</button>' : ''}
+    <div class="flex-between" id="projects-head" style="margin-bottom:14px;">
+      <div><h2 style="margin:0;font-size:20px;">📁 المشاريع والمهام</h2><div class="muted" style="font-size:12.5px;margin-top:4px;">المشاريع والفرق والمهام المكلف بها</div></div>
+      ${isAdmin ? '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm btn-auto" id="assign-task-btn" style="background:#7c3aed;border-color:#7c3aed;">📌 تكليف موظف</button><button class="btn btn-primary btn-sm btn-auto" id="new-project-btn">➕ مشروع جديد</button></div>' : ''}
+    </div>
+    <div class="pj-seg" id="projects-seg">
+      <button type="button" data-v="projects">📁 المشاريع</button>
+      <button type="button" data-v="tasks">📌 المهام المكلف بها<span class="pj-seg-count" id="seg-count"></span></button>
     </div>
     <div id="projects-view"><div class="muted" style="padding:20px;text-align:center;">جارِ تحميل المشاريع...</div></div>
+    <div id="tasks-view" style="display:none;"><div id="at-main"></div><div id="at-legacy"></div></div>
   `;
   let projects = [], projectTasks = [], selectedId = null, projectLayer = null;
+  let pView = pendingProjectsView==='tasks' ? 'tasks' : 'projects', taskEmpFilter = '', legacyMounted = false;
+  pendingProjectsView = null;
   const projectUnsub = onSnapshot(collection(db,'projects'), qs=>{
     projects = qs.docs.map(d=>({id:d.id,...d.data()}));
     projects.sort((a,b)=> ((a.order??1e9)-(b.order??1e9)) || (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     draw();
   }, err=>{ console.error(err); toast('تعذر تحميل المشاريع','err'); });
   const taskUnsub = onSnapshot(collection(db,'projectTasks'), qs=>{
-    projectTasks = qs.docs.map(d=>({id:d.id,...d.data()}));
+    projectTasks = qs.docs.map(d=>({id:d.id,...d.data()})).filter(t=>t.active!==false);
     draw();
   }, err=>{ console.error(err); toast('تعذر تحميل مهام المشاريع','err'); });
   unsubList.push(projectUnsub, taskUnsub);
   watchEmployeesCache(()=>draw());
-  if(isAdmin) container.querySelector('#new-project-btn').addEventListener('click', ()=>openProjectModal());
+  if(isAdmin){
+    container.querySelector('#new-project-btn').addEventListener('click', ()=>openProjectModal());
+    container.querySelector('#assign-task-btn').addEventListener('click', ()=>openAssignTaskModal(visibleProjects()));
+  }
+  container.querySelectorAll('#projects-seg button').forEach(b=>b.addEventListener('click', ()=>{ pView=b.dataset.v; draw(); }));
 
   async function moveProject(id,dir){
     const l=visibleProjects(), i=l.findIndex(x=>x.id===id), j=i+dir;
@@ -5400,12 +5466,69 @@ function renderProjectsTab(container){
   function isProjectMember(p){
     return isAdmin || (p.memberUids||[]).includes(currentUser.uid) || (p.managerUids||[]).includes(currentUser.uid);
   }
+  const isDoneT = t=> t.status==='completed' || t.status==='failed';
+  function updateSeg(){
+    const uid = currentUser.uid;
+    const n = projectTasks.filter(t=> (isAdmin || t.assignedUid===uid) && !isDoneT(t)).length;
+    const c = container.querySelector('#seg-count'); if(c) c.textContent = n ? n : '';
+    container.querySelectorAll('#projects-seg button').forEach(b=> b.classList.toggle('active', b.dataset.v===pView));
+  }
+  function taskRowHTML(t){
+    const uid = currentUser.uid, today = todayCairoStr();
+    const priv = !t.projectId;
+    const done = isDoneT(t);
+    const overdue = t.dueDate && t.dueDate<today && !done;
+    const typeLbl={temporary:'مؤقتة',permanent:'دائمة',recurring:'متجددة'}, recLbl={daily:'يوميًا',weekly:'أسبوعيًا',monthly:'شهريًا'};
+    const typeBadge = t.taskType ? `<span class="status-pill pill-warn" style="font-size:10px;">${typeLbl[t.taskType]||''}${t.taskType==='recurring'?' '+(recLbl[t.recurrence]||''):''}</span> ` : '';
+    const projChip = priv ? '<span class="at-proj at-priv">🔒 مهام خاصة</span>' : `<span class="at-proj">📁 ${esc(t.projectName||'مشروع')}</span>`;
+    return `<div class="project-task-row"><div class="project-task-main"><div class="project-task-title">${esc(t.title)}</div><div class="project-task-meta">${projChip} ${typeBadge}${isAdmin?`👤 ${esc(empName(t.assignedUid))} · `:''}${t.dueDate?`الموعد ${esc(t.dueDate)}${overdue?' ⚠️ متأخرة':''}`:'بدون موعد'} · من ${esc(t.assignedByName||'الإدارة')}${t.description?`<br>${esc(t.description)}`:''}${t.notes?`<br>📝 ${esc(t.notes)}`:''}${t.attachmentUrl?`<br><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a>`:''}</div></div><div class="at-actions"><span class="status-pill ${projectTaskStatusClass(t.status)}">${projectTaskStatusLabel(t.status)}</span>${t.assignedUid===uid&&!done?`<button class="btn btn-outline btn-sm update-project-task" data-id="${t.id}">تحديث</button>`:''}${isAdmin?`<button class="btn btn-danger btn-sm del-assigned-task" data-id="${t.id}">حذف</button>`:''}</div></div>`;
+  }
+  function drawTasks(){
+    const box = container.querySelector('#at-main'); if(!box) return;
+    const uid = currentUser.uid, today = todayCairoStr();
+    let rows = projectTasks.slice(), head = '';
+    if(isAdmin){
+      const emps = Object.keys(employeesCache).filter(u=>employeesCache[u].role!=='admin').sort((a,b)=>empName(a).localeCompare(empName(b),'ar'));
+      if(taskEmpFilter && !emps.includes(taskEmpFilter)) taskEmpFilter = '';
+      if(taskEmpFilter) rows = rows.filter(t=>t.assignedUid===taskEmpFilter);
+      head = `<div class="field" style="margin-bottom:12px;"><label>عرض مهام</label><select id="at-emp"><option value="">كل الموظفين</option>${emps.map(u=>`<option value="${esc(u)}" ${u===taskEmpFilter?'selected':''}>${esc(empName(u))}</option>`).join('')}</select></div>`;
+    } else rows = rows.filter(t=>t.assignedUid===uid);
+    rows.sort((a,b)=>(b.assignedAt?.seconds||0)-(a.assignedAt?.seconds||0));
+    const open = rows.filter(t=>!isDoneT(t)), fin = rows.filter(isDoneT);
+    const overdueN = open.filter(t=>t.dueDate && t.dueDate<today).length;
+    const stats = `<div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;"><div class="stat-box"><div class="num">${rows.length}</div><div class="lbl">إجمالي المهام</div></div><div class="stat-box"><div class="num" style="color:var(--warn);">${open.length}</div><div class="lbl">جارية</div></div><div class="stat-box"><div class="num" style="color:var(--good);">${rows.filter(t=>t.status==='completed').length}</div><div class="lbl">مكتملة</div></div><div class="stat-box"><div class="num" style="color:var(--bad);">${overdueN}</div><div class="lbl">متأخرة</div></div></div>`;
+    const sec = (title,arr)=>`<div class="card" style="margin-bottom:14px;"><h3>${title} <span class="muted" style="font-size:11px;font-weight:400;">(${arr.length})</span></h3>${arr.length?arr.map(taskRowHTML).join(''):'<div class="muted">لا توجد بنود</div>'}</div>`;
+    box.innerHTML = head + stats + (rows.length ? sec('⏳ المهام الجارية',open)+sec('✅ المهام المنتهية',fin) : '<div class="empty-state"><div class="emoji">📭</div>لا توجد مهام مكلّف بها حاليًا</div>');
+    const sel = box.querySelector('#at-emp');
+    if(sel) sel.addEventListener('change', ()=>{ taskEmpFilter = sel.value; drawTasks(); });
+    box.querySelectorAll('.update-project-task').forEach(b=>b.addEventListener('click', ()=>openProjectTaskUpdateModal(projectTasks.find(t=>t.id===b.dataset.id))));
+    box.querySelectorAll('.del-assigned-task').forEach(b=>b.addEventListener('click', async ()=>{
+      if(!confirm('حذف هذه المهمة؟ لن تظهر بعد الآن للموظف.')) return;
+      try{ await updateDoc(doc(db,'projectTasks',b.dataset.id),{active:false}); toast('تم حذف المهمة','ok'); }
+      catch(e){ console.error(e); toast('تعذر حذف المهمة','err'); }
+    }));
+  }
+  function mountLegacy(){
+    const lb = container.querySelector('#at-legacy'); if(!lb) return;
+    if(isAdmin) renderAdminTasks(lb,{legacy:true}); else renderMyTasks(lb,{legacy:true});
+  }
   function draw(){
     const view = container.querySelector('#projects-view');
-    if(!view) return;
+    const tv = container.querySelector('#tasks-view');
+    if(!view || !tv) return;
     const list = visibleProjects();
     if(selectedId && !list.some(p=>p.id===selectedId && isProjectMember(p))) selectedId=null;
     const hd=container.querySelector('#projects-head'); if(hd) hd.style.display=selectedId?'none':'';
+    const sg=container.querySelector('#projects-seg'); if(sg) sg.style.display=selectedId?'none':'';
+    updateSeg();
+    const showTasks = pView==='tasks' && !selectedId;
+    tv.style.display = showTasks ? '' : 'none';
+    view.style.display = showTasks ? 'none' : '';
+    if(showTasks){
+      drawTasks();
+      if(!legacyMounted){ legacyMounted = true; mountLegacy(); }
+      return;
+    }
     if(selectedId){ drawDetail(view, list.find(p=>p.id===selectedId)); return; }
     if(list.length===0){ view.innerHTML='<div class="empty-state"><div class="emoji">📁</div>لا توجد مشاريع حاليًا</div>'; return; }
     view.innerHTML = `<div class="projects-grid">${list.map(p=>{
@@ -5516,6 +5639,51 @@ function openProjectTaskModal(project,kind='admin'){
       const file=overlay.querySelector('#pt-file').files[0],att=await uploadTaskAttachment(file,'projectTaskAttachments');
       await Promise.all(uids.map(assignedUid=>setDoc(doc(collection(db,'projectTasks')),{projectId:project.id,projectName:project.name,title,description:overlay.querySelector('#pt-desc').value.trim(),assignedUid,assignedBy:currentUser.uid,assignedByName:currentEmployee.name||'',source:kind==='internal'?'internal':'generalManager',parentId:null,internal:kind==='internal',taskType:type,recurrence:type==='recurring'?overlay.querySelector('#pt-rec').value:null,teamWide:allChk.checked,assignedAt:serverTimestamp(),dueDate:type==='temporary'?overlay.querySelector('#pt-due').value:'',status:'pending',notes:overlay.querySelector('#pt-notes').value.trim(),attachmentUrl:att.url,attachmentName:att.name,attachmentType:file?.type||null,attachmentPath:att.path,attachmentOwnerUid:currentUser.uid,attachmentAddedAt:serverTimestamp(),active:true})));
       await pushNotifications(uids,kind==='internal'?'🧩 مهمة داخلية جديدة':'📋 تكليف جديد من الإدارة',`${project.name} — ${title}`);
+      toast('تم إسناد المهمة','ok');overlay.remove();
+    }catch(e){console.error(e);err.textContent='تعذر حفظ المهمة';err.style.display='block';btn.disabled=false;btn.textContent='إسناد المهمة';}
+  });
+}
+
+/* تكليف موظف: اختيار الموظف ثم المشروع المشترك فيه، أو «مهام خاصة» خارج أي مشروع */
+function openAssignTaskModal(projects){
+  const emps = Object.keys(employeesCache).filter(u=>employeesCache[u].role!=='admin').sort((a,b)=>empName(a).localeCompare(empName(b),'ar'));
+  const overlay = el(`<div class="modal-overlay"><div class="modal-box" style="max-width:540px;"><h3>📌 تكليف موظف بمهمة</h3>
+    <div class="field"><label>الموظف *</label><select id="at-who"><option value="">— اختر الموظف —</option>${emps.map(u=>`<option value="${esc(u)}">${esc(empName(u))}</option>`).join('')}</select></div>
+    <div class="field"><label>المشروع *</label><select id="at-proj" disabled><option value="">اختر الموظف أولًا</option></select><div class="muted" id="at-proj-hint" style="font-size:11px;margin-top:4px;"></div></div>
+    <div class="field"><label>عنوان المهمة *</label><input id="at-title"></div>
+    <div class="field"><label>التفاصيل</label><textarea id="at-desc"></textarea></div>
+    <div class="grid grid-2"><div class="field"><label>نوع المهمة</label><select id="at-type"><option value="temporary">مؤقتة</option><option value="permanent">دائمة</option><option value="recurring">متجددة</option></select></div>
+    <div class="field" id="at-due-box"><label>الموعد النهائي</label><input type="date" id="at-due"></div>
+    <div class="field" id="at-rec-box" style="display:none;"><label>التجديد</label><select id="at-rec"><option value="daily">يوميًا</option><option value="weekly">أسبوعيًا</option><option value="monthly">شهريًا</option></select></div></div>
+    <div class="field"><label>ملاحظات</label><textarea id="at-notes"></textarea></div>
+    <div class="field"><label>مرفق اختياري</label><input type="file" id="at-file"></div>
+    <div class="error-text" id="at-err" style="display:none;"></div>
+    <div class="modal-actions"><button class="btn btn-outline" id="at-cancel">إلغاء</button><button class="btn btn-primary" id="at-save">إسناد المهمة</button></div>
+  </div></div>`);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#at-cancel').addEventListener('click',()=>overlay.remove());
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  const who=overlay.querySelector('#at-who'), projSel=overlay.querySelector('#at-proj'), hint=overlay.querySelector('#at-proj-hint'), typeSel=overlay.querySelector('#at-type');
+  typeSel.addEventListener('change',()=>{overlay.querySelector('#at-due-box').style.display=typeSel.value==='temporary'?'block':'none';overlay.querySelector('#at-rec-box').style.display=typeSel.value==='recurring'?'block':'none';});
+  who.addEventListener('change',()=>{
+    const uid=who.value;
+    if(!uid){ projSel.disabled=true; projSel.innerHTML='<option value="">اختر الموظف أولًا</option>'; hint.textContent=''; return; }
+    const mine=projects.filter(p=>(p.memberUids||[]).includes(uid)||(p.managerUids||[]).includes(uid));
+    projSel.disabled=false;
+    projSel.innerHTML=(mine.length?'<option value="">— اختر المشروع —</option>':'')+mine.map(p=>`<option value="${esc(p.id)}">📁 ${esc(p.name)}</option>`).join('')+'<option value="__private">🔒 مهام خاصة (خارج المشاريع)</option>';
+    if(!mine.length) projSel.value='__private';
+    hint.textContent=mine.length?`مشترك في ${mine.length} مشروع — أو اختر «مهام خاصة» لتكليفه بمهمة خارج المشاريع`:'الموظف غير مشترك في أي مشروع — ستُسجَّل كمهمة خاصة';
+  });
+  overlay.querySelector('#at-save').addEventListener('click',async()=>{
+    const uid=who.value, sel=projSel.value, title=overlay.querySelector('#at-title').value.trim(), err=overlay.querySelector('#at-err'), type=typeSel.value;
+    if(!uid||!sel||!title){err.textContent='اختر الموظف والمشروع (أو مهام خاصة) واكتب عنوان المهمة';err.style.display='block';return;}
+    const priv=sel==='__private', proj=priv?null:projects.find(x=>x.id===sel);
+    if(!priv&&!proj){err.textContent='المشروع غير موجود';err.style.display='block';return;}
+    const btn=overlay.querySelector('#at-save');btn.disabled=true;btn.textContent='جارِ الحفظ...';
+    try{
+      const file=overlay.querySelector('#at-file').files[0], att=await uploadTaskAttachment(file,'projectTaskAttachments');
+      await setDoc(doc(collection(db,'projectTasks')),{projectId:priv?null:proj.id,projectName:priv?'مهام خاصة':proj.name,isPrivate:priv,title,description:overlay.querySelector('#at-desc').value.trim(),assignedUid:uid,assignedBy:currentUser.uid,assignedByName:currentEmployee.name||'',source:'generalManager',parentId:null,internal:false,taskType:type,recurrence:type==='recurring'?overlay.querySelector('#at-rec').value:null,teamWide:false,assignedAt:serverTimestamp(),dueDate:type==='temporary'?overlay.querySelector('#at-due').value:'',status:'pending',notes:overlay.querySelector('#at-notes').value.trim(),attachmentUrl:att.url,attachmentName:att.name,attachmentType:file?.type||null,attachmentPath:att.path,attachmentOwnerUid:currentUser.uid,attachmentAddedAt:serverTimestamp(),active:true});
+      await pushNotifications([uid],priv?'📌 مهمة خاصة جديدة':'📋 تكليف جديد من الإدارة',priv?title:`${proj.name} — ${title}`);
       toast('تم إسناد المهمة','ok');overlay.remove();
     }catch(e){console.error(e);err.textContent='تعذر حفظ المهمة';err.style.display='block';btn.disabled=false;btn.textContent='إسناد المهمة';}
   });
