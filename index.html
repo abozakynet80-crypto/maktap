@@ -470,7 +470,7 @@
   .msg-sender{font-size:11px;font-weight:800;margin-bottom:3px;opacity:.8;color:var(--brand-dark);text-align:right;}
   .msg-time{font-size:10px;opacity:.75;margin-top:4px;text-align:left;}
   .msg-attach{display:block;margin-top:6px;font-size:12px;text-decoration:underline;}
-  .msg-image-attach{display:block;margin-top:8px;max-width:260px;max-height:220px;border-radius:10px;object-fit:cover;border:1px solid rgba(0,0,0,.12);cursor:pointer;}
+  .msg-image-attach{display:block;margin-top:8px;width:min(300px,100%);max-height:240px;border-radius:10px;object-fit:contain;background:rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.12);cursor:pointer;}
   @media(max-width:760px){
     .msg-shell{flex-direction:column;}
     .msg-sidebar{width:100%;border-left:none;border-bottom:1px solid var(--border);}
@@ -4420,6 +4420,18 @@ function convUnreadFlag(conv){
   const lastMsgMs = conv.lastMessageAt.toMillis ? conv.lastMessageAt.toMillis() : 0;
   return lastMsgMs > lastReadMs;
 }
+function isImageAttachment(message){
+  return !!message.attachmentUrl && (
+    String(message.attachmentType||'').startsWith('image/') ||
+    /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(message.attachmentName||message.attachmentUrl)
+  );
+}
+function attachmentViewUrl(message){
+  if(message.provider==='google-drive' && message.attachmentPath && isImageAttachment(message)){
+    return `https://drive.google.com/thumbnail?id=${encodeURIComponent(message.attachmentPath)}&sz=w1200`;
+  }
+  return message.attachmentUrl;
+}
 async function markConversationRead(convId){
   try{ await updateDoc(doc(db,'conversations',convId), { [`lastReadAt.${currentUser.uid}`]: serverTimestamp(), [`unreadCounts.${currentUser.uid}`]: 0 }); }
   catch(err){ console.error(err); }
@@ -4428,7 +4440,7 @@ async function sendConversationMessage(conv, text, file){
   const att = file ? await uploadTaskAttachment(file, 'messageAttachments') : {url:null,name:null,path:null};
   await setDoc(doc(collection(db,'messages')), {
     conversationId: conv.id, senderUid: currentUser.uid, senderName: currentEmployee.name||'',
-    text, attachmentUrl: att.url, attachmentName: att.name, attachmentType: file?.type||null, attachmentPath: att.path,
+    text, attachmentUrl: att.url, attachmentName: att.name, attachmentType: att.type||file?.type||null, attachmentPath: att.path, provider: att.provider||null,
     attachmentOwnerUid: currentUser.uid, attachmentAddedAt: serverTimestamp(),
     createdAt: serverTimestamp()
   });
@@ -4594,8 +4606,8 @@ function renderMessagesTab(container){
         <div class="msg-bubble ${mine?'mine':'theirs'}">
           ${(!mine && (conv.type==='group'||conv.type==='broadcast')) ? `<div class="msg-sender">${esc(m.senderName||'')}</div>` : ''}
           ${m.text?`<div>${esc(m.text).replace(/\n/g,'<br>')}</div>`:''}
-          ${m.attachmentUrl && ((m.attachmentType||'').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(m.attachmentName||m.attachmentUrl))
-            ? `<a href="${esc(m.attachmentUrl)}" target="_blank" rel="noopener"><img class="msg-image-attach" src="${esc(m.attachmentUrl)}" alt="${esc(m.attachmentName||'صورة مرفقة')}" loading="lazy"></a>`
+          ${isImageAttachment(m)
+            ? `<a href="${esc(m.attachmentUrl)}" target="_blank" rel="noopener"><img class="msg-image-attach" src="${esc(attachmentViewUrl(m))}" alt="${esc(m.attachmentName||'صورة مرفقة')}" loading="lazy"></a>`
             : (m.attachmentUrl ? `<a class="msg-attach" href="${esc(m.attachmentUrl)}" target="_blank" rel="noopener" style="color:${mine?'#fff':'var(--accent)'};">📎 ${esc(m.attachmentName||'مرفق')}</a>` : '')}
           <div class="msg-time">${m.timeLabel||''}${readTick}</div>
         </div>
