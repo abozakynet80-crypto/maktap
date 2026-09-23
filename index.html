@@ -484,6 +484,8 @@
   .msg-image-attach{display:block;margin-top:8px;width:min(300px,100%);max-height:240px;border-radius:10px;object-fit:contain;background:rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.12);cursor:pointer;}
   .msg-delete-btn{display:block;margin-top:4px;background:none;border:0;color:inherit;opacity:.65;font-size:10px;padding:0;cursor:pointer;}
   .msg-delete-btn:hover{opacity:1;color:var(--bad);}
+  .msg-readers-btn{display:block;margin-top:3px;background:none;border:0;color:inherit;opacity:.7;font-size:10px;padding:0;cursor:pointer;}
+  .msg-readers-btn:hover{opacity:1;text-decoration:underline;}
   @media(max-width:760px){
     .msg-shell{flex-direction:column;}
     .msg-sidebar{width:100%;border-left:none;border-bottom:1px solid var(--border);}
@@ -4648,8 +4650,13 @@ function renderMessagesTab(container){
       const mine = m.senderUid===uid2;
       const canDelete = isAdmin || mine;
       let readTick = '';
+      let readers = [];
       if(mine && conv.type!=='broadcast'){
         const msgMs = m.createdAtMs || 0;
+        readers = msgMs ? otherUids.map(readerUid=>({
+          uid:readerUid,
+          time:lastReadMap[readerUid]
+        })).filter(reader=>reader.time && reader.time.toMillis && reader.time.toMillis() >= msgMs) : [];
         const allRead = otherUids.length>0 && otherUids.every(u=>{
           const r = lastReadMap[u];
           return r && r.toMillis && r.toMillis() >= msgMs;
@@ -4664,11 +4671,19 @@ function renderMessagesTab(container){
             ? `<a href="${esc(m.attachmentUrl)}" target="_blank" rel="noopener"><img class="msg-image-attach" src="${esc(attachmentViewUrl(m))}" alt="${esc(m.attachmentName||'صورة مرفقة')}" loading="lazy"></a>`
             : (m.attachmentUrl ? `<a class="msg-attach" href="${esc(m.attachmentUrl)}" target="_blank" rel="noopener" style="color:${mine?'#fff':'var(--accent)'};">📎 ${esc(m.attachmentName||'مرفق')}</a>` : '')}
           <div class="msg-time">${m.timeLabel||''}${readTick}</div>
+          ${mine&&conv.type!=='broadcast'?`<button class="msg-readers-btn" data-message-id="${esc(m.id)}">👁 ${readers.length?`شاهده ${readers.length}`:'لم يشاهده أحد'}</button>`:''}
           ${canDelete?`<button class="msg-delete-btn" data-message-id="${esc(m.id)}" title="حذف الرسالة">حذف</button>`:''}
         </div>
       </div>`;
     }).join('');
     box.querySelectorAll('.msg-delete-btn').forEach(btn=>btn.addEventListener('click',()=>deleteConversationMessage(btn.dataset.messageId)));
+    box.querySelectorAll('.msg-readers-btn').forEach(btn=>btn.addEventListener('click',()=>{
+      const message = msgs.find(item=>item.id===btn.dataset.messageId);
+      if(!message) return;
+      const messageMs = message.createdAtMs || 0;
+      const readers = messageMs ? otherUids.map(readerUid=>({uid:readerUid,time:lastReadMap[readerUid]})).filter(reader=>reader.time && reader.time.toMillis && reader.time.toMillis()>=messageMs) : [];
+      openMessageReadersModal(conv,message,readers);
+    }));
     box.scrollTop = box.scrollHeight;
   }
 
@@ -4776,6 +4791,22 @@ function openGroupMembersModal(container, conv){
       overlay.remove();
     }catch(error){console.error(error);toast('تعذر إزالة العضو، تحقق من قواعد Firestore','err');btn.disabled=false;}
   }));
+}
+
+function openMessageReadersModal(conv, message, readers){
+  const overlay = el(`
+    <div class="modal-overlay">
+      <div class="modal-box" style="max-width:420px;">
+        <h3>👁 من شاهد الرسالة؟</h3>
+        <div class="modal-sub">${esc(message.text || message.attachmentName || 'مرفق')} </div>
+        <div>${readers.length ? readers.map(reader=>`<div class="project-member-row"><div class="project-member-name">${esc(empName(reader.uid))}</div><div class="muted" style="font-size:11px;">${fmtDateTime(reader.time)}</div></div>`).join('') : '<div class="empty-state" style="padding:20px 10px;">لم يشاهدها أحد حتى الآن</div>'}</div>
+        <div class="modal-actions"><button class="btn btn-outline btn-block" id="readers-close">إغلاق</button></div>
+      </div>
+    </div>
+  `);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#readers-close').addEventListener('click',()=>overlay.remove());
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
 
 function openAddGroupMemberModal(container, conv){
