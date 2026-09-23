@@ -460,6 +460,10 @@
   .conv-unread-count{background:var(--good);color:#fff;border-radius:50%;min-width:20px;height:20px;padding:0 5px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
   .conv-item.has-unread .conv-name{font-weight:800;}
   .conv-item.has-unread .conv-time{color:var(--good);font-weight:800;}
+  .conv-item.group-conv{border-right:4px solid var(--accent);background:rgba(47,111,237,.045);}
+  .conv-item.group-conv:hover,.conv-item.group-conv.active{background:var(--brand-light);}
+  .conv-item.group-conv .conv-avatar{border-radius:10px;background:linear-gradient(135deg,var(--accent),#7a5cff);}
+  .conv-type-label{display:inline-flex;align-items:center;background:var(--accent);color:#fff;border-radius:5px;padding:1px 5px;font-size:9px;font-weight:800;margin-right:5px;vertical-align:middle;}
   .msg-section-title{padding:10px 14px 7px;color:var(--sub);font-size:11.5px;font-weight:800;border-bottom:1px solid var(--border);background:var(--bg);}
   .employee-contact .conv-preview{color:var(--good);}
   .messages-tab-badge{display:none;align-items:center;justify-content:center;background:var(--bad);color:#fff;font-size:10.5px;font-weight:800;min-width:18px;height:18px;border-radius:50%;padding:0 4px;margin-right:6px;vertical-align:middle;}
@@ -1310,8 +1314,8 @@ function renderApp(){
             <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
           ` : `
             <button class="tab-btn" data-tab="home">🏠 الحضور والانصراف</button>
-            <button class="tab-btn" data-tab="mine">📁 طلباتي المسندة</button>
-            <button class="tab-btn" data-tab="my-tasks">📌 مهامي</button>
+            <button class="tab-btn" data-tab="mine">📁 طلبات التقنين</button>
+            <button class="tab-btn" data-tab="my-tasks">📌 المهام المكلف بها</button>
             <button class="tab-btn" data-tab="projects">📁 مشاريع العمل</button>
             <button class="tab-btn" data-tab="done">✅ ما تم إدخاله للكل</button>
             <button class="tab-btn" data-tab="messages">💬 المراسلات<span class="messages-tab-badge"></span></button>
@@ -2757,12 +2761,12 @@ function openNewTaskModal(employees){
   });
 }
 
-/* ---------- صفحة الموظف: مهامي ---------- */
+/* ---------- صفحة الموظف: المهام المكلف بها ---------- */
 function renderMyTasks(container){
   if(!container) return;
   container.innerHTML = `
     <div class="card">
-      <h3 style="margin:0;">📌 مهامي</h3>
+      <h3 style="margin:0;">📌 المهام المكلف بها</h3>
       <div class="card-sub" style="margin-top:6px;">المهام المكلّف بها من الإدارة — الثابتة تتجدد كل يوم، والمؤقتة تُغلق مرة واحدة.</div>
     </div>
     <div id="my-tasks-list" style="margin-top:16px;"><div class="muted" style="padding:14px;">جارِ التحميل...</div></div>
@@ -4519,10 +4523,10 @@ function renderMessagesTab(container){
     box.innerHTML = msgConvList.length ? msgConvList.map(c=>{
       const cnt = convUnreadCount(c);
       const previewText = c.lastMessageText ? esc(c.lastMessageText) : (c.lastMessageAttachment ? '📎 مرفق' : 'لا توجد رسائل بعد');
-      return `<div class="conv-item ${c.id===msgActiveConvId?'active ':''}${cnt>0?'has-unread':''}" data-id="${c.id}">
-        <div class="conv-avatar">${esc(convAvatarLetter(c))}</div>
+      return `<div class="conv-item ${c.type==='group'?'group-conv ':''}${c.id===msgActiveConvId?'active ':''}${cnt>0?'has-unread':''}" data-id="${c.id}">
+        <div class="conv-avatar">${c.type==='group'?'👥':esc(convAvatarLetter(c))}</div>
         <div class="conv-info">
-          <div class="conv-name">${esc(convOtherName(c))}</div>
+          <div class="conv-name">${esc(convOtherName(c))}${c.type==='group'?'<span class="conv-type-label">جروب</span>':''}</div>
           <div class="conv-preview">${c.lastMessageBy===uid?'أنت: ':''}${previewText}</div>
         </div>
         <div class="conv-meta">
@@ -4582,12 +4586,18 @@ function renderMessagesTab(container){
         <div style="font-weight:800;font-size:14px;">${esc(convOtherName(conv))}</div>
         ${sub?`<div style="font-size:11.5px;color:var(--sub);">${esc(sub)}</div>`:''}
       </div>
+      ${conv.type==='group'?'<button class="btn btn-outline btn-sm" id="add-group-member-btn" title="إضافة عضو للجروب">➕ عضو</button>':''}
     `;
+  }
+
+  function bindThreadHeaderActions(conv){
+    const addBtn = container.querySelector('#add-group-member-btn');
+    if(addBtn) addBtn.addEventListener('click', ()=>openAddGroupMemberModal(container, conv));
   }
 
   function refreshThreadIfOpen(conv){
     const hdr = container.querySelector('#thread-header');
-    if(hdr) hdr.innerHTML = threadHeaderHTML(conv);
+    if(hdr){ hdr.innerHTML = threadHeaderHTML(conv); bindThreadHeaderActions(conv); }
     const msgsBox = container.querySelector('#thread-messages');
     if(msgsBox && msgsBox.dataset.lastMsgs){
       try{ drawMessages(JSON.parse(msgsBox.dataset.lastMsgs), conv); }catch(e){}
@@ -4648,6 +4658,7 @@ function renderMessagesTab(container){
         </div>
       </div>` : `<div class="small-note" style="margin:12px;">هذه رسالة جماعية من الإدارة — لا يمكن الرد عليها هنا</div>`}
     `;
+    bindThreadHeaderActions(conv);
     pane.querySelector('#msg-back-btn').addEventListener('click', ()=>{
       if(shellEl) shellEl.classList.remove('thread-open');
     });
@@ -4694,6 +4705,53 @@ function renderMessagesTab(container){
   }
 
   container.querySelector('#new-group-btn').addEventListener('click', ()=> openNewConversationModal(container, 'group'));
+}
+
+function openAddGroupMemberModal(container, conv){
+  const existing = new Set(conv.members||[]);
+  const available = Object.keys(employeesCache)
+    .filter(uid=>!existing.has(uid))
+    .sort((a,b)=>empName(a).localeCompare(empName(b),'ar'));
+  const overlay = el(`
+    <div class="modal-overlay">
+      <div class="modal-box" style="max-width:460px;">
+        <h3>➕ إضافة عضو إلى ${esc(conv.title||'الجروب')}</h3>
+        <div class="modal-sub">يمكن إضافة المدير أو أي موظف غير موجود في الجروب.</div>
+        <div class="field">
+          <label>اختر العضو *</label>
+          <div class="assignee-list" id="agm-list">
+            ${available.map(uid=>`<label class="assignee-chk"><input type="radio" name="agm-member" value="${esc(uid)}"> ${esc(empName(uid))}${employeesCache[uid]?.role==='admin'?' — مدير':''}</label>`).join('') || '<span class="muted">كل المستخدمين موجودون بالفعل في الجروب</span>'}
+          </div>
+        </div>
+        <div class="error-text" id="agm-err" style="display:none;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="agm-cancel">إلغاء</button>
+          <button class="btn btn-primary" id="agm-save" ${available.length?'':'disabled'}>إضافة العضو</button>
+        </div>
+      </div>
+    </div>
+  `);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#agm-cancel').addEventListener('click', ()=>overlay.remove());
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#agm-save').addEventListener('click', async ()=>{
+    const memberUid = overlay.querySelector('input[name="agm-member"]:checked')?.value;
+    const err = overlay.querySelector('#agm-err');
+    if(!memberUid){ err.textContent='اختر عضوًا أولًا'; err.style.display='block'; return; }
+    const btn = overlay.querySelector('#agm-save');
+    btn.disabled=true; btn.textContent='جارِ الإضافة...';
+    try{
+      await updateDoc(doc(db,'conversations',conv.id), {members: arrayUnion(memberUid)});
+      await pushNotification(memberUid, '👥 تمت إضافتك إلى جروب', conv.title||'جروب جديد');
+      toast(`تمت إضافة ${empName(memberUid)} إلى الجروب`, 'ok');
+      overlay.remove();
+    }catch(error){
+      console.error(error);
+      err.textContent='تعذر إضافة العضو، تحقق من قواعد Firestore';
+      err.style.display='block';
+      btn.disabled=false; btn.textContent='إضافة العضو';
+    }
+  });
 }
 
 function openNewConversationModal(container, initialType='direct'){
