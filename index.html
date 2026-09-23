@@ -27,6 +27,33 @@
     --radius:14px;
     --shadow:0 2px 10px rgba(20,30,60,.06), 0 1px 2px rgba(20,30,60,.05);
   }
+  html[data-theme="dark"]{
+    --bg:#131c26;
+    --card:#1b2632;
+    --border:#2b3949;
+    --ink:#eaf0f6;
+    --sub:#93a2b5;
+    --brand:#17a2a2;
+    --brand-dark:#3fc4c4;
+    --brand-light:#173636;
+    --accent:#5b8dff;
+    --good:#33c288;
+    --good-bg:#173328;
+    --warn:#e2a247;
+    --warn-bg:#332711;
+    --bad:#ea6259;
+    --bad-bg:#3a1f1d;
+    --shadow:0 2px 14px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.3);
+  }
+  html[data-theme="dark"] body{background:var(--bg);}
+  html[data-theme="dark"] .field input, html[data-theme="dark"] .field select, html[data-theme="dark"] .field textarea{background:#141d27;color:var(--ink);}
+  html[data-theme="dark"] .field input:disabled{background:#20303f;color:var(--sub);}
+  html[data-theme="dark"] .btn-outline{background:var(--card);color:var(--ink);}
+  html[data-theme="dark"] ::-webkit-scrollbar{width:10px;height:10px;}
+  html[data-theme="dark"] ::-webkit-scrollbar-track{background:var(--bg);}
+  html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#33465a;border-radius:8px;}
+  html{transition:background-color .2s ease;}
+  body, .topbar, .tabs, .card, .auth-card, .form-card{transition:background-color .2s ease,border-color .2s ease,color .2s ease;}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
@@ -83,9 +110,92 @@
   .user-chip .u-name{font-size:13.5px;font-weight:700;}
   .user-chip .u-dept{font-size:11px;color:var(--sub);}
 
+  /* الساعة الرقمية */
+  .digital-clock{
+    display:flex;align-items:baseline;gap:6px;background:var(--brand-light);color:var(--brand-dark);
+    padding:7px 14px;border-radius:10px;font-weight:800;border:1px solid var(--border);
+    font-variant-numeric:tabular-nums;letter-spacing:.5px;
+  }
+  .digital-clock .dc-time{font-size:16px;}
+  .digital-clock .dc-period{font-size:10.5px;font-weight:700;opacity:.85;}
+  .digital-clock .dc-date{font-size:10px;color:var(--sub);font-weight:700;margin-right:4px;border-right:1px solid var(--border);padding-right:8px;}
+  @media(max-width:700px){ .digital-clock .dc-date{display:none;} }
+
+  /* زر تبديل المظهر */
+  .icon-btn{
+    width:38px;height:38px;border-radius:9px;border:1.5px solid var(--border);background:var(--card);
+    display:flex;align-items:center;justify-content:center;font-size:17px;position:relative;flex:none;color:var(--ink);
+  }
+  .icon-btn:hover{border-color:var(--brand);}
+
+  /* الإشعارات */
+  .notif-wrap{position:relative;}
+  .notif-badge{
+    position:absolute;top:-4px;left:-4px;background:var(--bad);color:#fff;border-radius:50%;
+    min-width:18px;height:18px;font-size:10.5px;display:flex;align-items:center;justify-content:center;
+    font-weight:800;padding:0 3px;border:2px solid var(--card);
+  }
+  .notif-dropdown{
+    position:absolute;top:46px;left:0;width:330px;max-width:88vw;background:var(--card);border:1px solid var(--border);
+    border-radius:12px;box-shadow:var(--shadow);z-index:60;overflow:hidden;
+  }
+  .notif-dropdown .nd-head{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:800;font-size:13.5px;}
+  .notif-dropdown .nd-list{max-height:360px;overflow-y:auto;}
+  .notif-item{padding:12px 14px;border-bottom:1px solid var(--border);}
+  .notif-item:last-child{border-bottom:none;}
+  .notif-item.unread{background:var(--brand-light);}
+  .notif-item .ni-title{font-weight:700;font-size:13px;margin-bottom:3px;}
+  .notif-item .ni-body{font-size:12.5px;color:var(--sub);}
+  .notif-item .ni-time{font-size:10.5px;color:var(--sub);margin-top:5px;}
+  .notif-empty{padding:26px 14px;text-align:center;color:var(--sub);font-size:13px;}
+
+  /* كروت الداشبورد الرئيسية */
+  .dash-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:22px;}
+  .dash-card{
+    border:none;border-radius:14px;padding:18px 16px;text-align:right;color:#fff;cursor:pointer;
+    display:flex;flex-direction:column;gap:8px;min-height:100px;box-shadow:var(--shadow);transition:.15s;
+  }
+  .dash-card:hover{transform:translateY(-2px);}
+  .dash-card .dc-icon{font-size:24px;}
+  .dash-card .dc-title{font-weight:800;font-size:14.5px;}
+  .dash-card .dc-desc{font-size:11.5px;opacity:.9;}
+  .dash-stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:26px;}
+  .dash-stat-card{
+    border-radius:14px;padding:16px;text-align:center;border:1.5px solid var(--border);background:var(--card);
+    cursor:pointer;transition:.15s;
+  }
+  .dash-stat-card:hover{border-color:var(--brand);transform:translateY(-2px);}
+  .dash-stat-card .num{font-size:26px;font-weight:800;}
+  .dash-stat-card .lbl{font-size:12px;color:var(--sub);font-weight:700;margin-top:4px;}
+  .dash-section-title{font-size:14px;font-weight:800;color:var(--sub);margin:0 0 12px;}
+
   .tabs{display:flex;gap:4px;background:var(--card);border-bottom:1px solid var(--border);padding:0 18px;overflow-x:auto;position:sticky;top:57px;z-index:19;}
   .tab-btn{padding:13px 16px;border:none;background:none;font-weight:700;font-size:13.5px;color:var(--sub);border-bottom:3px solid transparent;white-space:nowrap;}
   .tab-btn.active{color:var(--brand);border-bottom-color:var(--brand);}
+
+  /* شريط جانبي للأقسام على شاشات الكمبيوتر (قابل للإظهار/الإخفاء) */
+  .sidebar-toggle-btn{display:none;}
+  .app-body{display:flex;flex-direction:column;flex:1;min-height:0;width:100%;}
+  @media(min-width:901px){
+    .sidebar-toggle-btn{display:inline-flex;}
+    .app-body{flex-direction:row;align-items:flex-start;}
+    .tabs{
+      flex-direction:column;align-items:stretch;gap:2px;
+      width:236px;flex:none;overflow-x:visible;
+      border-bottom:none;border-left:1px solid var(--border);
+      padding:14px 12px;position:sticky;top:57px;
+      height:calc(100vh - 57px);overflow-y:auto;
+      transition:width .18s ease,padding .18s ease,opacity .18s ease,border-color .18s ease;
+    }
+    .tabs .tab-btn{
+      text-align:right;border-bottom:none;border-radius:9px;padding:11px 14px;width:100%;
+    }
+    .tabs .tab-btn.active{background:var(--brand-light);}
+    .tabs.sidebar-collapsed{
+      width:0;padding-left:0;padding-right:0;border-color:transparent;opacity:0;overflow:hidden;pointer-events:none;
+    }
+    .container{max-width:none;margin:0;}
+  }
 
   .container{max-width:1100px;margin:0 auto;width:100%;padding:22px 18px 60px;flex:1;}
   .grid{display:grid;gap:18px;}
@@ -256,6 +366,15 @@
 </style>
 </head>
 <body>
+<script>
+  (function(){
+    try{
+      var t = localStorage.getItem('theme');
+      if(!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    }catch(e){}
+  })();
+</script>
 
 <div id="app-root">
   <div class="center-screen"><div class="spinner"></div><div class="load-text">جارِ التحميل...</div></div>
@@ -270,7 +389,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, getDocs, getDocFromServer, setDoc, updateDoc, deleteDoc, collection, query, where,
-  onSnapshot, serverTimestamp, writeBatch, orderBy, Timestamp, arrayUnion
+  onSnapshot, serverTimestamp, writeBatch, orderBy, Timestamp, arrayUnion, limit
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
   getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject
@@ -347,6 +466,15 @@ function stopServerTimeSync(){
 /* ============ Helpers ============ */
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
 function esc(s){ return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  try{ localStorage.setItem('theme', t); }catch(e){}
+  document.querySelectorAll('.theme-toggle-btn').forEach(b=>{ b.textContent = t==='dark' ? '☀️' : '🌙'; b.title = t==='dark' ? 'المظهر الفاتح' : 'المظهر الداكن'; });
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+  applyTheme(cur);
+}
 function normUser(u){ return String(u||'').trim().replace(/\s+/g,' ').toLowerCase(); }
 /* اسم المستخدم (عربي أو إنجليزي) يتحول لبريد داخلي صالح بصيغة hex */
 function userToEmail(username){
@@ -712,6 +840,7 @@ function renderTasksCard(data, docId){
 let currentUser = null;
 let currentEmployee = null;
 let isAdmin = false;
+let pendingReportFilter = null;
 let unsubList = [];
 function clearSubs(){ unsubList.forEach(u=>{ try{u();}catch(e){} }); unsubList=[]; }
 
@@ -872,12 +1001,87 @@ function renderCompleteProfile(user){
 
 /* ============ App Shell ============ */
 let activeTab = 'home';
+/* ============ الساعة الرقمية أعلى الصفحة ============ */
+let clockInterval = null;
+function startDigitalClock(elm){
+  if(clockInterval) clearInterval(clockInterval);
+  function tick(){
+    const c = cairoNow();
+    const period = c.hour < 12 ? 'ص' : 'م';
+    let h12 = c.hour % 12; if(h12===0) h12=12;
+    const pad = n=> String(n).padStart(2,'0');
+    const today = todayCairoStr();
+    const dateLbl = new Intl.DateTimeFormat('ar-EG-u-nu-latn',{timeZone:'Africa/Cairo', weekday:'long', day:'2-digit', month:'2-digit'}).format(new Date(today+'T12:00:00'));
+    elm.innerHTML = `<span class="dc-date">${esc(dateLbl)}</span><span class="dc-time">${pad(h12)}:${pad(c.minute)}:${pad(c.second)}</span><span class="dc-period">${period}</span>`;
+  }
+  tick();
+  clockInterval = setInterval(tick, 1000);
+}
+
+/* ============ الإشعارات ============ */
+let notifUnsub = null;
+let notifCache = [];
+function initNotifications(bellWrap){
+  if(notifUnsub){ notifUnsub(); notifUnsub=null; }
+  const uid = currentUser.uid;
+  const badge = bellWrap.querySelector('.notif-badge');
+  const q = query(collection(db,'notifications'), where('audience','in',['all', uid]), orderBy('createdAt','desc'), limit(30));
+  notifUnsub = onSnapshot(q, qs=>{
+    notifCache = [];
+    qs.forEach(d=> notifCache.push({id:d.id, ...d.data()}));
+    const unread = notifCache.filter(n=> !(n.readBy||[]).includes(uid)).length;
+    if(badge){
+      if(unread>0){ badge.style.display='flex'; badge.textContent = unread>9?'9+':unread; }
+      else badge.style.display='none';
+    }
+    renderNotifList(bellWrap);
+  }, err=> console.error(err));
+}
+function renderNotifList(bellWrap){
+  const listBox = bellWrap.querySelector('.nd-list');
+  if(!listBox) return;
+  const uid = currentUser.uid;
+  if(notifCache.length===0){
+    listBox.innerHTML = `<div class="notif-empty">لا توجد إشعارات حتى الآن</div>`;
+    return;
+  }
+  listBox.innerHTML = notifCache.map(n=>{
+    const isUnread = !(n.readBy||[]).includes(uid);
+    return `<div class="notif-item ${isUnread?'unread':''}">
+      <div class="ni-title">${esc(n.title||'')}</div>
+      ${n.body ? `<div class="ni-body">${esc(n.body)}</div>` : ''}
+      <div class="ni-time">${fmtDateTime(n.createdAt)}</div>
+    </div>`;
+  }).join('');
+}
+function toggleNotifDropdown(bellWrap){
+  const dd = bellWrap.querySelector('.notif-dropdown');
+  const opening = dd.style.display==='none' || !dd.style.display;
+  dd.style.display = opening ? 'block' : 'none';
+  if(opening){
+    const uid = currentUser.uid;
+    const unread = notifCache.filter(n=> !(n.readBy||[]).includes(uid));
+    unread.forEach(n=>{
+      updateDoc(doc(db,'notifications', n.id), { readBy: arrayUnion(uid) }).catch(e=>console.error(e));
+    });
+  }
+}
+document.addEventListener('click', (e)=>{
+  document.querySelectorAll('.notif-wrap').forEach(w=>{
+    if(!w.contains(e.target)){
+      const dd = w.querySelector('.notif-dropdown');
+      if(dd) dd.style.display='none';
+    }
+  });
+});
+
 function renderApp(){
   root.innerHTML='';
   const shell = el(`
     <div style="display:flex;flex-direction:column;min-height:100vh;">
       <div class="topbar">
         <div class="left">
+          <button class="btn btn-outline btn-sm sidebar-toggle-btn" id="sidebar-toggle-btn" title="إظهار/إخفاء قائمة الأقسام">☰</button>
           <div class="logo-circle">ش م</div>
           <div>
             <div class="title">مركز شبكات المرافق</div>
@@ -885,6 +1089,18 @@ function renderApp(){
           </div>
         </div>
         <div class="right">
+          <div class="digital-clock" id="digital-clock"></div>
+          <button class="icon-btn theme-toggle-btn" id="theme-toggle-btn" title="تبديل المظهر">🌙</button>
+          <div class="notif-wrap" id="notif-wrap">
+            <button class="icon-btn" id="notif-btn" title="الإشعارات">
+              🔔
+              <span class="notif-badge" style="display:none;">0</span>
+            </button>
+            <div class="notif-dropdown" style="display:none;">
+              <div class="nd-head">🔔 الإشعارات</div>
+              <div class="nd-list"></div>
+            </div>
+          </div>
           <button class="btn btn-outline btn-sm" id="account-btn" title="حسابي">👤 حسابي</button>
           <div class="user-chip">
             <div class="avatar">${esc((currentEmployee.name||'؟')[0])}</div>
@@ -896,27 +1112,47 @@ function renderApp(){
           <button class="btn btn-outline btn-sm" id="logout-btn">تسجيل الخروج</button>
         </div>
       </div>
-      <div class="tabs" id="tabs-row">
-        ${isAdmin ? `
-          <button class="tab-btn" data-tab="admin-daily">التقرير اليومي</button>
-          <button class="tab-btn" data-tab="admin-upload">رفع بيانات التقنين</button>
-          <button class="tab-btn" data-tab="admin-done">✅ ما تم إدخاله (الكل)</button>
-          <button class="tab-btn" data-tab="admin-achievements">🌟 إنجازات الموظفين</button>
-          <button class="tab-btn" data-tab="admin-employees">إدارة المستخدمين</button>
-        ` : `
-          <button class="tab-btn" data-tab="home">قسم الحضور والانصراف</button>
-          <button class="tab-btn" data-tab="mine">📁 قسم طلباتي المسندة</button>
-          <button class="tab-btn" data-tab="done">✅ قسم ما تم إدخاله للكل</button>
-        `}
+      <div class="app-body">
+        <div class="tabs" id="tabs-row">
+          ${isAdmin ? `
+            <button class="tab-btn" data-tab="admin-dashboard">🏠 الرئيسية</button>
+            <button class="tab-btn" data-tab="admin-daily">📅 التقرير اليومي</button>
+            <button class="tab-btn" data-tab="admin-upload">📤 رفع بيانات التقنين</button>
+            <button class="tab-btn" data-tab="admin-done">✅ ما تم إدخاله (الكل)</button>
+            <button class="tab-btn" data-tab="admin-achievements">🌟 إنجازات الموظفين</button>
+            <button class="tab-btn" data-tab="admin-employees">👥 إدارة المستخدمين</button>
+          ` : `
+            <button class="tab-btn" data-tab="home">🏠 قسم الحضور والانصراف</button>
+            <button class="tab-btn" data-tab="mine">📁 قسم طلباتي المسندة</button>
+            <button class="tab-btn" data-tab="done">✅ قسم ما تم إدخاله للكل</button>
+          `}
+        </div>
+        <div class="container" id="tab-content"></div>
       </div>
-      <div class="container" id="tab-content"></div>
     </div>
   `);
   root.appendChild(shell);
   shell.querySelector('#logout-btn').addEventListener('click', ()=> signOut(auth));
   shell.querySelector('#account-btn').addEventListener('click', openAccountModal);
   shell.querySelectorAll('.tab-btn').forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
-  switchTab(isAdmin ? 'admin-daily' : 'home');
+
+  startDigitalClock(shell.querySelector('#digital-clock'));
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  shell.querySelector('#theme-toggle-btn').addEventListener('click', toggleTheme);
+
+  const notifWrap = shell.querySelector('#notif-wrap');
+  shell.querySelector('#notif-btn').addEventListener('click', (e)=>{ e.stopPropagation(); toggleNotifDropdown(notifWrap); });
+  initNotifications(notifWrap);
+
+  const tabsRow = shell.querySelector('#tabs-row');
+  const sidebarToggleBtn = shell.querySelector('#sidebar-toggle-btn');
+  if(localStorage.getItem('sidebarCollapsed')==='1') tabsRow.classList.add('sidebar-collapsed');
+  sidebarToggleBtn.addEventListener('click', ()=>{
+    const collapsed = tabsRow.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+  });
+
+  switchTab(isAdmin ? 'admin-dashboard' : 'home');
   if(!isAdmin) showMorningGreetingModal();
 }
 
@@ -1020,7 +1256,11 @@ function switchTab(tab){
   if(tab==='home') renderHomeTab(content);
   else if(tab==='mine') renderMyRequests(content);
   else if(tab==='done') renderDoneSection(content);
-  else if(tab==='admin-daily') renderAdminDailyReport(content);
+  else if(tab==='admin-dashboard') renderAdminDashboard(content);
+  else if(tab==='admin-daily'){
+    const f = pendingReportFilter; pendingReportFilter = null;
+    renderAdminDailyReport(content, f);
+  }
   else if(tab==='admin-upload') renderAdminUpload(content);
   else if(tab==='admin-done') renderDoneSection(content);
   else if(tab==='admin-achievements') renderAdminAchievements(content);
@@ -1962,7 +2202,82 @@ function renderDoneSection(box){
 }
 
 /* ============ ADMIN TAB ============ */
-function renderAdminDailyReport(container){
+/* ============ الرئيسية (داشبورد المدير) ============ */
+function renderAdminDashboard(container){
+  if(!container) return;
+  container.innerHTML = `
+    <div class="dash-section-title">مرحبًا ${esc(currentEmployee.name||'')} 👋 — نظرة سريعة على اليوم</div>
+    <div class="dash-stats-grid" id="dash-stats-grid">
+      <div class="dash-stat-card" data-filter="all"><div class="num" id="ds-total" style="color:var(--brand-dark);">—</div><div class="lbl">عدد الموظفين</div></div>
+      <div class="dash-stat-card" data-filter="present"><div class="num" id="ds-present" style="color:var(--good);">—</div><div class="lbl">عدد الحضور</div></div>
+      <div class="dash-stat-card" data-filter="absent"><div class="num" id="ds-absent" style="color:var(--bad);">—</div><div class="lbl">عدد الغياب</div></div>
+      <div class="dash-stat-card" data-filter="early"><div class="num" id="ds-early" style="color:var(--warn);">—</div><div class="lbl">انصراف قبل الموعد</div></div>
+    </div>
+    <div class="dash-section-title">الأقسام</div>
+    <div class="dash-cards-grid">
+      <button class="dash-card" data-tab="admin-daily" style="background:linear-gradient(135deg,#2f6fed,#5b8dff);">
+        <div class="dc-icon">📅</div><div class="dc-title">التقرير اليومي</div><div class="dc-desc">الحضور والانصراف وإحصائيات الفترات</div>
+      </button>
+      <button class="dash-card" data-tab="admin-upload" style="background:linear-gradient(135deg,#0d6e6e,#17a2a2);">
+        <div class="dc-icon">📤</div><div class="dc-title">رفع بيانات التقنين</div><div class="dc-desc">رفع وتوزيع طلبات التقنين على الموظفين</div>
+      </button>
+      <button class="dash-card" data-tab="admin-done" style="background:linear-gradient(135deg,#1e9e6b,#33c288);">
+        <div class="dc-icon">✅</div><div class="dc-title">ما تم إدخاله (الكل)</div><div class="dc-desc">متابعة الطلبات المنجزة لجميع الموظفين</div>
+      </button>
+      <button class="dash-card" data-tab="admin-achievements" style="background:linear-gradient(135deg,#c9852b,#e2a247);">
+        <div class="dc-icon">🌟</div><div class="dc-title">إنجازات الموظفين</div><div class="dc-desc">أداء كل موظف على مدار الفترة</div>
+      </button>
+      <button class="dash-card" data-tab="admin-employees" style="background:linear-gradient(135deg,#6b4fd6,#8f6fee);">
+        <div class="dc-icon">👥</div><div class="dc-title">إدارة المستخدمين</div><div class="dc-desc">إضافة وتعديل حسابات الموظفين</div>
+      </button>
+    </div>
+  `;
+
+  container.querySelectorAll('.dash-card').forEach(b=>{
+    b.addEventListener('click', ()=> switchTab(b.dataset.tab));
+  });
+  container.querySelectorAll('.dash-stat-card').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      pendingReportFilter = b.dataset.filter;
+      switchTab('admin-daily');
+    });
+  });
+
+  const today = todayCairoStr();
+  let employees = {};
+  const empUnsub = onSnapshot(collection(db,'employees'), (qs)=>{
+    employees = {}; qs.forEach(d=> employees[d.id]=d.data());
+    computeAndDraw();
+  }, err=> console.error(err));
+  unsubList.push(empUnsub);
+
+  let attendance = {};
+  const attUnsub = onSnapshot(query(collection(db,'attendance'), where('date','==',today)), (qs)=>{
+    attendance = {}; qs.forEach(d=>{ const r=d.data(); attendance[r.uid]=r; });
+    computeAndDraw();
+  }, err=> console.error(err));
+  unsubList.push(attUnsub);
+
+  function computeAndDraw(){
+    const uids = Object.keys(employees).filter(uid=> employees[uid].role!=='admin');
+    if(uids.length===0) return;
+    const now = cairoNow();
+    let present=0, absent=0, early=0;
+    uids.forEach(uid=>{
+      const a = attendance[uid];
+      if(a && a.checkIn) present++;
+      else if(now.hour>=WORK_START_HOUR) absent++;
+      if(isEarlyLeave(a)) early++;
+    });
+    const set = (id,val)=>{ const e=container.querySelector('#'+id); if(e) e.textContent = val; };
+    set('ds-total', uids.length);
+    set('ds-present', present);
+    set('ds-absent', absent);
+    set('ds-early', early);
+  }
+}
+
+function renderAdminDailyReport(container, initialFilter){
   if(!container) return;
   const today = todayCairoStr();
   container.innerHTML = `
@@ -2162,6 +2477,9 @@ function renderAdminDailyReport(container){
   });
   container.querySelector('#report-status-filter').addEventListener('change', ()=> drawReport(lastDateStr, lastAttendance));
   container.querySelector('#report-dept-filter').addEventListener('change', ()=> drawReport(lastDateStr, lastAttendance));
+  if(initialFilter && ['all','present','absent','early'].includes(initialFilter)){
+    container.querySelector('#report-status-filter').value = initialFilter;
+  }
   loadEmployees(()=> loadReportForDate(dateInput.value || today));
 
   container.querySelector('#stats-refresh-btn').addEventListener('click', async ()=>{
