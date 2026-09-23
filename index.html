@@ -470,6 +470,7 @@
   .msg-sender{font-size:11px;font-weight:800;margin-bottom:3px;opacity:.8;color:var(--brand-dark);text-align:right;}
   .msg-time{font-size:10px;opacity:.75;margin-top:4px;text-align:left;}
   .msg-attach{display:block;margin-top:6px;font-size:12px;text-decoration:underline;}
+  .msg-image-attach{display:block;margin-top:8px;max-width:260px;max-height:220px;border-radius:10px;object-fit:cover;border:1px solid rgba(0,0,0,.12);cursor:pointer;}
   @media(max-width:760px){
     .msg-shell{flex-direction:column;}
     .msg-sidebar{width:100%;border-left:none;border-bottom:1px solid var(--border);}
@@ -526,6 +527,8 @@ const firebaseConfig = {
 const ADMIN_USERNAME = "عبدالستار";      // اسم مستخدم المدير الأساسي
 const ADMIN_PASSWORD = "123123";          // كلمة المرور الافتراضية لأول تشغيل فقط
 const LOGIN_DOMAIN   = "maktap.local";    // نطاق داخلي لتحويل اسم المستخدم لحساب Firebase
+/* ضع هنا رابط Google Apps Script Web App بعد نشر google-drive-upload.gs */
+const DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbzKP5glCBKKumen_wawZfgvxS2WUzV2uDufaNYiLEATif7N8hbmFYH_xNWky6XzalhkPQ/exec";
 
 const DEPARTMENTS = ["GIS", "قسم الرفع المساحي", "قسم مهندسين المساحة"];
 const DEFAULT_CENTERS = [
@@ -2512,11 +2515,27 @@ function fmtRecurLabel(r){ return r==='daily' ? '🔁 ثابتة (يومية)' :
 async function uploadTaskAttachment(file, folder){
   if(!file) return {url:null, name:null, path:null};
   try{
+    if(DRIVE_UPLOAD_URL){
+      const dataUrl = await new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = ()=>resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const response = await fetch(DRIVE_UPLOAD_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({fileName:`${folder}_${Date.now()}_${file.name}`,mimeType:file.type||'application/octet-stream',dataUrl})
+      });
+      const result = await response.json();
+      if(!result.ok) throw new Error(result.error||'Google Drive upload failed');
+      return {url:result.url, name:result.fileName||file.name, type:result.mimeType||file.type, path:result.id, provider:'google-drive'};
+    }
     const path = `${folder}/${Date.now()}_${file.name}`;
     const sref = storageRef(storage, path);
     await uploadBytes(sref, file);
     const url = await getDownloadURL(sref);
-    return {url, name:file.name, path};
+    return {url, name:file.name, type:file.type, path, provider:'firebase-storage'};
   }catch(err){
     console.error('attachment upload error', err);
     toast('تعذر رفع المرفق، سيتم الحفظ بدونه', 'err');
@@ -4575,7 +4594,9 @@ function renderMessagesTab(container){
         <div class="msg-bubble ${mine?'mine':'theirs'}">
           ${(!mine && (conv.type==='group'||conv.type==='broadcast')) ? `<div class="msg-sender">${esc(m.senderName||'')}</div>` : ''}
           ${m.text?`<div>${esc(m.text).replace(/\n/g,'<br>')}</div>`:''}
-          ${m.attachmentUrl?`<a class="msg-attach" href="${esc(m.attachmentUrl)}" target="_blank" rel="noopener" style="color:${mine?'#fff':'var(--accent)'};">📎 ${esc(m.attachmentName||'مرفق')}</a>`:''}
+          ${m.attachmentUrl && ((m.attachmentType||'').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(m.attachmentName||m.attachmentUrl))
+            ? `<a href="${esc(m.attachmentUrl)}" target="_blank" rel="noopener"><img class="msg-image-attach" src="${esc(m.attachmentUrl)}" alt="${esc(m.attachmentName||'صورة مرفقة')}" loading="lazy"></a>`
+            : (m.attachmentUrl ? `<a class="msg-attach" href="${esc(m.attachmentUrl)}" target="_blank" rel="noopener" style="color:${mine?'#fff':'var(--accent)'};">📎 ${esc(m.attachmentName||'مرفق')}</a>` : '')}
           <div class="msg-time">${m.timeLabel||''}${readTick}</div>
         </div>
       </div>`;
