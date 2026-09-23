@@ -616,6 +616,14 @@
   .project-progress>div{background:var(--pc,var(--brand));}
   .pr-sw{display:block;width:30px;height:30px;border-radius:50%;border:3px solid transparent;}
   input:checked+.pr-sw{border-color:var(--ink,#000);box-shadow:0 0 0 2px var(--card);}
+  @media(max-width:700px){
+    .mobile-more-menu{bottom:66px;right:0;left:0;border:0;border-radius:22px 22px 0 0;background:linear-gradient(180deg,#5b21b6,#312e81);padding:24px 12px 14px;max-height:60vh;}
+    .mobile-more-menu::before{content:"";position:absolute;top:9px;left:50%;width:44px;height:4px;border-radius:4px;background:rgba(255,255,255,.5);transform:translateX(-50%);}
+    .mobile-more-menu.open{animation:drawerUp .22s ease-out;box-shadow:0 0 0 100vmax rgba(0,0,0,.5);}
+    .mobile-more-item{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.25);color:#fff;padding:15px 6px;}
+    .mobile-more-item.active{background:#fff;color:#4c1d95;border-color:#fff;}
+  }
+  @keyframes drawerUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 </style>
 </head>
 <body>
@@ -1478,10 +1486,10 @@ function shellTabsForMobile(admin){
     {tab:'admin-achievements',icon:'🌟',label:'إنجازات الموظفين'},
     {tab:'performance',icon:'📊',label:'مؤشرات الأداء'},
     {tab:'admin-employees',icon:'👥',label:'إدارة المستخدمين'},
-    {tab:'projects',icon:'📁',label:'مشاريع العمل'}
+    {tab:'admin-tasks',icon:'📌',label:'المهام'}
   ] : [
+    {tab:'my-tasks',icon:'📌',label:'المهام'},
     {tab:'mine',icon:'📁',label:'طلبات التقنين'},
-    {tab:'projects',icon:'📁',label:'مشاريع العمل'},
     {tab:'done',icon:'✅',label:'ما تم إدخاله للكل'}
   ];
 }
@@ -1552,9 +1560,9 @@ function renderApp(){
         <div class="container" id="tab-content"></div>
       </div>
       <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="التنقل الرئيسي">
-        <button class="mobile-nav-btn" data-mobile-tab="${isAdmin?'admin-daily':'home'}"><span class="mobile-nav-icon">🏠</span><span>${isAdmin?'التقرير':'الحضور'}</span></button>
-        <button class="mobile-nav-btn" data-mobile-tab="messages"><span class="mobile-nav-icon">💬</span><span>المراسلات</span><span class="messages-tab-badge"></span></button>
-        <button class="mobile-nav-btn" data-mobile-tab="${isAdmin?'admin-tasks':'my-tasks'}"><span class="mobile-nav-icon">📌</span><span>المهام</span></button>
+        <button class="mobile-nav-btn" data-mobile-tab="${isAdmin?'admin-daily':'home'}"><span class="mobile-nav-icon">🕘</span><span>الحضور</span></button>
+        <button class="mobile-nav-btn" data-mobile-tab="messages"><span class="mobile-nav-icon">💬</span><span>الرسائل</span><span class="messages-tab-badge"></span></button>
+        <button class="mobile-nav-btn" data-mobile-tab="projects"><span class="mobile-nav-icon">📁</span><span>المشاريع</span></button>
         <button class="mobile-nav-btn" id="mobile-more-btn"><span class="mobile-nav-icon">☰</span><span>المزيد</span></button>
       </nav>
       <div class="mobile-more-menu" id="mobile-more-menu">
@@ -5317,7 +5325,7 @@ function projectTasksStats(tasks){
 function renderProjectsTab(container){
   if(!container) return;
   container.innerHTML = `
-    <div class="flex-between" style="margin-bottom:16px;">
+    <div class="flex-between" id="projects-head" style="margin-bottom:16px;">
       <div><h2 style="margin:0;font-size:20px;">📁 مشاريع العمل</h2><div class="muted" style="font-size:12.5px;margin-top:4px;">المشاريع والفرق والمهام المرتبطة بها</div></div>
       ${isAdmin ? '<button class="btn btn-primary btn-sm btn-auto" id="new-project-btn">➕ مشروع جديد</button>' : ''}
     </div>
@@ -5354,6 +5362,7 @@ function renderProjectsTab(container){
     if(!view) return;
     const list = visibleProjects();
     if(selectedId && !list.some(p=>p.id===selectedId && isProjectMember(p))) selectedId=null;
+    const hd=container.querySelector('#projects-head'); if(hd) hd.style.display=selectedId?'none':'';
     if(selectedId){ drawDetail(view, list.find(p=>p.id===selectedId)); return; }
     if(list.length===0){ view.innerHTML='<div class="empty-state"><div class="emoji">📁</div>لا توجد مشاريع حاليًا</div>'; return; }
     view.innerHTML = `<div class="projects-grid">${list.map(p=>{
@@ -5391,47 +5400,39 @@ function renderProjectsTab(container){
   function drawDetail(view, project){
     if(!project) return;
     const allT=projectTasks.filter(t=>t.projectId===project.id);
-    const tasks=allT.filter(t=>!t.parentId);
+    const tasks=allT;
     const stats=projectTasksStats(tasks);
     const manager=canManageProject(project);
     const members=project.memberUids||[];
     const typeLbl={temporary:'مؤقتة',permanent:'دائمة',recurring:'متجددة'}, recLbl={daily:'يوميًا',weekly:'أسبوعيًا',monthly:'شهريًا'};
     const badge=t=>t.taskType?`<span class="status-pill pill-warn" style="font-size:10px;">${typeLbl[t.taskType]||''}${t.taskType==='recurring'?' '+(recLbl[t.recurrence]||''):''}</span> `:'';
-    const internalHTML=t=>allT.filter(i=>i.parentId===t.id).map(i=>`<div class="project-task-meta" style="margin-top:6px;padding:6px 8px;border-inline-start:3px solid var(--brand);background:var(--bg);border-radius:6px;">↳ ${esc(i.title)} — 👤 ${esc(empName(i.assignedUid))} <span class="status-pill ${projectTaskStatusClass(i.status)}" style="font-size:10px;">${projectTaskStatusLabel(i.status)}</span>${(i.assignedUid===currentUser.uid||manager)&&i.status!=='completed'&&i.status!=='failed'?` <button class="btn btn-outline btn-sm update-project-task" data-id="${i.id}">تحديث</button>`:''}</div>`).join('');
+    const isInt=t=>t.internal||t.source==='internal';
+    const mine=t=>t.assignedUid===currentUser.uid&&t.status!=='completed'&&t.status!=='failed';
+    const rowHTML=t=>`<div class="project-task-row"><div class="project-task-main"><div class="project-task-title">${esc(t.title)}</div><div class="project-task-meta">${badge(t)}👤 ${esc(empName(t.assignedUid))} · ${t.dueDate?`الموعد ${esc(t.dueDate)}`:'بدون موعد'}${isInt(t)?` · من ${esc(t.assignedByName||'مسؤول المشروع')}`:''}${t.description?`<br>${esc(t.description)}`:''}${t.notes?`<br>📝 ${esc(t.notes)}`:''}${t.attachmentUrl?`<br><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a>`:''}</div></div><div><span class="status-pill ${projectTaskStatusClass(t.status)}">${projectTaskStatusLabel(t.status)}</span>${mine(t)?`<button class="btn btn-outline btn-sm update-project-task" data-id="${t.id}" style="margin-top:6px;">تحديث</button>`:''}</div></div>`;
+    const sec=(title,arr)=>`<div class="card"><h3>${title} <span class="muted" style="font-size:11px;font-weight:400;">(${arr.length})</span></h3>${arr.length?arr.map(rowHTML).join(''):'<div class="muted">لا توجد بنود</div>'}</div>`;
+    const adminT=allT.filter(t=>!isInt(t)), intT=allT.filter(isInt);
     view.innerHTML=`
-      <div class="flex-between" style="margin-bottom:14px;">
-        <button class="btn btn-outline btn-sm btn-auto" id="projects-back-btn">← كل المشاريع</button>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-outline btn-sm btn-auto" id="team-toggle">👥 الفريق (${members.length})</button>${manager?'<button class="btn btn-primary btn-sm btn-auto" id="project-new-task-btn">➕ مهمة</button>':''}
-          ${isAdmin?'<button class="btn btn-outline btn-sm btn-auto" id="project-edit-btn">✏️ تعديل</button><button class="btn btn-danger btn-sm btn-auto" id="project-delete-btn">حذف</button>':''}
-        </div>
-      </div>
       <div class="card">
         <div class="project-detail-cover${project.imageUrl?' has-img':''}"${project.imageUrl?` style="--cover-img:url('${esc(project.imageUrl)}')"`:''}>${project.imageUrl?`<img src="${esc(project.imageUrl)}" alt="" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createTextNode('📁'))">`:'📁'}</div>
         <div class="flex-between" style="margin-top:14px;align-items:flex-start;"><div><h2 style="margin:0 0 5px;">${esc(project.name)}</h2><div class="muted" style="font-size:12.5px;">${esc(project.description||'لا يوجد وصف')}</div></div><span class="status-pill ${project.status==='completed'?'pill-good':project.status==='paused'||project.status==='cancelled'?'pill-bad':'pill-warn'}">${projectStatusLabel(project.status)}</span></div>
         <div class="project-meta" style="margin-top:12px;"><span>بداية: ${esc(project.startDate||'—')}</span><span>نهاية: ${esc(project.endDate||'مفتوحة')}</span><span>المصدر: ${esc(project.createdByName||'الإدارة')}</span></div>
       </div>
       <div class="stat-row" style="margin-top:16px;grid-template-columns:repeat(4,1fr);"><div class="stat-box"><div class="num">${stats.total}</div><div class="lbl">إجمالي المهام</div></div><div class="stat-box"><div class="num" style="color:var(--good);">${stats.completed}</div><div class="lbl">مكتملة</div></div><div class="stat-box"><div class="num" style="color:var(--warn);">${stats.remaining}</div><div class="lbl">متبقية</div></div><div class="stat-box"><div class="num">${stats.percent}%</div><div class="lbl">نسبة الإنجاز</div></div></div>
-      <div class="card" id="team-card" style="display:none;margin-top:16px;"><h3>👥 الموظفون القائمون على المشروع</h3><div id="project-members-list">${members.length?members.map(uid=>`<div class="project-member-row"><div><div class="project-member-name">${esc(empName(uid))}</div>${(project.managerUids||[]).includes(uid)?'<span class="status-pill pill-warn" style="font-size:10px;margin-top:3px;">مسؤول مشروع</span>':''}<div class="project-task-meta">${tasks.filter(t=>t.assignedUid===uid).length} مهمة مسندة</div></div>${isAdmin?`<button class="btn btn-danger btn-sm remove-project-member" data-uid="${uid}">حذف</button>`:''}</div>`).join(''):'<div class="muted">لا يوجد أعضاء</div>'}</div></div>
-      <div class="project-panels" style="grid-template-columns:1fr;">
-        <div class="card"><h3>📌 مهام المشروع <span class="muted" style="font-size:11px;font-weight:400;">(${tasks.length})</span></h3><div id="project-tasks-list">${tasks.length?tasks.map(t=>`<div class="project-task-row"><div class="project-task-main"><div class="project-task-title">${esc(t.title)}</div><div class="project-task-meta">${badge(t)}👤 ${esc(empName(t.assignedUid))} · ${t.dueDate?`الموعد ${esc(t.dueDate)}`:'بدون موعد'} · ${t.source==='generalManager'?'المدير العام':'مسؤول المشروع'}${t.notes?`<br>📝 ${esc(t.notes)}`:''}${t.attachmentUrl?`<br><a class="attach-link" href="${esc(t.attachmentUrl)}" target="_blank" rel="noopener">📎 ${esc(t.attachmentName||'مرفق')}</a>`:''}</div>${internalHTML(t)}</div><div><span class="status-pill ${projectTaskStatusClass(t.status)}">${projectTaskStatusLabel(t.status)}</span>${manager?`<button class="btn btn-outline btn-sm add-internal" data-id="${t.id}" style="margin:6px 0 0 4px;">➕ داخلي</button>`:''}${(t.assignedUid===currentUser.uid||manager)&&t.status!=='completed'&&t.status!=='failed'?`<button class="btn btn-outline btn-sm update-project-task" data-id="${t.id}" style="margin-top:6px;">تحديث</button>`:''}</div></div>`).join(''):'<div class="muted">لا توجد مهام لهذا المشروع</div>'}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
+        <button class="btn btn-outline" id="team-toggle" style="flex:1 1 100%;">👥 الأعضاء (${members.length})</button>
+        ${isAdmin?'<button class="btn btn-primary" id="add-admin-task" style="flex:1 1 45%;">➕ إضافة تكليف من الإدارة</button>':''}
+        ${manager?'<button class="btn btn-primary" id="add-internal-task" style="flex:1 1 45%;background:#7c3aed;border-color:#7c3aed;">➕ إضافة مهمة داخلية</button>':''}
       </div>
+      <div class="project-panels" style="grid-template-columns:1fr;margin-top:16px;">${sec('📋 تكليفات الإدارة',adminT)}${sec('🧩 مهام داخلية',intT)}</div>
     `;
-    view.querySelector('#team-toggle').addEventListener('click',()=>{const c=view.querySelector('#team-card');c.style.display=c.style.display==='none'?'block':'none';});
-    view.querySelectorAll('.add-internal').forEach(b=>b.addEventListener('click',()=>openProjectTaskModal(project,tasks.find(t=>t.id===b.dataset.id))));
-    view.querySelector('#projects-back-btn').addEventListener('click',()=>closeNavLayer(projectLayer,()=>{selectedId=null;draw();}));
-    if(manager) view.querySelector('#project-new-task-btn').addEventListener('click',()=>openProjectTaskModal(project));
-    if(isAdmin){
-      view.querySelector('#project-edit-btn').addEventListener('click',()=>openProjectModal(project));
-      view.querySelector('#project-delete-btn').addEventListener('click',async()=>{
-        if(!confirm('حذف المشروع؟ ستظل مهامه محفوظة كسجل، ولن يظهر المشروع للمستخدمين.')) return;
-        await updateDoc(doc(db,'projects',project.id),{active:false}); selectedId=null; toast('تم إخفاء المشروع','ok');
-      });
-      view.querySelectorAll('.remove-project-member').forEach(btn=>btn.addEventListener('click',async()=>{
-        const nextMembers=members.filter(uid=>uid!==btn.dataset.uid), nextManagers=(project.managerUids||[]).filter(uid=>uid!==btn.dataset.uid);
-        await updateDoc(doc(db,'projects',project.id),{memberUids:nextMembers,managerUids:nextManagers});
-      }));
-    }
+    view.querySelector('#team-toggle').addEventListener('click',()=>{
+      const ov=el(`<div class="modal-overlay"><div class="modal-box" style="max-width:420px;"><h3>👥 أعضاء المشروع</h3><div style="max-height:55vh;overflow-y:auto;">${members.length?members.map(uid=>`<div class="project-member-row"><div><div class="project-member-name">${esc(empName(uid))}</div>${(project.managerUids||[]).includes(uid)?'<span class="status-pill pill-warn" style="font-size:10px;margin-top:3px;">مسؤول مشروع</span>':''}<div class="project-task-meta">${allT.filter(t=>t.assignedUid===uid).length} مهمة مسندة</div></div></div>`).join(''):'<div class="muted">لا يوجد أعضاء</div>'}</div><div class="modal-actions"><button class="btn btn-outline" id="team-close">خروج</button></div></div></div>`);
+      document.body.appendChild(ov);
+      ov.querySelector('#team-close').addEventListener('click',()=>ov.remove());
+      ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    });
+    if(isAdmin) view.querySelector('#add-admin-task').addEventListener('click',()=>openProjectTaskModal(project,'admin'));
+    if(manager) view.querySelector('#add-internal-task').addEventListener('click',()=>openProjectTaskModal(project,'internal'));
     view.querySelectorAll('.update-project-task').forEach(btn=>btn.addEventListener('click',()=>openProjectTaskUpdateModal(allT.find(t=>t.id===btn.dataset.id))));
   }
 }
@@ -5455,9 +5456,9 @@ function openProjectModal(project=null){
   });
 }
 
-function openProjectTaskModal(project,parent=null){
+function openProjectTaskModal(project,kind='admin'){
   const members=project.memberUids||[];
-  const overlay=el(`<div class="modal-overlay"><div class="modal-box" style="max-width:540px;"><h3>${parent?'↳ تاسك داخلي ضمن: '+esc(parent.title):'➕ مهمة داخل مشروع: '+esc(project.name)}</h3><div class="field"><label>عنوان المهمة *</label><input id="pt-title"></div><div class="field"><label>التفاصيل</label><textarea id="pt-desc"></textarea></div><div class="grid grid-2"><div class="field"><label>نوع المهمة</label><select id="pt-type"><option value="temporary">مؤقتة</option><option value="permanent">دائمة</option><option value="recurring">متجددة</option></select></div><div class="field" id="pt-due-box"><label>الموعد النهائي</label><input type="date" id="pt-due"></div><div class="field" id="pt-rec-box" style="display:none;"><label>التجديد</label><select id="pt-rec"><option value="daily">يوميًا</option><option value="weekly">أسبوعيًا</option><option value="monthly">شهريًا</option></select></div></div><div class="field"><label>المكلفون *</label><label class="assignee-chk"><input type="checkbox" id="pt-all"> <b>كل الفريق</b></label><div class="assignee-list" id="pt-list">${members.map(uid=>`<label class="assignee-chk"><input type="checkbox" class="pt-who" value="${uid}"> ${esc(empName(uid))}</label>`).join('')}</div></div><div class="field"><label>ملاحظات</label><textarea id="pt-notes"></textarea></div><div class="field"><label>مرفق اختياري</label><input type="file" id="pt-file"></div><div class="error-text" id="pt-err" style="display:none;"></div><div class="modal-actions"><button class="btn btn-outline" id="pt-cancel">إلغاء</button><button class="btn btn-primary" id="pt-save">إسناد المهمة</button></div></div></div>`);
+  const overlay=el(`<div class="modal-overlay"><div class="modal-box" style="max-width:540px;"><h3>${kind==='internal'?'🧩 إضافة مهمة داخلية':'📋 إضافة تكليف من الإدارة'} — ${esc(project.name)}</h3><div class="field"><label>عنوان المهمة *</label><input id="pt-title"></div><div class="field"><label>التفاصيل</label><textarea id="pt-desc"></textarea></div><div class="grid grid-2"><div class="field"><label>نوع المهمة</label><select id="pt-type"><option value="temporary">مؤقتة</option><option value="permanent">دائمة</option><option value="recurring">متجددة</option></select></div><div class="field" id="pt-due-box"><label>الموعد النهائي</label><input type="date" id="pt-due"></div><div class="field" id="pt-rec-box" style="display:none;"><label>التجديد</label><select id="pt-rec"><option value="daily">يوميًا</option><option value="weekly">أسبوعيًا</option><option value="monthly">شهريًا</option></select></div></div><div class="field"><label>المكلفون *</label><label class="assignee-chk"><input type="checkbox" id="pt-all"> <b>كل الفريق</b></label><div class="assignee-list" id="pt-list">${members.map(uid=>`<label class="assignee-chk"><input type="checkbox" class="pt-who" value="${uid}"> ${esc(empName(uid))}</label>`).join('')}</div></div><div class="field"><label>ملاحظات</label><textarea id="pt-notes"></textarea></div><div class="field"><label>مرفق اختياري</label><input type="file" id="pt-file"></div><div class="error-text" id="pt-err" style="display:none;"></div><div class="modal-actions"><button class="btn btn-outline" id="pt-cancel">إلغاء</button><button class="btn btn-primary" id="pt-save">إسناد المهمة</button></div></div></div>`);
   document.body.appendChild(overlay);
   overlay.querySelector('#pt-cancel').addEventListener('click',()=>overlay.remove());overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
   const typeSel=overlay.querySelector('#pt-type'),allChk=overlay.querySelector('#pt-all'),whos=[...overlay.querySelectorAll('.pt-who')];
@@ -5470,8 +5471,8 @@ function openProjectTaskModal(project,parent=null){
     const btn=overlay.querySelector('#pt-save');btn.disabled=true;btn.textContent='جارِ الحفظ...';
     try{
       const file=overlay.querySelector('#pt-file').files[0],att=await uploadTaskAttachment(file,'projectTaskAttachments');
-      await Promise.all(uids.map(assignedUid=>setDoc(doc(collection(db,'projectTasks')),{projectId:project.id,projectName:project.name,title,description:overlay.querySelector('#pt-desc').value.trim(),assignedUid,assignedBy:currentUser.uid,assignedByName:currentEmployee.name||'',source:parent?'internal':(isAdmin?'generalManager':'projectManager'),parentId:parent?parent.id:null,internal:!!parent,taskType:type,recurrence:type==='recurring'?overlay.querySelector('#pt-rec').value:null,teamWide:allChk.checked,assignedAt:serverTimestamp(),dueDate:type==='temporary'?overlay.querySelector('#pt-due').value:'',status:'pending',notes:overlay.querySelector('#pt-notes').value.trim(),attachmentUrl:att.url,attachmentName:att.name,attachmentType:file?.type||null,attachmentPath:att.path,attachmentOwnerUid:currentUser.uid,attachmentAddedAt:serverTimestamp(),active:true})));
-      await pushNotifications(uids,parent?'↳ تاسك داخلي جديد':'📌 مهمة مشروع جديدة',`${project.name} — ${title}`);
+      await Promise.all(uids.map(assignedUid=>setDoc(doc(collection(db,'projectTasks')),{projectId:project.id,projectName:project.name,title,description:overlay.querySelector('#pt-desc').value.trim(),assignedUid,assignedBy:currentUser.uid,assignedByName:currentEmployee.name||'',source:kind==='internal'?'internal':'generalManager',parentId:null,internal:kind==='internal',taskType:type,recurrence:type==='recurring'?overlay.querySelector('#pt-rec').value:null,teamWide:allChk.checked,assignedAt:serverTimestamp(),dueDate:type==='temporary'?overlay.querySelector('#pt-due').value:'',status:'pending',notes:overlay.querySelector('#pt-notes').value.trim(),attachmentUrl:att.url,attachmentName:att.name,attachmentType:file?.type||null,attachmentPath:att.path,attachmentOwnerUid:currentUser.uid,attachmentAddedAt:serverTimestamp(),active:true})));
+      await pushNotifications(uids,kind==='internal'?'🧩 مهمة داخلية جديدة':'📋 تكليف جديد من الإدارة',`${project.name} — ${title}`);
       toast('تم إسناد المهمة','ok');overlay.remove();
     }catch(e){console.error(e);err.textContent='تعذر حفظ المهمة';err.style.display='block';btn.disabled=false;btn.textContent='إسناد المهمة';}
   });
