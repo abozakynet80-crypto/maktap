@@ -601,12 +601,21 @@
   .pj-tool{border:1px solid var(--border);background:var(--card);border-radius:7px;font-size:12px;padding:1px 8px;cursor:pointer;line-height:1.7;}
   @media(max-width:700px){
     .projects-grid{gap:10px;}
-    .project-cover.has-img img{max-height:105px;}
+    .project-cover.has-img{height:175px;}
     .project-body{padding:10px;gap:6px;}
     .project-title{font-size:13.5px;}
     .project-desc{min-height:0;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
     .project-meta{font-size:11px;}
   }
+  .project-cover.has-img,.project-detail-cover.has-img{position:relative;height:190px;overflow:hidden;background:#0f172a;}
+  .project-detail-cover.has-img{height:250px;}
+  .project-cover.has-img::before,.project-detail-cover.has-img::before{content:"";position:absolute;inset:-24px;background:var(--cover-img) center/cover;filter:blur(20px) brightness(.75);}
+  .project-cover.has-img img,.project-detail-cover.has-img img{position:relative;z-index:1;width:100%;height:100%;max-height:none;object-fit:contain;}
+  .project-card{border-top:5px solid var(--pc,var(--brand));background:linear-gradient(180deg,color-mix(in srgb,var(--pc,var(--brand)) 16%,var(--card)),var(--card) 70%);}
+  .project-card:hover{border-color:var(--pc,var(--brand));}
+  .project-progress>div{background:var(--pc,var(--brand));}
+  .pr-sw{display:block;width:30px;height:30px;border-radius:50%;border:3px solid transparent;}
+  input:checked+.pr-sw{border-color:var(--ink,#000);box-shadow:0 0 0 2px var(--card);}
 </style>
 </head>
 <body>
@@ -5294,6 +5303,8 @@ function projectTaskStatusLabel(status){
 function projectTaskStatusClass(status){
   return status==='completed' ? 'pill-good' : (status==='failed' ? 'pill-bad' : (status==='in_progress' ? 'pill-warn' : 'pill-neutral'));
 }
+const PROJECT_COLORS=['#0ea5a4','#3b82f6','#8b5cf6','#ec4899','#f59e0b','#22c55e','#ef4444','#06b6d4'];
+function projectColor(p){ if(p&&p.color) return p.color; let h=0; for(const ch of String(p?.id||'')) h=(h*31+ch.charCodeAt(0))>>>0; return PROJECT_COLORS[h%PROJECT_COLORS.length]; }
 function canManageProject(project){
   return isAdmin || (project.managerUids||[]).includes(currentUser.uid);
 }
@@ -5315,7 +5326,7 @@ function renderProjectsTab(container){
   let projects = [], projectTasks = [], selectedId = null, projectLayer = null;
   const projectUnsub = onSnapshot(collection(db,'projects'), qs=>{
     projects = qs.docs.map(d=>({id:d.id,...d.data()}));
-    projects.sort((a,b)=> (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    projects.sort((a,b)=> ((a.order??1e9)-(b.order??1e9)) || (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     draw();
   }, err=>{ console.error(err); toast('تعذر تحميل المشاريع','err'); });
   const taskUnsub = onSnapshot(collection(db,'projectTasks'), qs=>{
@@ -5326,6 +5337,12 @@ function renderProjectsTab(container){
   watchEmployeesCache(()=>draw());
   if(isAdmin) container.querySelector('#new-project-btn').addEventListener('click', ()=>openProjectModal());
 
+  async function moveProject(id,dir){
+    const l=visibleProjects(), i=l.findIndex(x=>x.id===id), j=i+dir;
+    if(i<0||j<0||j>=l.length) return;
+    [l[i],l[j]]=[l[j],l[i]];
+    try{ await Promise.all(l.map((x,k)=>updateDoc(doc(db,'projects',x.id),{order:k}))); }catch(e){ console.error(e); toast('تعذر تغيير الترتيب','err'); }
+  }
   function visibleProjects(){
     return projects.filter(p=>p.active!==false);
   }
@@ -5343,8 +5360,8 @@ function renderProjectsTab(container){
       const stats=projectTasksStats(projectTasks.filter(t=>t.projectId===p.id&&!t.parentId));
       const pct=stats.total ? stats.percent : Number(p.progress||0);
       const member=isProjectMember(p);
-      return `<div class="project-wrap">${isAdmin?`<div class="project-tools"><button class="pj-tool pj-edit" data-id="${p.id}" title="تعديل">✏️</button><button class="pj-tool pj-del" data-id="${p.id}" title="حذف">🗑</button></div>`:''}<article class="project-card${member?'':' project-card-locked'}" data-project-id="${p.id}" ${member?'':'title="الدخول لهذا المشروع متاح فقط لأعضائه"'}>
-        <div class="project-cover${p.imageUrl?' has-img':''}">${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createTextNode('📁'))">`:'📁'}${member?'':'<span class="project-lock-badge">🔒</span>'}</div>
+      return `<div class="project-wrap">${isAdmin?`<div class="project-tools"><button class="pj-tool pj-up" data-id="${p.id}" title="أعلى">▲</button><button class="pj-tool pj-dn" data-id="${p.id}" title="أسفل">▼</button><button class="pj-tool pj-edit" data-id="${p.id}" title="تعديل">✏️</button><button class="pj-tool pj-del" data-id="${p.id}" title="حذف">🗑</button></div>`:''}<article class="project-card${member?'':' project-card-locked'}" data-project-id="${p.id}" style="--pc:${projectColor(p)}" ${member?'':'title="الدخول لهذا المشروع متاح فقط لأعضائه"'}>
+        <div class="project-cover${p.imageUrl?' has-img':''}"${p.imageUrl?` style="--cover-img:url('${esc(p.imageUrl)}')"`:''}>${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createTextNode('📁'))">`:'📁'}${member?'':'<span class="project-lock-badge">🔒</span>'}</div>
         <div class="project-body">
           <div class="flex-between"><div class="project-title">${esc(p.name)}</div><span class="status-pill ${p.status==='completed'?'pill-good':p.status==='paused'||p.status==='cancelled'?'pill-bad':'pill-warn'}">${projectStatusLabel(p.status)}</span></div>
           <div class="project-desc">${esc(p.description||'لا يوجد وصف مختصر')}</div>
@@ -5354,6 +5371,8 @@ function renderProjectsTab(container){
         </div>
       </article></div>`;
     }).join('')}</div>`;
+    view.querySelectorAll('.pj-up').forEach(b=>b.addEventListener('click',()=>moveProject(b.dataset.id,-1)));
+    view.querySelectorAll('.pj-dn').forEach(b=>b.addEventListener('click',()=>moveProject(b.dataset.id,1)));
     view.querySelectorAll('.pj-edit').forEach(b=>b.addEventListener('click',()=>openProjectModal(list.find(x=>x.id===b.dataset.id))));
     view.querySelectorAll('.pj-del').forEach(b=>b.addEventListener('click',async()=>{
       if(!confirm('حذف المشروع؟ ستظل مهامه محفوظة كسجل، ولن يظهر المشروع للمستخدمين.')) return;
@@ -5388,7 +5407,7 @@ function renderProjectsTab(container){
         </div>
       </div>
       <div class="card">
-        <div class="project-detail-cover${project.imageUrl?' has-img':''}">${project.imageUrl?`<img src="${esc(project.imageUrl)}" alt="" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createTextNode('📁'))">`:'📁'}</div>
+        <div class="project-detail-cover${project.imageUrl?' has-img':''}"${project.imageUrl?` style="--cover-img:url('${esc(project.imageUrl)}')"`:''}>${project.imageUrl?`<img src="${esc(project.imageUrl)}" alt="" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createTextNode('📁'))">`:'📁'}</div>
         <div class="flex-between" style="margin-top:14px;align-items:flex-start;"><div><h2 style="margin:0 0 5px;">${esc(project.name)}</h2><div class="muted" style="font-size:12.5px;">${esc(project.description||'لا يوجد وصف')}</div></div><span class="status-pill ${project.status==='completed'?'pill-good':project.status==='paused'||project.status==='cancelled'?'pill-bad':'pill-warn'}">${projectStatusLabel(project.status)}</span></div>
         <div class="project-meta" style="margin-top:12px;"><span>بداية: ${esc(project.startDate||'—')}</span><span>نهاية: ${esc(project.endDate||'مفتوحة')}</span><span>المصدر: ${esc(project.createdByName||'الإدارة')}</span></div>
       </div>
@@ -5420,7 +5439,8 @@ function renderProjectsTab(container){
 function openProjectModal(project=null){
   const allEmps=Object.keys(employeesCache).filter(uid=>employeesCache[uid].role!=='admin').sort((a,b)=>empName(a).localeCompare(empName(b),'ar'));
   const members=new Set(project?.memberUids||[]), managers=new Set(project?.managerUids||[]);
-  const overlay=el(`<div class="modal-overlay"><div class="modal-box" style="max-width:620px;"><h3>${project?'✏️ تعديل المشروع':'➕ إنشاء مشروع جديد'}</h3><div class="field"><label>اسم المشروع *</label><input id="pr-name" value="${esc(project?.name||'')}"></div><div class="field"><label>وصف المشروع</label><textarea id="pr-desc">${esc(project?.description||'')}</textarea></div><div class="grid grid-2"><div class="field"><label>تاريخ البداية *</label><input type="date" id="pr-start" value="${esc(project?.startDate||todayCairoStr())}"></div><div class="field"><label>تاريخ النهاية (اختياري)</label><input type="date" id="pr-end" value="${esc(project?.endDate||'')}"></div></div><div class="field"><label>حالة المشروع</label><select id="pr-status"><option value="planned">مخطط</option><option value="active">جاري</option><option value="completed">مكتمل</option><option value="paused">متوقف</option><option value="cancelled">ملغى</option></select></div><div class="field"><label>صورة المشروع (اختيارية)</label><input type="file" id="pr-file" accept="image/*">${project?.imageName?`<div class="muted" style="font-size:11px;margin-top:4px;">الصورة الحالية: ${esc(project.imageName)}</div>`:''}</div><div class="field"><div class="flex-between"><label style="margin:0;">الموظفون المشاركون *</label><span class="muted" style="font-size:11px;">حدد المسؤولين بعد اختيار الأعضاء</span></div><div class="assignee-list" id="pr-members">${allEmps.map(uid=>`<label class="assignee-chk"><input type="checkbox" class="pr-member" value="${uid}" ${members.has(uid)?'checked':''}> ${esc(empName(uid))}</label>`).join('')||'<span class="muted">لا يوجد موظفون</span>'}</div></div><div class="field"><label>مسؤولو/سينير المشروع</label><div class="assignee-list" id="pr-managers">${allEmps.map(uid=>`<label class="assignee-chk"><input type="checkbox" class="pr-manager" value="${uid}" ${managers.has(uid)?'checked':''} ${members.has(uid)?'':'disabled'}> ${esc(empName(uid))}</label>`).join('')}</div></div><div class="error-text" id="pr-err" style="display:none;"></div><div class="modal-actions"><button class="btn btn-outline" id="pr-cancel">إلغاء</button><button class="btn btn-primary" id="pr-save">حفظ المشروع</button></div></div></div>`);
+  const curColor=project?projectColor(project):PROJECT_COLORS[Math.floor(Math.random()*PROJECT_COLORS.length)];
+  const overlay=el(`<div class="modal-overlay"><div class="modal-box" style="max-width:620px;"><h3>${project?'✏️ تعديل المشروع':'➕ إنشاء مشروع جديد'}</h3><div class="field"><label>اسم المشروع *</label><input id="pr-name" value="${esc(project?.name||'')}"></div><div class="field"><label>وصف المشروع</label><textarea id="pr-desc">${esc(project?.description||'')}</textarea></div><div class="grid grid-2"><div class="field"><label>تاريخ البداية *</label><input type="date" id="pr-start" value="${esc(project?.startDate||todayCairoStr())}"></div><div class="field"><label>تاريخ النهاية (اختياري)</label><input type="date" id="pr-end" value="${esc(project?.endDate||'')}"></div></div><div class="field"><label>حالة المشروع</label><select id="pr-status"><option value="planned">مخطط</option><option value="active">جاري</option><option value="completed">مكتمل</option><option value="paused">متوقف</option><option value="cancelled">ملغى</option></select></div><div class="field"><label>لون الكارت</label><div style="display:flex;gap:8px;flex-wrap:wrap;">${PROJECT_COLORS.map(c=>`<label style="cursor:pointer;"><input type="radio" name="pr-color" value="${c}" ${c===curColor?'checked':''} style="display:none;"><span class="pr-sw" style="background:${c};"></span></label>`).join('')}</div></div><div class="field"><label>صورة المشروع (اختيارية)</label><input type="file" id="pr-file" accept="image/*">${project?.imageName?`<div class="muted" style="font-size:11px;margin-top:4px;">الصورة الحالية: ${esc(project.imageName)}</div>`:''}</div><div class="field"><div class="flex-between"><label style="margin:0;">الموظفون المشاركون *</label><span class="muted" style="font-size:11px;">حدد المسؤولين بعد اختيار الأعضاء</span></div><div class="assignee-list" id="pr-members">${allEmps.map(uid=>`<label class="assignee-chk"><input type="checkbox" class="pr-member" value="${uid}" ${members.has(uid)?'checked':''}> ${esc(empName(uid))}</label>`).join('')||'<span class="muted">لا يوجد موظفون</span>'}</div></div><div class="field"><label>مسؤولو/سينير المشروع</label><div class="assignee-list" id="pr-managers">${allEmps.map(uid=>`<label class="assignee-chk"><input type="checkbox" class="pr-manager" value="${uid}" ${managers.has(uid)?'checked':''} ${members.has(uid)?'':'disabled'}> ${esc(empName(uid))}</label>`).join('')}</div></div><div class="error-text" id="pr-err" style="display:none;"></div><div class="modal-actions"><button class="btn btn-outline" id="pr-cancel">إلغاء</button><button class="btn btn-primary" id="pr-save">حفظ المشروع</button></div></div></div>`);
   document.body.appendChild(overlay);
   overlay.querySelector('#pr-status').value=project?.status||'planned';
   overlay.querySelectorAll('.pr-member').forEach(chk=>chk.addEventListener('change',()=>{const manager=overlay.querySelector(`.pr-manager[value="${CSS.escape(chk.value)}"]`);if(manager) manager.disabled=!chk.checked;if(!chk.checked) manager.checked=false;}));
@@ -5431,7 +5451,7 @@ function openProjectModal(project=null){
     const memberUids=[...overlay.querySelectorAll('.pr-member:checked')].map(c=>c.value), managerUids=[...overlay.querySelectorAll('.pr-manager:checked')].map(c=>c.value), err=overlay.querySelector('#pr-err');
     if(!name||!startDate||!memberUids.length){err.textContent='اكتب اسم المشروع وتاريخ البداية واختر عضوًا واحدًا على الأقل';err.style.display='block';return;}
     const btn=overlay.querySelector('#pr-save');btn.disabled=true;btn.textContent='جارِ الحفظ...';
-    try{const file=overlay.querySelector('#pr-file').files[0];const att=file?await uploadTaskAttachment(file,'projectImages'):{url:project?.imageUrl||null,name:project?.imageName||null,path:project?.imagePath||null};const payload={name,description,startDate,endDate,status,memberUids,managerUids,imageUrl:att.url,imageName:att.name,imagePath:att.path,createdBy:project?.createdBy||currentUser.uid,createdByName:project?.createdByName||currentEmployee.name||'',active:true};if(project)await updateDoc(doc(db,'projects',project.id),payload);else await setDoc(doc(collection(db,'projects')), {...payload,createdAt:serverTimestamp()});toast(project?'تم تعديل المشروع':'تم إنشاء المشروع','ok');overlay.remove();}catch(e){console.error(e);err.textContent='حدث خطأ أثناء حفظ المشروع';err.style.display='block';btn.disabled=false;btn.textContent='حفظ المشروع';}
+    try{const file=overlay.querySelector('#pr-file').files[0];const att=file?await uploadTaskAttachment(file,'projectImages'):{url:project?.imageUrl||null,name:project?.imageName||null,path:project?.imagePath||null};const payload={name,description,startDate,endDate,status,memberUids,managerUids,color:(overlay.querySelector('input[name=pr-color]:checked')||{}).value||null,imageUrl:att.url,imageName:att.name,imagePath:att.path,createdBy:project?.createdBy||currentUser.uid,createdByName:project?.createdByName||currentEmployee.name||'',active:true};if(project)await updateDoc(doc(db,'projects',project.id),payload);else await setDoc(doc(collection(db,'projects')), {...payload,createdAt:serverTimestamp()});toast(project?'تم تعديل المشروع':'تم إنشاء المشروع','ok');overlay.remove();}catch(e){console.error(e);err.textContent='حدث خطأ أثناء حفظ المشروع';err.style.display='block';btn.disabled=false;btn.textContent='حفظ المشروع';}
   });
 }
 
