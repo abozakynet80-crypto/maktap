@@ -864,12 +864,22 @@ function doneDateOf(r){
   }
   return '';
 }
-/* إحصائية "اليوم الحالي" التراكمية */
-function rolloverStats(rows){
-  rows = (rows||[]).filter(r=> !(r.istifa && !r.done));   // طلبات الاستيفاء خارج الإحصائيات
-  const remainingNow = rows.filter(r=>!r.done).length;
-  const doneToday = rows.filter(r=> r.done && doneDateOf(r)===todayCairoStr()).length;
-  return {target: remainingNow+doneToday, done: doneToday};
+/* تاريخ آخر توزيعة (رفع ملف) لمجموعة صفوف */
+function maxAssignDate(rows){
+  let m = '';
+  (rows||[]).forEach(r=>{ const d = String(r.date||''); if(d>m) m = d; });
+  return m;
+}
+/* إحصائية "التوزيعة الحالية": المستهدف = كل ما أُسند للموظف من آخر رفع ملف (المتبقي القديم + الجديد)
+   وبيفضل ثابت اليوم اللي بعده لحد ما يترفع ملف جديد؛ ما تم = اللي اتدخل من التوزيعة دي؛ المتبقي = المستهدف − ما تم */
+function rolloverStats(rows, ctx){
+  const all = rows || [];
+  const cd = (ctx && ctx.cycleDate) || maxAssignDate(all);
+  const inCycle = all.filter(r=>{
+    if(r.istifa && !r.done) return false;                 // طلبات الاستيفاء خارج الإحصائيات
+    return !r.done || String(r.date||'')>=cd || doneDateOf(r)>=cd;
+  });
+  return {target: inCycle.length, done: inCycle.filter(r=>r.done).length, cycleDate: cd};
 }
 /* إحصائية فترة محددة */
 function periodStats(rows){
@@ -888,10 +898,11 @@ function groupStatsByUidAndCenter(rows, statFn){
   });
   const result = {};
   Object.keys(buckets).forEach(uid=>{
-    const s = statFn(buckets[uid].rows);
+    const ctx = {cycleDate: maxAssignDate(buckets[uid].rows)};
+    const s = statFn(buckets[uid].rows, ctx);
     const centers = {};
-    Object.keys(buckets[uid].centers).forEach(c=> centers[c] = statFn(buckets[uid].centers[c]));
-    result[uid] = {target:s.target, done:s.done, centers};
+    Object.keys(buckets[uid].centers).forEach(c=> centers[c] = statFn(buckets[uid].centers[c], ctx));
+    result[uid] = {target:s.target, done:s.done, centers, cycleDate:s.cycleDate};
   });
   return result;
 }
@@ -2624,6 +2635,7 @@ function renderDoneSection(box){
         <input type="date" id="done-to">
         <button class="btn btn-outline btn-sm" id="done-all-time">اليوم الحالي</button>
       </div>
+      <div class="small-note" id="done-cycle-note" style="margin-bottom:12px;">📌 المستهدف = توزيعة الموظف الحالية (المتبقي القديم + آخر ملف) وبيفضل ثابت في الأيام التالية لحد رفع ملف جديد. المتبقي = المستهدف − ما تم.</div>
       <div class="emp-stat-grid" id="done-leaderboard"><div class="muted">جارِ التحميل...</div></div>
     </div>
 
@@ -2706,6 +2718,7 @@ function renderDoneSection(box){
     if(!board) return;
     const from = box.querySelector('#done-from').value;
     const to = box.querySelector('#done-to').value;
+    const cycleNote = box.querySelector('#done-cycle-note'); if(cycleNote) cycleNote.style.display = (!from && !to) ? '' : 'none';
     const byUid = (!from && !to)
       ? groupStatsByUidAndCenter(allRows, rolloverStats)
       : groupStatsByUidAndCenter(allRows.filter(inAssignPeriod), periodStats);
@@ -2718,7 +2731,7 @@ function renderDoneSection(box){
       const medal = s.done>0 ? (i===0?'🥇 ':(i===1?'🥈 ':(i===2?'🥉 ':''))) : '';
       return `<div class="emp-stat-card ${perfClass(s.target,s.done)}">
         <div class="es-name">${medal}${esc(empName(uid))}</div>
-        <div class="es-dept">${esc(empDept(uid))}</div>
+        <div class="es-dept">${esc(empDept(uid))}${(!from && !to && s.cycleDate) ? ` · توزيعة ${esc(fmtDate(s.cycleDate))}` : ''}</div>
         ${centerCardBodyHTML(centerStats)}
       </div>`;
     }).join('');
@@ -3755,8 +3768,9 @@ function renderAdminAchievements(container){
 
     let totalTarget, totalDone, totalRemain;
     if(!from && !to){
-      const s = rolloverStats(baseRows);
-      totalTarget = s.target; totalDone = s.done; totalRemain = s.target - s.done;
+      totalTarget = 0; totalDone = 0;
+      Object.values(groupStatsByUidAndCenter(baseRows, rolloverStats)).forEach(x=>{ totalTarget += x.target; totalDone += x.done; });
+      totalRemain = totalTarget - totalDone;
     }else{
       const rows = baseRows.filter(r=>{
         if(r.istifa && !r.done) return false;
